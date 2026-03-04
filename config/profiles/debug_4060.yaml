@@ -1,0 +1,39 @@
+data:
+  dataset_type: teacher_online
+  batch_size: 2
+  num_workers: 0
+  pin_memory: false
+  persistent_workers: false
+  prefetch_factor: null
+  dataset_size: 256
+  val_dataset_size: 64
+  trajectory_cache_mode: false
+  num_cached_trajectories: 4
+  time_grid_size: 8
+  teacher_integration_steps: 4
+
+runtime:
+  amp: true
+  gradient_accumulation: 8
+
+model:
+  hidden_channels: 32
+  boundary_hidden_channels: 16
+  cond_dim: 64
+  time_embed_dim: 32
+  student_num_blocks: 3
+  timewarp_num_bins: 32
+
+loss:
+  defect_weight: 0.25
+  warp_weight: 0.1
+  boundary_weight: 0.05
+
+schedule:
+  num_bins: 32
+  eta: 1.0
+
+train:
+  epochs: 5
+  log_every: 20
+  warp_update_every: 2

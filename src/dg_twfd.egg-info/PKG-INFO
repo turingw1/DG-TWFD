@@ -1,0 +1,85 @@
+Metadata-Version: 2.4
+Name: dg-twfd
+Version: 0.1.0
+Summary: Phase 1 scaffold for Defect-Guided Time-Warp Flow Distillation
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: PyYAML>=6.0
+Requires-Dist: torch>=2.1
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+
+# DG-TWFD Phase 1
+
+Industrialized Phase 1 scaffold for **Defect-Guided Time-Warp Flow Distillation (DG-TWFD)**. This stage implements a configuration center, structured logging, deterministic utilities, and a dummy teacher-driven data pipeline that emits `(x_t, x_s, t, s)` pairs for later student training.
+
+## Pipeline Overview
+Phase 1 only covers data preparation around the teacher flow map `Phi_T(t->s, x_t)`. The future student `M_theta(t, s, x_t)` and time-warp `u = g_phi(t)` are referenced in code comments and docstrings for mathematical continuity.
+
+```text
+x0 ~ p_data/noise
+  |
+  v
+DummyTeacherTrajectory
+  | make_trajectory / forward_map = Phi_T(t->s, x_t)
+  v
+TrajectoryPairDataset
+  | sample t > s
+  v
+batch: {x_t, x_s, t, s}
+  |
+  v
+future phases: M_theta, semigroup defect, g_phi
+```
+
+## Repository Tree
+```text
+.
+├── README.md
+├── pyproject.toml
+├── config/
+│   ├── default.yaml
+│   └── profiles/
+│       ├── debug_4060.yaml
+│       └── train_a100.yaml
+├── src/dg_twfd/
+│   ├── __init__.py
+│   ├── config.py
+│   ├── data/
+│   │   ├── dataloader.py
+│   │   ├── dataset.py
+│   │   └── teacher.py
+│   └── utils/
+│       ├── logging.py
+│       └── seed.py
+└── tests/
+    └── test_data.py
+```
+
+## Module Responsibilities
+- `config/default.yaml`: baseline experiment defaults shared by all hardware profiles.
+- `config/profiles/*.yaml`: hardware-specific overrides for `debug_4060` and `train_a100`.
+- `src/dg_twfd/config.py`: dataclass config model and YAML/profile/CLI override merging.
+- `src/dg_twfd/utils/logging.py`: timestamped logger with file and line metadata.
+- `src/dg_twfd/utils/seed.py`: reproducibility helpers for Python, NumPy, and PyTorch.
+- `src/dg_twfd/data/teacher.py`: abstract teacher interface plus a dummy nonlinear flow used only for tests and debugging.
+- `src/dg_twfd/data/dataset.py`: pair dataset supporting on-the-fly integration and cached trajectories.
+- `src/dg_twfd/data/dataloader.py`: split-aware DataLoader construction with profile-driven worker settings.
+- `tests/test_data.py`: low-memory smoke test for the full data path.
+
+## Quick Start
+```bash
+conda activate consistency
+python -m pip install -e .
+pytest tests/test_data.py -q
+```
+
+Use `load_config("debug_4060")` for low-memory development and `load_config("train_a100")` for larger throughput settings.
+
+## Environment
+Use the `consistency` conda environment for all development, testing, and later training phases. Example:
+
+```bash
+conda activate consistency
+pytest tests/test_data.py -q
+```

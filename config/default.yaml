@@ -1,0 +1,85 @@
+experiment:
+  name: dg_twfd_phase1
+  seed: 42
+
+data:
+  dataset_type: teacher_online
+  channels: 3
+  image_size: 32
+  dataset_size: 256
+  val_dataset_size: 32
+  batch_size: 8
+  num_workers: 2
+  pin_memory: false
+  persistent_workers: false
+  prefetch_factor: 2
+  drop_last: false
+  trajectory_cache_mode: false
+  num_cached_trajectories: 16
+  time_grid_size: 16
+  sample_strategy: random_pair
+  teacher_integration_steps: 8
+  trajectory_shard_dir: null
+  trajectory_file_glob: "*.pt"
+
+runtime:
+  device: auto
+  amp: true
+  gradient_accumulation: 1
+
+teacher:
+  teacher_type: dummy
+  pretrained_model_name_or_path: null
+  local_files_only: false
+  num_inference_steps: 1000
+  solver: ddpm
+  class_cond: false
+  num_classes: 10
+  velocity_scale: 0.35
+  nonlinearity_scale: 0.15
+  x0_std: 1.0
+
+model:
+  time_embed_dim: 64
+  cond_dim: 128
+  hidden_channels: 64
+  boundary_hidden_channels: 32
+  boundary_num_blocks: 3
+  student_num_blocks: 4
+  timewarp_num_bins: 64
+  timewarp_init_bias: 0.0
+  predict_residual: true
+
+loss:
+  match_loss_type: l2
+  huber_delta: 0.1
+  defect_weight: 0.5
+  warp_weight: 0.25
+  boundary_weight: 0.1
+  per_pixel_mean: true
+
+schedule:
+  num_bins: 64
+  ema_decay: 0.9
+  eta: 1.5
+  eps: 1.0e-6
+  seed: 42
+
+boundary:
+  gate_weight: 1.0
+  enable_until_step: 1000
+
+train:
+  epochs: 5
+  learning_rate: 1.0e-3
+  weight_decay: 0.0
+  grad_clip_norm: 1.0
+  log_every: 10
+  save_every: 1
+  checkpoint_dir: checkpoints
+  resume_path: null
+  warp_update_every: 2
+  max_train_steps: null
+
+logging:
+  level: INFO

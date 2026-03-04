@@ -1,0 +1,305 @@
+"""Datasets for teacher-generated supervision."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import torch
+from torch import Tensor
+from torch.utils.data import Dataset
+
+from dg_twfd.config import DGConfig
+from dg_twfd.data.teacher import TeacherTrajectory
+
+
+@dataclass(slots=True)
+class CachedTrajectory:
+    x0: Tensor
+    t_grid: Tensor
+    trajectory: dict[float, Tensor]
+
+
+class TrajectoryPairDataset(Dataset[dict[str, Tensor]]):
+    """Online teacher dataset used by the dummy Phase 1 path."""
+
+    def __init__(
+        self,
+        cfg: DGConfig,
+        teacher: TeacherTrajectory,
+        split: str = "train",
+        cached: bool | None = None,
+        device: torch.device | str = "cpu",
+    ) -> None:
+        self.cfg = cfg
+        self.teacher = teacher
+        self.split = split
+        self.device = torch.device(device)
+        self.cached = cfg.data.trajectory_cache_mode if cached is None else cached
+        self.length = cfg.data.dataset_size if split == "train" else cfg.data.val_dataset_size
+        self._cache: list[CachedTrajectory] = []
+        if self.cached:
+            self._build_cache()
+
+    def __len__(self) -> int:
+        return self.length
+
+    def _sample_pair_times(self) -> tuple[Tensor, Tensor]:
+        pair = torch.rand(2)
+        t, s = torch.sort(pair, descending=True).values
+        if torch.isclose(t, s):
+            s = torch.clamp(t - 1e-3, min=0.0)
+        return t, s
+
+    def _sample_grid_pair(self, t_grid: Tensor) -> tuple[float, float]:
+        indices = torch.randperm(len(t_grid))[:2]
+        values = t_grid[indices]
+        ordered = torch.sort(values, descending=True).values
+        t_value = float(ordered[0].item())
+        s_value = float(ordered[1].item())
+        if t_value == s_value:
+            s_value = max(0.0, t_value - 1.0 / max(2, self.cfg.data.time_grid_size))
+        return t_value, s_value
+
+    def _build_cache(self) -> None:
+        t_grid = torch.linspace(0.0, 1.0, steps=self.cfg.data.time_grid_size, dtype=torch.float32)
+        for _ in range(self.cfg.data.num_cached_trajectories):
+            x0 = self.teacher.sample_x0(1, self.device)
+            trajectory = self.teacher.make_trajectory(x0, t_grid)
+            self._cache.append(CachedTrajectory(x0=x0, t_grid=t_grid.clone(), trajectory=trajectory))
+
+    def sample_triplet_batch(
+        self,
+        batch_size: int,
+        device: torch.device | str | None = None,
+    ) -> dict[str, Tensor]:
+        target_device = self.device if device is None else torch.device(device)
+        if self.cached and self._cache:
+            return self._sample_triplet_from_cache(batch_size, target_device)
+        return self._sample_triplet_on_the_fly(batch_size, target_device)
+
+    def _sample_triplet_times(self) -> tuple[float, float, float]:
+        values = torch.sort(torch.rand(3), descending=True).values
+        t3, t2, t1 = [float(value.item()) for value in values]
+        t2 = min(t3 - 1e-3, t2)
+        t1 = min(t2 - 1e-3, t1)
+        return t3, max(t2, 1e-3), max(t1, 0.0)
+
+    def _sample_triplet_on_the_fly(
+        self,
+        batch_size: int,
+        device: torch.device,
+    ) -> dict[str, Tensor]:
+        x0 = self.teacher.sample_x0(batch_size, device)
+        t3, t2, t1 = self._sample_triplet_times()
+        t_grid = torch.tensor([0.0, t1, t2, t3], device=device, dtype=torch.float32)
+        trajectory = self.teacher.make_trajectory(x0, torch.unique(torch.sort(t_grid).values))
+        return {
+            "x_t3": self._trajectory_value(trajectory, t3).to(device),
+            "x_t2": self._trajectory_value(trajectory, t2).to(device),
+            "x_t1": self._trajectory_value(trajectory, t1).to(device),
+            "t3": torch.full((batch_size,), t3, device=device, dtype=torch.float32),
+            "t2": torch.full((batch_size,), t2, device=device, dtype=torch.float32),
+            "t1": torch.full((batch_size,), t1, device=device, dtype=torch.float32),
+        }
+
+    def _sample_triplet_from_cache(
+        self,
+        batch_size: int,
+        device: torch.device,
+    ) -> dict[str, Tensor]:
+        x_t3_list = []
+        x_t2_list = []
+        x_t1_list = []
+        t3_list = []
+        t2_list = []
+        t1_list = []
+        for _ in range(batch_size):
+            cached = self._cache[torch.randint(0, len(self._cache), (1,)).item()]
+            indices = torch.sort(torch.randperm(len(cached.t_grid))[:3], descending=True).values
+            t3 = float(cached.t_grid[indices[0]].item())
+            t2 = float(cached.t_grid[indices[1]].item())
+            t1 = float(cached.t_grid[indices[2]].item())
+            x_t3_list.append(cached.trajectory[t3].squeeze(0).to(device))
+            x_t2_list.append(cached.trajectory[t2].squeeze(0).to(device))
+            x_t1_list.append(cached.trajectory[t1].squeeze(0).to(device))
+            t3_list.append(t3)
+            t2_list.append(t2)
+            t1_list.append(t1)
+        return {
+            "x_t3": torch.stack(x_t3_list, dim=0),
+            "x_t2": torch.stack(x_t2_list, dim=0),
+            "x_t1": torch.stack(x_t1_list, dim=0),
+            "t3": torch.tensor(t3_list, device=device, dtype=torch.float32),
+            "t2": torch.tensor(t2_list, device=device, dtype=torch.float32),
+            "t1": torch.tensor(t1_list, device=device, dtype=torch.float32),
+        }
+
+    def _trajectory_value(self, trajectory: dict[float, Tensor], time_value: float) -> Tensor:
+        closest_key = min(trajectory.keys(), key=lambda key: abs(key - time_value))
+        return trajectory[closest_key]
+
+    def _on_the_fly_item(self) -> dict[str, Tensor]:
+        x0 = self.teacher.sample_x0(1, self.device)
+        t_scalar, s_scalar = self._sample_pair_times()
+        full_grid = torch.tensor([0.0, float(s_scalar.item()), float(t_scalar.item())], device=self.device)
+        trajectory = self.teacher.make_trajectory(x0, torch.unique(torch.sort(full_grid).values))
+        x_t = trajectory[float(t_scalar.item())].squeeze(0).cpu()
+        x_s = trajectory[float(s_scalar.item())].squeeze(0).cpu()
+        return {
+            "x_t": x_t,
+            "x_s": x_s,
+            "t": torch.tensor(float(t_scalar.item()), dtype=torch.float32),
+            "s": torch.tensor(float(s_scalar.item()), dtype=torch.float32),
+        }
+
+    def _cached_item(self) -> dict[str, Tensor]:
+        cached = self._cache[torch.randint(0, len(self._cache), (1,)).item()]
+        t_value, s_value = self._sample_grid_pair(cached.t_grid)
+        x_t = cached.trajectory[t_value].squeeze(0).cpu()
+        x_s = cached.trajectory[s_value].squeeze(0).cpu()
+        return {
+            "x_t": x_t,
+            "x_s": x_s,
+            "t": torch.tensor(t_value, dtype=torch.float32),
+            "s": torch.tensor(s_value, dtype=torch.float32),
+        }
+
+    def __getitem__(self, index: int) -> dict[str, Tensor]:
+        del index
+        if self.cached:
+            return self._cached_item()
+        return self._on_the_fly_item()
+
+
+class TrajectoryShardDataset(Dataset[dict[str, Tensor]]):
+    """Dataset backed by precomputed teacher trajectory shards.
+
+    Each shard is expected to contain a list of samples, where every sample is a
+    dictionary with at least:
+    - `t_grid`: `[M]`
+    - `x_grid`: `[M, C, H, W]` or `[1, M, C, H, W]`
+    Optional fields such as `y`, `seed`, and `x0` are preserved when possible.
+    """
+
+    def __init__(self, cfg: DGConfig, split: str = "train") -> None:
+        self.cfg = cfg
+        self.split = split
+        self.root = Path(cfg.data.trajectory_shard_dir or "")
+        if not self.root.exists():
+            raise FileNotFoundError(
+                "trajectory_shard_dir is missing. Set data.trajectory_shard_dir to the shard root."
+            )
+        split_root = self.root / split
+        if split_root.exists():
+            self.shard_files = sorted(split_root.glob(cfg.data.trajectory_file_glob))
+        else:
+            self.shard_files = sorted(self.root.glob(cfg.data.trajectory_file_glob))
+        if not self.shard_files:
+            raise FileNotFoundError(
+                f"No shard files found under {self.root} with pattern {cfg.data.trajectory_file_glob}"
+            )
+        self.index_map: list[tuple[int, int]] = []
+        self._shard_cache: dict[int, list[dict[str, Any]]] = {}
+        for shard_index, shard_path in enumerate(self.shard_files):
+            shard_samples = torch.load(shard_path, map_location="cpu", weights_only=False)
+            if not isinstance(shard_samples, list):
+                raise TypeError(f"Shard must contain a list of samples: {shard_path}")
+            self._shard_cache[shard_index] = shard_samples
+            self.index_map.extend((shard_index, sample_index) for sample_index in range(len(shard_samples)))
+
+    def __len__(self) -> int:
+        return len(self.index_map)
+
+    def _get_sample(self, index: int) -> dict[str, Any]:
+        shard_index, sample_index = self.index_map[index]
+        return self._shard_cache[shard_index][sample_index]
+
+    def _sorted_trajectory(self, sample: dict[str, Any]) -> tuple[Tensor, Tensor]:
+        t_grid = sample["t_grid"].float().view(-1)
+        x_grid = sample["x_grid"].float()
+        if x_grid.ndim == 5 and x_grid.shape[0] == 1:
+            x_grid = x_grid.squeeze(0)
+        if x_grid.ndim != 4:
+            raise ValueError("x_grid must have shape [M, C, H, W] or [1, M, C, H, W]")
+        order = torch.argsort(t_grid, descending=True)
+        return t_grid[order], x_grid[order]
+
+    def _sample_pair_from_sorted(self, t_grid: Tensor, x_grid: Tensor) -> dict[str, Tensor]:
+        indices = torch.randperm(len(t_grid))[:2]
+        indices = indices[torch.argsort(t_grid[indices], descending=True)]
+        t_index, s_index = int(indices[0].item()), int(indices[1].item())
+        payload = {
+            "x_t": x_grid[t_index],
+            "x_s": x_grid[s_index],
+            "t": t_grid[t_index],
+            "s": t_grid[s_index],
+        }
+        return payload
+
+    def __getitem__(self, index: int) -> dict[str, Tensor]:
+        sample = self._get_sample(index)
+        t_grid, x_grid = self._sorted_trajectory(sample)
+        payload = self._sample_pair_from_sorted(t_grid, x_grid)
+        if "y" in sample:
+            payload["y"] = torch.as_tensor(sample["y"]).long()
+        return payload
+
+    def sample_triplet_batch(
+        self,
+        batch_size: int,
+        device: torch.device | str | None = None,
+    ) -> dict[str, Tensor]:
+        target_device = torch.device("cpu" if device is None else device)
+        x_t3_list = []
+        x_t2_list = []
+        x_t1_list = []
+        t3_list = []
+        t2_list = []
+        t1_list = []
+        y_list = []
+        for _ in range(batch_size):
+            sample = self._get_sample(torch.randint(0, len(self), (1,)).item())
+            t_grid, x_grid = self._sorted_trajectory(sample)
+            indices = torch.randperm(len(t_grid))[:3]
+            indices = indices[torch.argsort(t_grid[indices], descending=True)]
+            i3, i2, i1 = [int(item.item()) for item in indices]
+            x_t3_list.append(x_grid[i3].to(target_device))
+            x_t2_list.append(x_grid[i2].to(target_device))
+            x_t1_list.append(x_grid[i1].to(target_device))
+            t3_list.append(float(t_grid[i3].item()))
+            t2_list.append(float(t_grid[i2].item()))
+            t1_list.append(float(t_grid[i1].item()))
+            if "y" in sample:
+                y_list.append(int(torch.as_tensor(sample["y"]).item()))
+        payload = {
+            "x_t3": torch.stack(x_t3_list, dim=0),
+            "x_t2": torch.stack(x_t2_list, dim=0),
+            "x_t1": torch.stack(x_t1_list, dim=0),
+            "t3": torch.tensor(t3_list, device=target_device, dtype=torch.float32),
+            "t2": torch.tensor(t2_list, device=target_device, dtype=torch.float32),
+            "t1": torch.tensor(t1_list, device=target_device, dtype=torch.float32),
+        }
+        if y_list:
+            payload["y"] = torch.tensor(y_list, device=target_device, dtype=torch.long)
+        return payload
+
+
+def build_dataset(
+    cfg: DGConfig,
+    teacher: TeacherTrajectory,
+    split: str,
+) -> Dataset[dict[str, Tensor]]:
+    """Build the configured dataset implementation."""
+
+    if cfg.data.dataset_type == "teacher_online":
+        return TrajectoryPairDataset(
+            cfg=cfg,
+            teacher=teacher,
+            split=split,
+            cached=cfg.data.trajectory_cache_mode,
+        )
+    if cfg.data.dataset_type == "trajectory_shards":
+        return TrajectoryShardDataset(cfg=cfg, split=split)
+    raise ValueError(f"Unsupported data.dataset_type: {cfg.data.dataset_type}")
