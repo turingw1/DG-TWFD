@@ -121,6 +121,8 @@ python -m pip install -e '.[teacher]'
 
 这是当前最稳、改动最少、最容易验证的路线。
 
+首次真实采集时，建议不要直接用 1000 inference steps。对于 `google/ddpm-cifar10-32`，先用 `teacher.num_inference_steps=100` 或 `250` 做第一轮 shard 采集，确认链路正确后再逐步加大。
+
 ## 4. 第一步：采集 teacher 轨迹
 
 先运行训练轨迹采集：
@@ -132,11 +134,12 @@ python scripts/collect_teacher.py \
   --mode debug_4060 \
   --split train \
   --num-samples 256 \
-  --shard-size 64 \
+  --shard-size 16 \
   --output-dir ./data/teacher_shards/ddpm_cifar10_32 \
   --override teacher.teacher_type='diffusers_ddpm' \
   --override teacher.pretrained_model_name_or_path='google/ddpm-cifar10-32' \
   --override teacher.local_files_only=false \
+  --override teacher.num_inference_steps=100 \
   --override data.time_grid_size=8
 ```
 
@@ -149,11 +152,12 @@ python scripts/collect_teacher.py \
   --mode debug_4060 \
   --split val \
   --num-samples 64 \
-  --shard-size 64 \
+  --shard-size 16 \
   --output-dir ./data/teacher_shards/ddpm_cifar10_32 \
   --override teacher.teacher_type='diffusers_ddpm' \
   --override teacher.pretrained_model_name_or_path='google/ddpm-cifar10-32' \
   --override teacher.local_files_only=false \
+  --override teacher.num_inference_steps=100 \
   --override data.time_grid_size=8
 ```
 
@@ -162,6 +166,11 @@ python scripts/collect_teacher.py \
 1. `collect_teacher.py` 的完整输出
 2. 生成的 shard 目录结构，例如 `find ./data/teacher_shards/ddpm_cifar10_32 -maxdepth 2 -type f | sort`
 3. 如果报错，完整 traceback
+
+补充说明：
+
+- `no file named diffusion_pytorch_model.safetensors found ... Defaulting to unsafe serialization` 这条信息通常不是致命错误，表示模型回退到 `.bin` 权重加载。
+- 如果采集速度仍然太慢，优先继续降低 `--shard-size`，其次再降低 `teacher.num_inference_steps`。
 
 ## 5. 第二步：切换训练到 shard 数据集
 

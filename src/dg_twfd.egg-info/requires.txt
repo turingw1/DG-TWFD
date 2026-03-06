@@ -3,3 +3,9 @@ torch>=2.1
 
 [dev]
 pytest>=8.0
+
+[teacher]
+diffusers>=0.30
+transformers>=4.40
+accelerate>=0.30
+safetensors>=0.4

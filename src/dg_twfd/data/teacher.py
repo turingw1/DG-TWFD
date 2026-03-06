@@ -172,43 +172,77 @@ class DiffusersDDPMTeacher(TeacherTrajectory):
         total = int(self.scheduler.config.num_train_timesteps) - 1
         return int(round(float(normalized_time) * total))
 
-    def forward_eps(self, x_t: Tensor, t: Tensor, labels: Tensor | None = None) -> Tensor:
+    def _normalized_to_inference_index(self, normalized_time: float) -> int:
+        assert self.scheduler is not None
+        target_timestep = self._normalized_to_timestep(normalized_time)
+        timesteps = self.scheduler.timesteps.detach().cpu().to(torch.long)
+        index = int(torch.argmin(torch.abs(timesteps - target_timestep)).item())
+        return index
+
+    def forward_eps(
+        self,
+        x_t: Tensor,
+        timestep_ids: Tensor,
+        labels: Tensor | None = None,
+    ) -> Tensor:
         self._ensure_pipeline(x_t.device)
         assert self.unet is not None
-        timestep_ids = torch.tensor(
-            [self._normalized_to_timestep(float(item)) for item in t.detach().cpu()],
-            device=x_t.device,
-            dtype=torch.long,
-        )
+        timestep_ids = timestep_ids.to(device=x_t.device, dtype=torch.long).view(-1)
         kwargs: dict[str, Any] = {}
         if labels is not None and self.cfg.teacher.class_cond:
             kwargs["class_labels"] = labels.to(x_t.device)
         output = self.unet(x_t, timestep_ids, **kwargs)
         return output.sample
 
+    def _rollout_between_indices(
+        self,
+        x_t: Tensor,
+        start_index: int,
+        end_index: int,
+        labels: Tensor | None = None,
+    ) -> Tensor:
+        self._ensure_pipeline(x_t.device)
+        assert self.scheduler is not None
+        if end_index < start_index:
+            raise ValueError("end_index must be >= start_index for descending scheduler timesteps")
+        current = x_t
+        timesteps = self.scheduler.timesteps.to(x_t.device)
+        for step_index in range(start_index, end_index):
+            step_value = timesteps[step_index]
+            step_batch = step_value.expand(current.shape[0])
+            eps_pred = self.forward_eps(current, step_batch, labels=labels)
+            current = self.scheduler.step(eps_pred, int(step_value.item()), current).prev_sample
+        return current
+
     @torch.no_grad()
     def forward_map(self, x_t: Tensor, t: Tensor, s: Tensor) -> Tensor:
         self._ensure_pipeline(x_t.device)
-        assert self.scheduler is not None
+        unique_t = torch.unique(t.detach())
+        unique_s = torch.unique(s.detach())
+        if unique_t.numel() == 1 and unique_s.numel() == 1:
+            t_value = float(unique_t.item())
+            s_value = float(unique_s.item())
+            if s_value > t_value:
+                raise ValueError("Diffusion teacher expects t >= s")
+            start_index = self._normalized_to_inference_index(t_value)
+            end_index = self._normalized_to_inference_index(s_value)
+            if end_index <= start_index:
+                return x_t.clone()
+            return self._rollout_between_indices(x_t, start_index, end_index)
 
         outputs = []
-        batch_size = x_t.shape[0]
-        for index in range(batch_size):
+        for index in range(x_t.shape[0]):
             current = x_t[index : index + 1]
             t_value = float(t[index].item())
             s_value = float(s[index].item())
             if s_value > t_value:
                 raise ValueError("Diffusion teacher expects t >= s")
-            start_step = self._normalized_to_timestep(t_value)
-            end_step = self._normalized_to_timestep(s_value)
-            if end_step == start_step:
+            start_index = self._normalized_to_inference_index(t_value)
+            end_index = self._normalized_to_inference_index(s_value)
+            if end_index <= start_index:
                 outputs.append(current)
                 continue
-            for step in range(start_step, end_step, -1):
-                step_tensor = torch.tensor([step], device=current.device, dtype=torch.long)
-                eps_pred = self.forward_eps(current, step_tensor.float() / max(1, self.scheduler.config.num_train_timesteps - 1))
-                current = self.scheduler.step(eps_pred, step, current).prev_sample
-            outputs.append(current)
+            outputs.append(self._rollout_between_indices(current, start_index, end_index))
         return torch.cat(outputs, dim=0)
 
     @torch.no_grad()
@@ -238,13 +272,14 @@ class DiffusersDDPMTeacher(TeacherTrajectory):
         self._ensure_pipeline(device)
         start_state = self.sample_x0(batch_size, device)
         descending = torch.sort(t_grid.float(), descending=True).values.to(device)
+        index_grid = [self._normalized_to_inference_index(float(t.item())) for t in descending]
         current = start_state
         x_grid = [current.detach().cpu()]
-        current_time = torch.full((batch_size,), float(descending[0].item()), device=device)
-        for next_t in descending[1:]:
-            target_time = torch.full_like(current_time, float(next_t.item()))
-            current = self.forward_map(current, current_time, target_time)
-            current_time = target_time
+        for idx in range(len(index_grid) - 1):
+            start_index = index_grid[idx]
+            end_index = index_grid[idx + 1]
+            if end_index > start_index:
+                current = self._rollout_between_indices(current, start_index, end_index, labels=labels)
             x_grid.append(current.detach().cpu())
         stacked = torch.stack(x_grid, dim=1)
         payload = {

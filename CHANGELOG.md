@@ -11,3 +11,4 @@
 - 新增 [collect_teacher.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/scripts/collect_teacher.py)，用于离线采集 teacher 轨迹 shard。
 - 新增 [test_teacher_dataset_integration.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/tests/test_teacher_dataset_integration.py)，验证 teacher 构建和 shard 数据集读取。
 - 新增 [TEACHER_DATASET_INTEGRATION_GUIDE.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/TEACHER_DATASET_INTEGRATION_GUIDE.md)，明确哪些步骤已完成、哪些步骤需要手动执行。
+- 优化 `DiffusersDDPMTeacher` 的 rollout 逻辑，改为基于 scheduler inference timesteps 的 batched 推进，避免逐样本逐步的极慢采集路径。
