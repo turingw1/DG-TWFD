@@ -1,0 +1,43 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Test and tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# Virtual/conda local envs
+.venv/
+venv/
+env/
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build/packaging artifacts
+build/
+dist/
+*.egg-info/
+
+# Experiment outputs (do not version control)
+artifacts/
+checkpoints/
+checkpoints_*/
+vis_out/
+
+# Teacher trajectory shards and large tensors
+data/teacher_shards/
+*.ckpt
+
+# Local scripts and scratch outputs
+logs/
+wandb/
+tensorboard/
