@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
 from typing import Any
 
@@ -109,6 +110,18 @@ class Trainer:
         self.state = TrainerState()
         self.scaler = build_grad_scaler(self.device_type, cfg.runtime.amp)
         self.grad_accum = max(1, cfg.runtime.gradient_accumulation)
+        self.use_channels_last = self.device_type == "cuda"
+
+        if self.device_type == "cuda" and torch.cuda.is_available():
+            torch.backends.cudnn.benchmark = True
+            torch.backends.cuda.matmul.allow_tf32 = True
+            torch.backends.cudnn.allow_tf32 = True
+            torch.set_float32_matmul_precision("high")
+            self.models["student"] = self.models["student"].to(memory_format=torch.channels_last)
+            self.models["boundary"] = self.models["boundary"].to(memory_format=torch.channels_last)
+            if os.environ.get("DG_TWFD_COMPILE", "0") == "1" and hasattr(torch, "compile"):
+                self.models["student"] = torch.compile(self.models["student"])
+                self.models["boundary"] = torch.compile(self.models["boundary"])
 
         student_params = list(models["student"].parameters()) + list(models["boundary"].parameters())
         warp_params = list(models["timewarp"].parameters())
@@ -129,7 +142,13 @@ class Trainer:
         self.logger.info("Training on device=%s with AMP=%s", device, cfg.runtime.amp)
 
     def _move_batch(self, batch: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-        return {key: value.to(self.device) for key, value in batch.items()}
+        moved: dict[str, torch.Tensor] = {}
+        for key, value in batch.items():
+            tensor = value.to(self.device, non_blocking=True)
+            if self.use_channels_last and tensor.ndim == 4:
+                tensor = tensor.to(memory_format=torch.channels_last)
+            moved[key] = tensor
+        return moved
 
     def _boundary_enabled(self) -> bool:
         return self.state.global_step < self.cfg.boundary.enable_until_step

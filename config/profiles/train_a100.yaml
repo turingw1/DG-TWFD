@@ -1,10 +1,10 @@
 data:
   dataset_type: teacher_online
-  batch_size: 32
-  num_workers: 8
+  batch_size: 128
+  num_workers: 16
   pin_memory: true
   persistent_workers: true
-  prefetch_factor: 4
+  prefetch_factor: 8
   dataset_size: 4096
   val_dataset_size: 512
   trajectory_cache_mode: true

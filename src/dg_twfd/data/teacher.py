@@ -149,9 +149,11 @@ class DiffusersDDPMTeacher(TeacherTrajectory):
             ) from exc
 
         path = self._require_path()
+        torch_dtype = torch.float16 if device.type == "cuda" else torch.float32
         self.pipeline = DDPMPipeline.from_pretrained(
             path,
             local_files_only=self.cfg.teacher.local_files_only,
+            torch_dtype=torch_dtype,
         ).to(device)
         self.unet = self.pipeline.unet.eval()
         self.scheduler = self.pipeline.scheduler
@@ -191,7 +193,11 @@ class DiffusersDDPMTeacher(TeacherTrajectory):
         kwargs: dict[str, Any] = {}
         if labels is not None and self.cfg.teacher.class_cond:
             kwargs["class_labels"] = labels.to(x_t.device)
-        output = self.unet(x_t, timestep_ids, **kwargs)
+        if x_t.device.type == "cuda":
+            with torch.autocast(device_type="cuda", dtype=torch.float16):
+                output = self.unet(x_t, timestep_ids, **kwargs)
+        else:
+            output = self.unet(x_t, timestep_ids, **kwargs)
         return output.sample
 
     def _rollout_between_indices(
@@ -274,16 +280,16 @@ class DiffusersDDPMTeacher(TeacherTrajectory):
         descending = torch.sort(t_grid.float(), descending=True).values.to(device)
         index_grid = [self._normalized_to_inference_index(float(t.item())) for t in descending]
         current = start_state
-        x_grid = [current.detach().cpu()]
+        x_grid = [current.detach()]
         for idx in range(len(index_grid) - 1):
             start_index = index_grid[idx]
             end_index = index_grid[idx + 1]
             if end_index > start_index:
                 current = self._rollout_between_indices(current, start_index, end_index, labels=labels)
-            x_grid.append(current.detach().cpu())
-        stacked = torch.stack(x_grid, dim=1)
+            x_grid.append(current.detach())
+        stacked = torch.stack(x_grid, dim=1).float().cpu()
         payload = {
-            "t_grid": descending.detach().cpu(),
+            "t_grid": descending.detach().float().cpu(),
             "x_grid": stacked,
             "x0": stacked[:, -1],
         }
