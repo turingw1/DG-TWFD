@@ -195,17 +195,20 @@ class Trainer:
             )
             warp_loss, warp_stats = self.losses["warp"](timewarp, triplet)
 
-            x_boundary = self.teacher.sample_x0(x_t.shape[0], self.device)
-            t_max = torch.ones(x_t.shape[0], device=self.device)
-            t_prev = torch.full((x_t.shape[0],), 0.9, device=self.device)
-            x_boundary_target = self.teacher.forward_map(x_boundary, t_max, t_prev)
-            boundary_loss, _ = self.losses["boundary"](
-                boundary_model=boundary,
-                x_boundary=x_boundary,
-                target=x_boundary_target,
-                gate_weight=self.cfg.boundary.gate_weight,
-                enabled=self._boundary_enabled(),
-            )
+            if self._boundary_enabled():
+                x_boundary = self.teacher.sample_x0(x_t.shape[0], self.device)
+                t_max = torch.ones(x_t.shape[0], device=self.device)
+                t_prev = torch.full((x_t.shape[0],), 0.9, device=self.device)
+                x_boundary_target = self.teacher.forward_map(x_boundary, t_max, t_prev)
+                boundary_loss, _ = self.losses["boundary"](
+                    boundary_model=boundary,
+                    x_boundary=x_boundary,
+                    target=x_boundary_target,
+                    gate_weight=self.cfg.boundary.gate_weight,
+                    enabled=True,
+                )
+            else:
+                boundary_loss = torch.zeros((), device=self.device, dtype=match_loss.dtype)
 
         scalars = {
             "match": float(match_loss.detach().item()),
@@ -421,6 +424,13 @@ class Trainer:
             self.resume(self.cfg.train.resume_path)
         epoch_losses: list[float] = []
         for epoch in range(self.state.epoch + 1, self.cfg.train.epochs + 1):
+            if self.cfg.train.max_train_steps is not None and self.state.global_step >= self.cfg.train.max_train_steps:
+                self.logger.info(
+                    "Reached max_train_steps=%d at global_step=%d, stopping training loop.",
+                    self.cfg.train.max_train_steps,
+                    self.state.global_step,
+                )
+                break
             self.state.epoch = epoch
             if self.device_type == "cuda" and torch.cuda.is_available():
                 torch.cuda.reset_peak_memory_stats()
@@ -445,5 +455,12 @@ class Trainer:
                 val_loss,
                 peak_mem,
             )
+            if self.cfg.train.max_train_steps is not None and self.state.global_step >= self.cfg.train.max_train_steps:
+                self.logger.info(
+                    "Reached max_train_steps=%d at epoch end (global_step=%d), stopping.",
+                    self.cfg.train.max_train_steps,
+                    self.state.global_step,
+                )
+                break
         self.writer.close()
         return epoch_losses
