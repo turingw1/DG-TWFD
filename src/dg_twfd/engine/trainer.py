@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import os
 from pathlib import Path
+import time
 from typing import Any
 
 import torch
@@ -243,6 +244,7 @@ class Trainer:
         train_dataset = self.dataloaders["train"].dataset
         if not hasattr(train_dataset, "sample_triplet_batch"):
             raise TypeError("Training dataset must provide sample_triplet_batch()")
+        epoch_start_time = time.perf_counter()
         for batch_idx, batch in enumerate(self.dataloaders["train"], start=1):
             batch = self._move_batch(batch)
             loss_dict, scalar_dict = self._compute_losses(
@@ -286,6 +288,8 @@ class Trainer:
                 "train/warp_balance": scalar_dict["warp_balance"],
                 "train/total_loss": float(total_for_log.detach().item()),
             }
+            elapsed = max(time.perf_counter() - epoch_start_time, 1e-6)
+            metrics["train/steps_per_sec"] = batch_idx / elapsed
             self.metrics.update(**metrics, scheduler_eta=self.scheduler.eta)
             self.writer.log(metrics, self.state.global_step)
 
@@ -296,7 +300,7 @@ class Trainer:
                     else 0.0
                 )
                 self.logger.info(
-                    "epoch=%d step=%d total=%.6f match=%.6f defect=%.6f warp=%.6f boundary=%.6f peak_mem=%.2fMiB",
+                    "epoch=%d step=%d total=%.6f match=%.6f defect=%.6f warp=%.6f boundary=%.6f sps=%.2f peak_mem=%.2fMiB",
                     self.state.epoch,
                     self.state.global_step,
                     metrics["train/total_loss"],
@@ -304,6 +308,7 @@ class Trainer:
                     metrics["train/l_def"],
                     metrics["train/l_warp"],
                     metrics["train/l_boundary"],
+                    metrics["train/steps_per_sec"],
                     peak_mem,
                 )
             if self.cfg.train.max_train_steps is not None and self.state.global_step >= self.cfg.train.max_train_steps:

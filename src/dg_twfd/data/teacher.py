@@ -142,6 +142,7 @@ class DiffusersDDPMTeacher(TeacherTrajectory):
             return
         try:
             from diffusers import DDPMPipeline
+            from diffusers.schedulers import DDIMScheduler
         except ImportError as exc:
             raise ImportError(
                 "DiffusersDDPMTeacher requires `diffusers`. Install it in the "
@@ -156,7 +157,10 @@ class DiffusersDDPMTeacher(TeacherTrajectory):
             torch_dtype=torch_dtype,
         ).to(device)
         self.unet = self.pipeline.unet.eval()
-        self.scheduler = self.pipeline.scheduler
+        if self.cfg.teacher.solver == "ddim":
+            self.scheduler = DDIMScheduler.from_config(self.pipeline.scheduler.config)
+        else:
+            self.scheduler = self.pipeline.scheduler
         self.scheduler.set_timesteps(self.cfg.teacher.num_inference_steps, device=device)
         self._loaded_device = str(device)
 

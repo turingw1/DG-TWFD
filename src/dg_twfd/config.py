@@ -33,6 +33,14 @@ class DataConfig:
     num_cached_trajectories: int
     time_grid_size: int
     sample_strategy: str
+    pair_short_max: int
+    pair_mid_max: int
+    pair_long_max: int
+    pair_short_weight: float
+    pair_mid_weight: float
+    pair_long_weight: float
+    triplet_local_gap1: int
+    triplet_local_gap2: int
     teacher_integration_steps: int
     trajectory_shard_dir: Optional[str]
     trajectory_file_glob: str
@@ -80,6 +88,9 @@ class LossConfig:
     warp_weight: float
     boundary_weight: float
     per_pixel_mean: bool
+    semigroup_short_weight: float
+    semigroup_mid_weight: float
+    semigroup_long_weight: float
 
 
 @dataclass(slots=True)

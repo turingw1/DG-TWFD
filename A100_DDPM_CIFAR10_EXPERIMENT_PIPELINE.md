@@ -1,49 +1,30 @@
-# A100: DDPM-CIFAR10-32 完整实验流水线（命令版）
+# A100 DDPM-CIFAR10 完整实验流水线（指令级）
 
-本文档给你一条可直接执行的命令流水线，覆盖：
+本手册对应当前代码实现，目标是：  
+`teacher trajectory 采集 -> shard 监督训练 -> 采样验证 -> 指标汇总 -> 迭代调参`
 
-- teacher 轨迹数据生成
-- 训练（含监督项配置）
-- 训练结果汇总
-- 采样与推理 profiling
-- 结果产物管理
-
-并且所有命令都尽量参数化，方便后续替换 teacher、数据集、损失和优化器。
+并满足你的循环工作流：本地改代码/文档 -> 你在 A100 跑 -> 回传日志 -> 本地继续优化。
 
 ---
 
-## 0) 一次性参数区（先改这里）
+## 0. 固定路径与实验变量
 
 ```bash
 export PROJ=/home/gzwlinux/vscode/gitProject/DG-TWFD
 export ENV_NAME=consistency
+export EXP_NAME=ddpm_cifar10_a100_v2
 
-# 本次实验名（建议每次改）
-export EXP_NAME=ddpm_cifar10_a100_v1
+# 按你的要求，所有大文件/shard 统一放这里
+export SHARD_ROOT=/cache/Zhengwei/dg_twfd_shards/$EXP_NAME
 
-# teacher 与数据
 export TEACHER_ID=google/ddpm-cifar10-32
-export SHARD_ROOT=$PROJ/data/teacher_shards/$EXP_NAME
-export TRAIN_SAMPLES=50000
-export VAL_SAMPLES=5000
-export SHARD_SIZE=32
-export TIME_GRID_SIZE=16
-export TEACHER_STEPS=100
-
-# 训练
 export CKPT_DIR=$PROJ/checkpoints/$EXP_NAME
-export EPOCHS=20
-export BATCH_SIZE=64
-export NUM_WORKERS=8
-
-# 采样
-export SAMPLE_STEPS=4
-export SAMPLE_BATCH=16
+export TRAIN_LOG=$CKPT_DIR/train.log
 ```
 
 ---
 
-## 1) 代码同步与环境准备
+## 1. 拉取最新代码并安装依赖
 
 ```bash
 cd $PROJ
@@ -52,253 +33,237 @@ conda activate $ENV_NAME
 python -m pip install -e '.[dev,teacher]'
 ```
 
-可选：先看 GPU 状态
+---
 
-```bash
-nvidia-smi
-python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
-```
+## 2. 采样逻辑对应（当前实现）
+
+当前代码已切到以下策略：
+
+- teacher sampler 可配 `ddim/ddpm`，推荐 `ddim`（deterministic）
+- trajectory 缓存推荐 `num_inference_steps=128` + `time_grid_size=129`
+- train/val split 使用不同 seed 偏移，避免重合
+- Diffusers teacher 在 CUDA 上默认 FP16 推理，并减少逐步 CPU 拷贝瓶颈
 
 ---
 
-## 2) 预检查（建议先跑）
+## 3. teacher trajectory 采集（先 smoke，再正式）
+
+### 3.1 Smoke：train split（先验证链路）
 
 ```bash
 cd $PROJ
 conda activate $ENV_NAME
-pytest tests/test_data.py tests/test_models.py tests/test_loss.py -q
-```
-
----
-
-## 3) 生成 teacher trajectory shards
-
-### 3.1 先跑小规模 smoke（强烈建议）
-
-```bash
-cd $PROJ
-conda activate $ENV_NAME
-python scripts/collect_teacher.py \
+CUDA_VISIBLE_DEVICES=0 python scripts/collect_teacher.py \
   --mode train_a100 \
   --split train \
-  --num-samples 64 \
-  --shard-size 8 \
+  --num-samples 256 \
+  --shard-size 32 \
   --output-dir $SHARD_ROOT \
   --override teacher.teacher_type='diffusers_ddpm' \
   --override teacher.pretrained_model_name_or_path="$TEACHER_ID" \
-  --override teacher.local_files_only=false \
-  --override teacher.num_inference_steps=$TEACHER_STEPS \
-  --override data.time_grid_size=$TIME_GRID_SIZE
+  --override teacher.solver='ddim' \
+  --override teacher.num_inference_steps=128 \
+  --override data.time_grid_size=129
 ```
 
-检查输出：
-
-```bash
-find $SHARD_ROOT -maxdepth 2 -type f | sort
-```
-
-### 3.2 正式生成 train shards
+### 3.2 Smoke：val split
 
 ```bash
 cd $PROJ
 conda activate $ENV_NAME
-python scripts/collect_teacher.py \
-  --mode train_a100 \
-  --split train \
-  --num-samples $TRAIN_SAMPLES \
-  --shard-size $SHARD_SIZE \
-  --output-dir $SHARD_ROOT \
-  --override teacher.teacher_type='diffusers_ddpm' \
-  --override teacher.pretrained_model_name_or_path="$TEACHER_ID" \
-  --override teacher.local_files_only=false \
-  --override teacher.num_inference_steps=$TEACHER_STEPS \
-  --override data.time_grid_size=$TIME_GRID_SIZE
-```
-
-### 3.3 正式生成 val shards
-
-```bash
-cd $PROJ
-conda activate $ENV_NAME
-python scripts/collect_teacher.py \
+CUDA_VISIBLE_DEVICES=0 python scripts/collect_teacher.py \
   --mode train_a100 \
   --split val \
-  --num-samples $VAL_SAMPLES \
-  --shard-size $SHARD_SIZE \
+  --num-samples 64 \
+  --shard-size 32 \
   --output-dir $SHARD_ROOT \
   --override teacher.teacher_type='diffusers_ddpm' \
   --override teacher.pretrained_model_name_or_path="$TEACHER_ID" \
-  --override teacher.local_files_only=false \
-  --override teacher.num_inference_steps=$TEACHER_STEPS \
-  --override data.time_grid_size=$TIME_GRID_SIZE
+  --override teacher.solver='ddim' \
+  --override teacher.num_inference_steps=128 \
+  --override data.time_grid_size=129
 ```
 
----
-
-## 4) 训练：基线配置（shard 监督）
+### 3.3 正式采集（建议起步规模）
 
 ```bash
 cd $PROJ
 conda activate $ENV_NAME
-python train.py --mode train_a100 --epochs $EPOCHS \
+CUDA_VISIBLE_DEVICES=0 python scripts/collect_teacher.py \
+  --mode train_a100 \
+  --split train \
+  --num-samples 200000 \
+  --shard-size 128 \
+  --output-dir $SHARD_ROOT \
+  --override teacher.teacher_type='diffusers_ddpm' \
+  --override teacher.pretrained_model_name_or_path="$TEACHER_ID" \
+  --override teacher.solver='ddim' \
+  --override teacher.num_inference_steps=128 \
+  --override data.time_grid_size=129
+```
+
+```bash
+cd $PROJ
+conda activate $ENV_NAME
+CUDA_VISIBLE_DEVICES=0 python scripts/collect_teacher.py \
+  --mode train_a100 \
+  --split val \
+  --num-samples 10000 \
+  --shard-size 128 \
+  --output-dir $SHARD_ROOT \
+  --override teacher.teacher_type='diffusers_ddpm' \
+  --override teacher.pretrained_model_name_or_path="$TEACHER_ID" \
+  --override teacher.solver='ddim' \
+  --override teacher.num_inference_steps=128 \
+  --override data.time_grid_size=129
+```
+
+检查 shard：
+
+```bash
+find $SHARD_ROOT -maxdepth 2 -type f | sort | head -n 20
+find $SHARD_ROOT -maxdepth 2 -type f | sort | tail -n 20
+```
+
+---
+
+## 4. 训练逻辑对应（当前实现）
+
+当前代码已对齐到如下抽样与监督逻辑：
+
+- pair 抽样：短/中/长跨度默认 `4:4:2`
+- semigroup 三元组链长分布：短/中/长默认 `3:5:2`
+- warp triplet：local 邻域采样（默认 gap `2/4`）
+- 训练日志新增 `steps_per_sec`，便于吞吐调优
+
+---
+
+## 5. A100 训练（shard 监督）
+
+### 5.1 基线训练（推荐先关 boundary，加速稳定）
+
+```bash
+cd $PROJ
+conda activate $ENV_NAME
+mkdir -p $CKPT_DIR
+DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=0 python train.py --mode train_a100 --epochs 20 \
   --override experiment.name="$EXP_NAME" \
   --override data.dataset_type='trajectory_shards' \
   --override data.trajectory_shard_dir="$SHARD_ROOT" \
-  --override data.batch_size=$BATCH_SIZE \
-  --override data.num_workers=$NUM_WORKERS \
-  --override data.time_grid_size=$TIME_GRID_SIZE \
+  --override data.batch_size=128 \
+  --override data.num_workers=16 \
+  --override data.prefetch_factor=8 \
   --override teacher.teacher_type='diffusers_ddpm' \
   --override teacher.pretrained_model_name_or_path="$TEACHER_ID" \
-  --override teacher.num_inference_steps=$TEACHER_STEPS \
+  --override teacher.solver='ddim' \
+  --override teacher.num_inference_steps=128 \
+  --override data.time_grid_size=129 \
   --override train.checkpoint_dir="$CKPT_DIR" \
-  --override train.log_every=50 \
+  --override train.log_every=20 \
   --override train.warp_update_every=1 \
   --override loss.defect_weight=0.5 \
   --override loss.warp_weight=0.25 \
-  --override loss.boundary_weight=0.1
+  --override loss.boundary_weight=0.1 \
+  --override boundary.enable_until_step=0 \
+  2>&1 | tee "$TRAIN_LOG"
+```
+
+### 5.2 若显存仍低（<60%），继续拉高 batch
+
+```bash
+# 依次尝试 192 -> 256
+--override data.batch_size=192
 ```
 
 ---
 
-## 5) 训练监督与结果呈现（日志抽取）
+## 6. 训练结果呈现（日志抽取）
 
-训练日志中的关键字段：
-
-- `train_loss`
-- `val_loss`
-- `peak_mem`
-- `l_match`, `l_def`, `l_warp`, `l_boundary`
-
-快速抽取 epoch 行（保存到文本）：
+抽取 epoch 结果：
 
 ```bash
-cd $PROJ
-grep "Epoch " -n "$CKPT_DIR"/../logs/* 2>/dev/null || true
+grep "Epoch " "$TRAIN_LOG"
 ```
 
-如果你是直接看终端日志，建议保存：
+抽取吞吐与显存：
 
 ```bash
-# 示例：用 tee 保存训练日志
-python train.py ... 2>&1 | tee "$CKPT_DIR/train.log"
+grep "sps=" "$TRAIN_LOG" | tail -n 50
 ```
 
-然后抽取：
+抽取 loss 分量：
 
 ```bash
-grep "Epoch " "$CKPT_DIR/train.log"
+grep "match=" "$TRAIN_LOG" | tail -n 50
 ```
 
 ---
 
-## 6) 最终采样与分析验证
+## 7. 采样与分析验证
 
-### 6.1 从 best checkpoint 采样
+### 7.1 从 best checkpoint 采样
 
 ```bash
 cd $PROJ
 conda activate $ENV_NAME
-python sample.py \
+CUDA_VISIBLE_DEVICES=0 python sample.py \
   --mode train_a100 \
   --checkpoint "$CKPT_DIR/best.pt" \
-  --steps $SAMPLE_STEPS \
-  --batch-size $SAMPLE_BATCH \
+  --steps 4 \
+  --batch-size 64 \
   --override data.image_size=32 \
   --override data.channels=3
 ```
 
-默认会写入：
-
-- `artifacts/samples_stepsK.pt`
-- `artifacts/sample_diag_stepsK.pt`
-
-### 6.2 推理 profile（NFE、latency、peak memory）
+### 7.2 推理 profile（1/2/4/8/16 steps）
 
 ```bash
 cd $PROJ
 conda activate $ENV_NAME
-python scripts/profile_infer.py
+CUDA_VISIBLE_DEVICES=0 python scripts/profile_infer.py
 ```
 
 ---
 
-## 7) 生成模型效果参数（当前可直接得到）
+## 8. 你每轮需要回传给我的结果
 
-当前仓库可直接得到：
+每轮实验后请回传：
 
-- 训练损失曲线（终端日志）
-- `L_match / L_def / L_warp / L_boundary`
-- 采样步数 K 对 latency、NFE、peak memory 的影响
-- 采样 schedule（`t_schedule`）与导出张量
-
-当前仓库尚未内置（需要你后续补脚本）：
-
-- FID / IS / Precision-Recall 等标准生成质量指标
-
-建议后续新增 `scripts/eval_fid.py`，并保持输入接口：
-
-```bash
-python scripts/eval_fid.py \
-  --samples artifacts/samples_steps4.pt \
-  --ref-stats <cifar10_ref_stats.npz>
-```
+1. `grep "Epoch " $TRAIN_LOG` 输出
+2. `grep "sps=" $TRAIN_LOG | tail -n 30` 输出
+3. `sample.py` 完整输出
+4. `profile_infer.py` 完整输出
+5. 若失败，完整 traceback
 
 ---
 
-## 8) 可复用改造模板（后续模块变更）
-
-你后续替换模块时，优先保持这几个配置键不变，整条 pipeline 可以复用：
-
-- `teacher.teacher_type`
-- `teacher.pretrained_model_name_or_path`
-- `data.dataset_type`
-- `data.trajectory_shard_dir`
-- `loss.*`
-- `train.*`
-
-### 8.1 切换 teacher（仅示例）
-
-```bash
---override teacher.teacher_type='diffusers_ddpm'
---override teacher.pretrained_model_name_or_path='<new_teacher_path_or_hf_id>'
-```
-
-### 8.2 切换监督权重
-
-```bash
---override loss.defect_weight=0.8
---override loss.warp_weight=0.1
---override loss.boundary_weight=0.0
-```
-
-### 8.3 切换优化器策略（需要改代码）
-
-当前优化器在 `src/dg_twfd/engine/trainer.py` 中定义。若你改 optimizer/scheduler，建议保持 CLI 命令不变，只在配置和 trainer 内部替换。
-
----
-
-## 9) A100 日常增量实验命令模板
+## 9. 增量迭代命令模板（继续实验）
 
 ```bash
 cd $PROJ
 git pull --ff-only
 conda activate $ENV_NAME
 
-# 继续训练
-python train.py --mode train_a100 \
+DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=0 python train.py --mode train_a100 \
   --override train.resume_path="$CKPT_DIR/best.pt" \
   --override train.checkpoint_dir="$CKPT_DIR" \
   --override data.dataset_type='trajectory_shards' \
   --override data.trajectory_shard_dir="$SHARD_ROOT" \
   --override teacher.teacher_type='diffusers_ddpm' \
-  --override teacher.pretrained_model_name_or_path="$TEACHER_ID"
+  --override teacher.pretrained_model_name_or_path="$TEACHER_ID" \
+  --override teacher.solver='ddim' \
+  --override teacher.num_inference_steps=128
 ```
 
 ---
 
-## 10) 执行顺序（最短版）
+## 10. 本阶段固定要求（执行时请保持）
 
-```text
-1. 环境安装 -> 2. tests -> 3. collect train/val shards ->
-4. train baseline -> 5. sample -> 6. profile -> 7. 记录结果并迭代权重/模块
-```
+- 大文件与 shard 路径固定：
+  - `SHARD_ROOT=/cache/Zhengwei/dg_twfd_shards/$EXP_NAME`
+- 代码改动后只更新本文件（阶段性要求）
+- 工作流固定：
+  - 本地修改 + 更新文档
+  - 你在 A100 跑
+  - 回传输出
+  - 本地继续优化并同步 git

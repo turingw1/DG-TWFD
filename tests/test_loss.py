@@ -57,7 +57,12 @@ def test_phase3_losses_backward() -> None:
     ).to(device)
 
     match_loss_fn = MatchLoss(cfg.loss.match_loss_type, cfg.loss.huber_delta)
-    defect_loss_fn = SemigroupDefectLoss(cfg.loss.per_pixel_mean)
+    defect_loss_fn = SemigroupDefectLoss(
+        per_pixel_mean=cfg.loss.per_pixel_mean,
+        short_weight=cfg.loss.semigroup_short_weight,
+        mid_weight=cfg.loss.semigroup_mid_weight,
+        long_weight=cfg.loss.semigroup_long_weight,
+    )
     warp_loss_fn = WarpLoss(cfg.loss.per_pixel_mean)
     boundary_loss_fn = BoundaryLoss(cfg.loss.match_loss_type, cfg.loss.huber_delta)
     defect_scheduler = DefectAdaptiveScheduler(

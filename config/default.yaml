@@ -18,6 +18,14 @@ data:
   num_cached_trajectories: 16
   time_grid_size: 16
   sample_strategy: random_pair
+  pair_short_max: 4
+  pair_mid_max: 16
+  pair_long_max: 64
+  pair_short_weight: 0.4
+  pair_mid_weight: 0.4
+  pair_long_weight: 0.2
+  triplet_local_gap1: 2
+  triplet_local_gap2: 4
   teacher_integration_steps: 8
   trajectory_shard_dir: null
   trajectory_file_glob: "*.pt"
@@ -31,8 +39,8 @@ teacher:
   teacher_type: dummy
   pretrained_model_name_or_path: null
   local_files_only: false
-  num_inference_steps: 1000
-  solver: ddpm
+  num_inference_steps: 128
+  solver: ddim
   class_cond: false
   num_classes: 10
   velocity_scale: 0.35
@@ -57,6 +65,9 @@ loss:
   warp_weight: 0.25
   boundary_weight: 0.1
   per_pixel_mean: true
+  semigroup_short_weight: 0.3
+  semigroup_mid_weight: 0.5
+  semigroup_long_weight: 0.2
 
 schedule:
   num_bins: 64

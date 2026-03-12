@@ -52,7 +52,8 @@ def maybe_sample_labels(cfg, batch_size: int, device: torch.device) -> torch.Ten
 def main() -> None:
     args = parse_args()
     cfg = load_config(args.mode, overrides=args.override)
-    seed_everything(cfg.experiment.seed)
+    split_seed_offset = 0 if args.split == "train" else 1_000_000
+    seed_everything(cfg.experiment.seed + split_seed_offset)
     device = resolve_device(cfg.runtime.device)
     teacher = build_teacher(cfg)
     t_grid = build_t_grid(cfg)
@@ -77,7 +78,7 @@ def main() -> None:
                 "t_grid": payload["t_grid"].clone(),
                 "x_grid": payload["x_grid"][sample_index].clone(),
                 "x0": payload["x0"][sample_index].clone(),
-                "seed": cfg.experiment.seed + written + sample_index,
+                "seed": cfg.experiment.seed + split_seed_offset + written + sample_index,
             }
             if "y" in payload:
                 item["y"] = payload["y"][sample_index].clone()

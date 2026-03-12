@@ -77,7 +77,12 @@ def main() -> None:
     }
     losses = {
         "match": MatchLoss(cfg.loss.match_loss_type, cfg.loss.huber_delta),
-        "defect": SemigroupDefectLoss(cfg.loss.per_pixel_mean),
+        "defect": SemigroupDefectLoss(
+            per_pixel_mean=cfg.loss.per_pixel_mean,
+            short_weight=cfg.loss.semigroup_short_weight,
+            mid_weight=cfg.loss.semigroup_mid_weight,
+            long_weight=cfg.loss.semigroup_long_weight,
+        ),
         "warp": WarpLoss(cfg.loss.per_pixel_mean),
         "boundary": BoundaryLoss(cfg.loss.match_loss_type, cfg.loss.huber_delta),
     }

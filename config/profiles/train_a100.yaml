@@ -1,5 +1,5 @@
 data:
-  dataset_type: teacher_online
+  dataset_type: trajectory_shards
   batch_size: 128
   num_workers: 16
   pin_memory: true
@@ -9,8 +9,16 @@ data:
   val_dataset_size: 512
   trajectory_cache_mode: true
   num_cached_trajectories: 256
-  time_grid_size: 32
+  time_grid_size: 129
   teacher_integration_steps: 12
+  pair_short_max: 4
+  pair_mid_max: 16
+  pair_long_max: 64
+  pair_short_weight: 0.4
+  pair_mid_weight: 0.4
+  pair_long_weight: 0.2
+  triplet_local_gap1: 2
+  triplet_local_gap2: 4
 
 runtime:
   amp: true
@@ -28,6 +36,9 @@ loss:
   defect_weight: 0.5
   warp_weight: 0.25
   boundary_weight: 0.1
+  semigroup_short_weight: 0.3
+  semigroup_mid_weight: 0.5
+  semigroup_long_weight: 0.2
 
 schedule:
   num_bins: 128

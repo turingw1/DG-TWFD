@@ -226,10 +226,34 @@ class TrajectoryShardDataset(Dataset[dict[str, Tensor]]):
         order = torch.argsort(t_grid, descending=True)
         return t_grid[order], x_grid[order]
 
+    def _sample_jump_delta(self, max_delta: int) -> int:
+        short_hi = min(self.cfg.data.pair_short_max, max_delta)
+        mid_lo = min(max_delta, self.cfg.data.pair_short_max + 1)
+        mid_hi = min(self.cfg.data.pair_mid_max, max_delta)
+        long_lo = min(max_delta, self.cfg.data.pair_mid_max + 1)
+        long_hi = min(self.cfg.data.pair_long_max, max_delta)
+
+        choices: list[tuple[int, int, float]] = []
+        if short_hi >= 1:
+            choices.append((1, short_hi, self.cfg.data.pair_short_weight))
+        if mid_hi >= mid_lo:
+            choices.append((mid_lo, mid_hi, self.cfg.data.pair_mid_weight))
+        if long_hi >= long_lo:
+            choices.append((long_lo, long_hi, self.cfg.data.pair_long_weight))
+        if not choices:
+            return 1
+
+        weights = torch.tensor([weight for _, _, weight in choices], dtype=torch.float32)
+        weights = weights / weights.sum()
+        bucket_idx = int(torch.multinomial(weights, 1).item())
+        low, high, _ = choices[bucket_idx]
+        return int(torch.randint(low, high + 1, (1,)).item())
+
     def _sample_pair_from_sorted(self, t_grid: Tensor, x_grid: Tensor) -> dict[str, Tensor]:
-        indices = torch.randperm(len(t_grid))[:2]
-        indices = indices[torch.argsort(t_grid[indices], descending=True)]
-        t_index, s_index = int(indices[0].item()), int(indices[1].item())
+        max_delta = len(t_grid) - 1
+        delta = self._sample_jump_delta(max_delta)
+        t_index = int(torch.randint(0, len(t_grid) - delta, (1,)).item())
+        s_index = t_index + delta
         payload = {
             "x_t": x_grid[t_index],
             "x_s": x_grid[s_index],
@@ -262,9 +286,15 @@ class TrajectoryShardDataset(Dataset[dict[str, Tensor]]):
         for _ in range(batch_size):
             sample = self._get_sample(torch.randint(0, len(self), (1,)).item())
             t_grid, x_grid = self._sorted_trajectory(sample)
-            indices = torch.randperm(len(t_grid))[:3]
-            indices = indices[torch.argsort(t_grid[indices], descending=True)]
-            i3, i2, i1 = [int(item.item()) for item in indices]
+            gap1 = max(1, self.cfg.data.triplet_local_gap1)
+            gap2 = max(gap1 + 1, self.cfg.data.triplet_local_gap2)
+            max_gap = len(t_grid) - 1
+            if gap2 > max_gap:
+                i3, i2, i1 = 0, min(1, max_gap), max_gap
+            else:
+                i3 = int(torch.randint(0, len(t_grid) - gap2, (1,)).item())
+                i2 = i3 + gap1
+                i1 = i3 + gap2
             x_t3_list.append(x_grid[i3].to(target_device))
             x_t2_list.append(x_grid[i2].to(target_device))
             x_t1_list.append(x_grid[i1].to(target_device))

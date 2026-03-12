@@ -39,10 +39,34 @@ class SemigroupDefectLoss(nn.Module):
     against the composed path `M_theta(s, u, M_theta(t, s, x_t))`.
     """
 
-    def __init__(self, per_pixel_mean: bool = True, eps: float = 1e-4) -> None:
+    def __init__(
+        self,
+        per_pixel_mean: bool = True,
+        eps: float = 1e-4,
+        short_weight: float = 0.3,
+        mid_weight: float = 0.5,
+        long_weight: float = 0.2,
+    ) -> None:
         super().__init__()
         self.per_pixel_mean = per_pixel_mean
         self.eps = eps
+        self.chain_weights = torch.tensor([short_weight, mid_weight, long_weight], dtype=torch.float32)
+
+    def _sample_u_from_chain_buckets(self, s: Tensor) -> Tensor:
+        device = s.device
+        weights = (self.chain_weights / self.chain_weights.sum()).to(device=device)
+        bucket = torch.multinomial(weights, num_samples=s.shape[0], replacement=True)
+        ratio = torch.zeros_like(s)
+        short_mask = bucket == 0
+        mid_mask = bucket == 1
+        long_mask = bucket == 2
+        if short_mask.any():
+            ratio[short_mask] = torch.empty(short_mask.sum(), device=device).uniform_(0.75, 0.95)
+        if mid_mask.any():
+            ratio[mid_mask] = torch.empty(mid_mask.sum(), device=device).uniform_(0.35, 0.75)
+        if long_mask.any():
+            ratio[long_mask] = torch.empty(long_mask.sum(), device=device).uniform_(0.05, 0.35)
+        return torch.clamp(ratio * s, min=0.0, max=1.0 - self.eps)
 
     def _sample_u(
         self,
@@ -50,8 +74,7 @@ class SemigroupDefectLoss(nn.Module):
         scheduler: DefectAdaptiveScheduler | None = None,
     ) -> Tensor:
         if scheduler is None:
-            ratio = torch.rand_like(s)
-            u = ratio * s
+            u = self._sample_u_from_chain_buckets(s)
         else:
             sampled = scheduler.sample(s.shape[0], device=s.device, dtype=s.dtype)
             u = torch.minimum(sampled, torch.clamp(s - self.eps, min=0.0))
