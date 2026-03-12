@@ -10,7 +10,7 @@
 ## 0. 固定路径与实验变量
 
 ```bash
-export PROJ=/home/gzwlinux/vscode/gitProject/DG-TWFD
+export PROJ=~/workspace/Zhengwei/DG-TWFD
 export ENV_NAME=consistency
 export EXP_NAME=ddpm_cifar10_a100_v2
 

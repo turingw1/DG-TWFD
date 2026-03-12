@@ -5,7 +5,7 @@
 在本机项目目录执行：
 
 ```bash
-cd /home/gzwlinux/vscode/gitProject/DG-TWFD
+cd ~/workspace/Zhengwei/DG-TWFD
 git branch -M main
 git remote add origin <你的github仓库SSH或HTTPS地址>
 git push -u origin main
@@ -21,7 +21,7 @@ git push -u origin main
 ## 2. 日常提交与推送
 
 ```bash
-cd /home/gzwlinux/vscode/gitProject/DG-TWFD
+cd ~/workspace/Zhengwei/DG-TWFD
 git status
 git add -A
 git commit -m "简明描述本次改动"

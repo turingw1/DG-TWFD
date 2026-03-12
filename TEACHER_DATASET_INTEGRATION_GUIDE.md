@@ -19,7 +19,7 @@
 
 相关文件：
 
-- [src/dg_twfd/data/teacher.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/data/teacher.py)
+- [src/dg_twfd/data/teacher.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/data/teacher.py)
 
 当前可直接用的 `teacher_type`：
 
@@ -37,8 +37,8 @@
 
 相关文件：
 
-- [src/dg_twfd/data/dataset.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/data/dataset.py)
-- [src/dg_twfd/data/dataloader.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/data/dataloader.py)
+- [src/dg_twfd/data/dataset.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/data/dataset.py)
+- [src/dg_twfd/data/dataloader.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/data/dataloader.py)
 
 ### 1.3 轨迹采集脚本
 
@@ -76,7 +76,7 @@ python -m pip install -e '.[teacher]'
 在 `consistency` 环境里执行：
 
 ```bash
-cd /home/gzwlinux/vscode/gitProject/DG-TWFD
+cd ~/workspace/Zhengwei/DG-TWFD
 conda activate consistency
 python -m pip install -e '.[teacher]'
 ```
@@ -97,7 +97,7 @@ python -m pip install -e '.[teacher]'
 你需要自己决定一个真实路径，例如：
 
 ```bash
-/home/gzwlinux/vscode/gitProject/DG-TWFD/data/teacher_shards/ddpm_cifar10_32
+~/workspace/Zhengwei/DG-TWFD/data/teacher_shards/ddpm_cifar10_32
 ```
 
 ### 2.4 如果继续扩展到 ImageNet / guided-diffusion / DiT
@@ -128,7 +128,7 @@ python -m pip install -e '.[teacher]'
 先运行训练轨迹采集：
 
 ```bash
-cd /home/gzwlinux/vscode/gitProject/DG-TWFD
+cd ~/workspace/Zhengwei/DG-TWFD
 conda activate consistency
 python scripts/collect_teacher.py \
   --mode debug_4060 \
@@ -146,7 +146,7 @@ python scripts/collect_teacher.py \
 再采集验证集：
 
 ```bash
-cd /home/gzwlinux/vscode/gitProject/DG-TWFD
+cd ~/workspace/Zhengwei/DG-TWFD
 conda activate consistency
 python scripts/collect_teacher.py \
   --mode debug_4060 \
@@ -177,7 +177,7 @@ python scripts/collect_teacher.py \
 采集完成后，运行训练：
 
 ```bash
-cd /home/gzwlinux/vscode/gitProject/DG-TWFD
+cd ~/workspace/Zhengwei/DG-TWFD
 conda activate consistency
 python train.py --mode debug_4060 \
   --override data.dataset_type='trajectory_shards' \
@@ -198,7 +198,7 @@ python train.py --mode debug_4060 \
 ## 6. 第三步：验证采样
 
 ```bash
-cd /home/gzwlinux/vscode/gitProject/DG-TWFD
+cd ~/workspace/Zhengwei/DG-TWFD
 conda activate consistency
 python sample.py \
   --mode debug_4060 \
@@ -250,9 +250,9 @@ python sample.py \
 
 优先修改：
 
-- [src/dg_twfd/data/teacher.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/data/teacher.py)
-- [src/dg_twfd/data/dataloader.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/data/dataloader.py)
-- [src/dg_twfd/models/student.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/models/student.py)
+- [src/dg_twfd/data/teacher.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/data/teacher.py)
+- [src/dg_twfd/data/dataloader.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/data/dataloader.py)
+- [src/dg_twfd/models/student.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/models/student.py)
 
 ### 8.3 如果你要完全切到离线 teacher 训练
 

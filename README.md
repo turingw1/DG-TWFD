@@ -152,7 +152,7 @@ pytest tests/test_loss.py -q -s
 
 ### 5.1 配置入口
 
-文件：[src/dg_twfd/config.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/config.py)
+文件：[src/dg_twfd/config.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/config.py)
 
 关键对象与函数：
 
@@ -168,7 +168,7 @@ pytest tests/test_loss.py -q -s
 
 ### 5.2 Teacher 轨迹层
 
-文件：[src/dg_twfd/data/teacher.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/data/teacher.py)
+文件：[src/dg_twfd/data/teacher.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/data/teacher.py)
 
 关键类与函数：
 
@@ -196,8 +196,8 @@ pytest tests/test_loss.py -q -s
 
 文件：
 
-- [src/dg_twfd/data/dataset.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/data/dataset.py)
-- [src/dg_twfd/data/dataloader.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/data/dataloader.py)
+- [src/dg_twfd/data/dataset.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/data/dataset.py)
+- [src/dg_twfd/data/dataloader.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/data/dataloader.py)
 
 关键类与函数：
 
@@ -223,10 +223,10 @@ pytest tests/test_loss.py -q -s
 
 文件：
 
-- [src/dg_twfd/models/embeddings.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/models/embeddings.py)
-- [src/dg_twfd/models/student.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/models/student.py)
-- [src/dg_twfd/models/timewarp.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/models/timewarp.py)
-- [src/dg_twfd/models/boundary.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/models/boundary.py)
+- [src/dg_twfd/models/embeddings.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/models/embeddings.py)
+- [src/dg_twfd/models/student.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/models/student.py)
+- [src/dg_twfd/models/timewarp.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/models/timewarp.py)
+- [src/dg_twfd/models/boundary.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/models/boundary.py)
 
 关键对象与函数：
 
@@ -254,9 +254,9 @@ pytest tests/test_loss.py -q -s
 
 文件：
 
-- [src/dg_twfd/losses/defect.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/losses/defect.py)
-- [src/dg_twfd/losses/warp.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/losses/warp.py)
-- [src/dg_twfd/losses/boundary.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/losses/boundary.py)
+- [src/dg_twfd/losses/defect.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/losses/defect.py)
+- [src/dg_twfd/losses/warp.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/losses/warp.py)
+- [src/dg_twfd/losses/boundary.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/losses/boundary.py)
 
 关键对象与函数：
 
@@ -282,8 +282,8 @@ pytest tests/test_loss.py -q -s
 
 文件：
 
-- [src/dg_twfd/schedule/defect_adaptive.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/schedule/defect_adaptive.py)
-- [src/dg_twfd/engine/metrics.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/engine/metrics.py)
+- [src/dg_twfd/schedule/defect_adaptive.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/schedule/defect_adaptive.py)
+- [src/dg_twfd/engine/metrics.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/engine/metrics.py)
 
 关键对象与函数：
 
@@ -305,10 +305,10 @@ pytest tests/test_loss.py -q -s
 
 文件：
 
-- [src/dg_twfd/engine/amp.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/engine/amp.py)
-- [src/dg_twfd/engine/checkpoint.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/engine/checkpoint.py)
-- [src/dg_twfd/engine/trainer.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/engine/trainer.py)
-- [train.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/train.py)
+- [src/dg_twfd/engine/amp.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/engine/amp.py)
+- [src/dg_twfd/engine/checkpoint.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/engine/checkpoint.py)
+- [src/dg_twfd/engine/trainer.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/engine/trainer.py)
+- [train.py](~/workspace/Zhengwei/DG-TWFD/train.py)
 
 关键对象与函数：
 
@@ -346,10 +346,10 @@ train.py
 
 文件：
 
-- [src/dg_twfd/infer/schedules.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/infer/schedules.py)
-- [src/dg_twfd/infer/sampler.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/infer/sampler.py)
-- [sample.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/sample.py)
-- [scripts/profile_infer.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/scripts/profile_infer.py)
+- [src/dg_twfd/infer/schedules.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/infer/schedules.py)
+- [src/dg_twfd/infer/sampler.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/infer/sampler.py)
+- [sample.py](~/workspace/Zhengwei/DG-TWFD/sample.py)
+- [scripts/profile_infer.py](~/workspace/Zhengwei/DG-TWFD/scripts/profile_infer.py)
 
 关键对象与函数：
 
@@ -382,9 +382,9 @@ sample.py
 
 配置文件：
 
-- [config/default.yaml](/home/gzwlinux/vscode/gitProject/DG-TWFD/config/default.yaml)
-- [config/profiles/debug_4060.yaml](/home/gzwlinux/vscode/gitProject/DG-TWFD/config/profiles/debug_4060.yaml)
-- [config/profiles/train_a100.yaml](/home/gzwlinux/vscode/gitProject/DG-TWFD/config/profiles/train_a100.yaml)
+- [config/default.yaml](~/workspace/Zhengwei/DG-TWFD/config/default.yaml)
+- [config/profiles/debug_4060.yaml](~/workspace/Zhengwei/DG-TWFD/config/profiles/debug_4060.yaml)
+- [config/profiles/train_a100.yaml](~/workspace/Zhengwei/DG-TWFD/config/profiles/train_a100.yaml)
 
 优先级：
 
@@ -532,8 +532,8 @@ python sample.py --mode debug_4060 --checkpoint checkpoints/best.pt --steps 8
 
 通常修改入口：
 
-- [src/dg_twfd/data/teacher.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/data/teacher.py)
-- [src/dg_twfd/data/dataset.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/data/dataset.py)
+- [src/dg_twfd/data/teacher.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/data/teacher.py)
+- [src/dg_twfd/data/dataset.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/data/dataset.py)
 
 如果你要接真实图像数据集，可以增加一个 dataset reader，再在 teacher 内部决定如何把图像映射为初值 `x0`。
 
@@ -555,8 +555,8 @@ class RealDiffusionTeacher(TeacherTrajectory):
 
 替换位置：
 
-- [src/dg_twfd/data/teacher.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/data/teacher.py)
-- [train.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/train.py)
+- [src/dg_twfd/data/teacher.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/data/teacher.py)
+- [train.py](~/workspace/Zhengwei/DG-TWFD/train.py)
 
 你只需要把 `DummyTeacherTrajectory(cfg)` 换成新 teacher，即可沿用现有训练与推理框架。
 
@@ -564,7 +564,7 @@ class RealDiffusionTeacher(TeacherTrajectory):
 
 修改文件：
 
-- [src/dg_twfd/models/student.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/models/student.py)
+- [src/dg_twfd/models/student.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/models/student.py)
 
 建议保持接口不变：
 
@@ -578,7 +578,7 @@ forward(x_t, t, s) -> x_s_pred
 
 修改文件：
 
-- [src/dg_twfd/models/timewarp.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/models/timewarp.py)
+- [src/dg_twfd/models/timewarp.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/models/timewarp.py)
 
 最重要的是保留三个方法：
 
@@ -592,7 +592,7 @@ forward(x_t, t, s) -> x_s_pred
 
 修改文件：
 
-- [src/dg_twfd/models/boundary.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/models/boundary.py)
+- [src/dg_twfd/models/boundary.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/models/boundary.py)
 
 建议保持：
 
@@ -604,9 +604,9 @@ forward(x, enabled=True, gate_weight=1.0)
 
 修改文件：
 
-- [src/dg_twfd/losses/defect.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/losses/defect.py)
-- [src/dg_twfd/losses/warp.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/losses/warp.py)
-- [src/dg_twfd/losses/boundary.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/losses/boundary.py)
+- [src/dg_twfd/losses/defect.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/losses/defect.py)
+- [src/dg_twfd/losses/warp.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/losses/warp.py)
+- [src/dg_twfd/losses/boundary.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/losses/boundary.py)
 
 其中最可能被论文迭代影响的是：
 
@@ -618,7 +618,7 @@ forward(x, enabled=True, gate_weight=1.0)
 
 当前优化器定义在：
 
-- [src/dg_twfd/engine/trainer.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/engine/trainer.py)
+- [src/dg_twfd/engine/trainer.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/engine/trainer.py)
 
 具体在 `Trainer.__init__()` 里：
 
@@ -669,9 +669,9 @@ forward(x, enabled=True, gate_weight=1.0)
 
 测试文件：
 
-- [tests/test_data.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/tests/test_data.py)
-- [tests/test_models.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/tests/test_models.py)
-- [tests/test_loss.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/tests/test_loss.py)
+- [tests/test_data.py](~/workspace/Zhengwei/DG-TWFD/tests/test_data.py)
+- [tests/test_models.py](~/workspace/Zhengwei/DG-TWFD/tests/test_models.py)
+- [tests/test_loss.py](~/workspace/Zhengwei/DG-TWFD/tests/test_loss.py)
 
 建议的审查顺序：
 
@@ -690,16 +690,16 @@ forward(x, enabled=True, gate_weight=1.0)
 
 如果你第一次接手这个项目，建议按下面顺序阅读代码：
 
-1. [config/default.yaml](/home/gzwlinux/vscode/gitProject/DG-TWFD/config/default.yaml)
-2. [src/dg_twfd/config.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/config.py)
-3. [src/dg_twfd/data/teacher.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/data/teacher.py)
-4. [src/dg_twfd/data/dataset.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/data/dataset.py)
-5. [src/dg_twfd/models/student.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/models/student.py)
-6. [src/dg_twfd/models/timewarp.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/models/timewarp.py)
-7. [src/dg_twfd/losses/defect.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/losses/defect.py)
-8. [src/dg_twfd/losses/warp.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/losses/warp.py)
-9. [src/dg_twfd/engine/trainer.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/engine/trainer.py)
-10. [src/dg_twfd/infer/sampler.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dg_twfd/infer/sampler.py)
+1. [config/default.yaml](~/workspace/Zhengwei/DG-TWFD/config/default.yaml)
+2. [src/dg_twfd/config.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/config.py)
+3. [src/dg_twfd/data/teacher.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/data/teacher.py)
+4. [src/dg_twfd/data/dataset.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/data/dataset.py)
+5. [src/dg_twfd/models/student.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/models/student.py)
+6. [src/dg_twfd/models/timewarp.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/models/timewarp.py)
+7. [src/dg_twfd/losses/defect.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/losses/defect.py)
+8. [src/dg_twfd/losses/warp.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/losses/warp.py)
+9. [src/dg_twfd/engine/trainer.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/engine/trainer.py)
+10. [src/dg_twfd/infer/sampler.py](~/workspace/Zhengwei/DG-TWFD/src/dg_twfd/infer/sampler.py)
 
 这样读，你会最容易建立“论文对象 -> 代码模块 -> 实验命令”的对应关系。
 
