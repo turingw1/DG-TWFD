@@ -271,10 +271,8 @@ class Trainer:
             student_loss = self._student_total(loss_dict) / self.grad_accum
             warp_should_step = self.state.global_step % self.cfg.train.warp_update_every == 0
             warp_loss = self._warp_total(loss_dict) / self.grad_accum if warp_should_step else None
-
-            self.scaler.scale(student_loss).backward(retain_graph=warp_should_step)
-            if warp_should_step and warp_loss is not None:
-                self.scaler.scale(warp_loss).backward()
+            total_backward_loss = student_loss + (warp_loss if warp_loss is not None else 0.0)
+            self.scaler.scale(total_backward_loss).backward()
 
             accumulation_count += 1
             total_for_log = self._student_total(loss_dict)
