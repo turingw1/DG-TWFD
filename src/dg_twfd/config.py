@@ -39,6 +39,8 @@ class DataConfig:
     pair_short_weight: float
     pair_mid_weight: float
     pair_long_weight: float
+    high_noise_t_weight: float
+    high_noise_t_fraction: float
     triplet_local_gap1: int
     triplet_local_gap2: int
     teacher_integration_steps: int

@@ -301,6 +301,9 @@ class Trainer:
                 "train/l_boundary": scalar_dict["boundary"],
                 "train/warp_balance": scalar_dict["warp_balance"],
                 "train/total_loss": float(total_for_log.detach().item()),
+                "train/t_mean": float(batch["t"].mean().item()),
+                "train/s_mean": float(batch["s"].mean().item()),
+                "train/delta_mean": float((batch["t"] - batch["s"]).mean().item()),
             }
             elapsed = max(time.perf_counter() - epoch_start_time, 1e-6)
             metrics["train/steps_per_sec"] = batch_idx / elapsed
@@ -314,7 +317,8 @@ class Trainer:
                     else 0.0
                 )
                 self.logger.info(
-                    "epoch=%d step=%d total=%.6f match=%.6f defect=%.6f warp=%.6f boundary=%.6f sps=%.2f peak_mem=%.2fMiB",
+                    "epoch=%d step=%d total=%.6f match=%.6f defect=%.6f warp=%.6f boundary=%.6f "
+                    "t_mean=%.4f s_mean=%.4f delta=%.4f sps=%.2f peak_mem=%.2fMiB",
                     self.state.epoch,
                     self.state.global_step,
                     metrics["train/total_loss"],
@@ -322,6 +326,9 @@ class Trainer:
                     metrics["train/l_def"],
                     metrics["train/l_warp"],
                     metrics["train/l_boundary"],
+                    metrics["train/t_mean"],
+                    metrics["train/s_mean"],
+                    metrics["train/delta_mean"],
                     metrics["train/steps_per_sec"],
                     peak_mem,
                 )
