@@ -56,9 +56,11 @@ conda activate $ENV_NAME
 CUDA_VISIBLE_DEVICES=0 python scripts/collect_teacher.py \
   --mode train_a100 \
   --split train \
-  --num-samples 256 \
-  --shard-size 32 \
+  --num-samples 2048 \
+  --shard-size 512 \
   --output-dir $SHARD_ROOT \
+  --emit-supervision-overrides \
+  --target-mem-util 0.70 \
   --override teacher.teacher_type='diffusers_ddpm' \
   --override teacher.pretrained_model_name_or_path="$TEACHER_ID" \
   --override teacher.solver='ddim' \
@@ -74,15 +76,26 @@ conda activate $ENV_NAME
 CUDA_VISIBLE_DEVICES=0 python scripts/collect_teacher.py \
   --mode train_a100 \
   --split val \
-  --num-samples 64 \
-  --shard-size 32 \
+  --num-samples 512 \
+  --shard-size 512 \
   --output-dir $SHARD_ROOT \
+  --emit-supervision-overrides \
+  --target-mem-util 0.70 \
   --override teacher.teacher_type='diffusers_ddpm' \
   --override teacher.pretrained_model_name_or_path="$TEACHER_ID" \
   --override teacher.solver='ddim' \
   --override teacher.num_inference_steps=128 \
   --override data.time_grid_size=129
 ```
+
+Smoke 完成后会自动生成：
+
+- `$SHARD_ROOT/supervision_overrides_train.yaml`
+- `$SHARD_ROOT/supervision_overrides_train.txt`
+- `$SHARD_ROOT/supervision_overrides_val.yaml`
+- `$SHARD_ROOT/supervision_overrides_val.txt`
+
+其中 `*.txt` 每行都是一个 `--override ...`，可直接复制到训练命令中。
 
 ### 3.3 正式采集（建议起步规模）
 
@@ -93,7 +106,7 @@ CUDA_VISIBLE_DEVICES=0 python scripts/collect_teacher.py \
   --mode train_a100 \
   --split train \
   --num-samples 200000 \
-  --shard-size 128 \
+  --shard-size 1024 \
   --output-dir $SHARD_ROOT \
   --override teacher.teacher_type='diffusers_ddpm' \
   --override teacher.pretrained_model_name_or_path="$TEACHER_ID" \
@@ -109,7 +122,7 @@ CUDA_VISIBLE_DEVICES=0 python scripts/collect_teacher.py \
   --mode train_a100 \
   --split val \
   --num-samples 10000 \
-  --shard-size 128 \
+  --shard-size 1024 \
   --output-dir $SHARD_ROOT \
   --override teacher.teacher_type='diffusers_ddpm' \
   --override teacher.pretrained_model_name_or_path="$TEACHER_ID" \
@@ -141,6 +154,12 @@ find $SHARD_ROOT -maxdepth 2 -type f | sort | tail -n 20
 ## 5. A100 训练（shard 监督）
 
 ### 5.1 基线训练（推荐先关 boundary，加速稳定）
+
+先查看 smoke 自动给出的监督参数：
+
+```bash
+cat $SHARD_ROOT/supervision_overrides_train.txt
+```
 
 ```bash
 cd $PROJ
