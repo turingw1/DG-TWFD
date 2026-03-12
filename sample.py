@@ -23,9 +23,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--mode", default="debug_4060", help="Config profile name")
     parser.add_argument("--checkpoint", default="checkpoints/best.pt", help="Checkpoint path")
     parser.add_argument("--output-dir", default=None, help="Directory for sample artifacts")
-    parser.add_argument("--steps", type=int, default=4, choices=[1, 2, 4, 8, 16], help="Sampling steps")
+    parser.add_argument("--steps", type=int, default=16, choices=[1, 2, 4, 8, 16], help="Sampling steps")
     parser.add_argument("--batch-size", type=int, default=2, help="Number of samples")
     parser.add_argument("--disable-boundary", action="store_true", help="Skip boundary corrector")
+    parser.add_argument("--force-boundary", action="store_true", help="Force enable boundary corrector")
     parser.add_argument("--override", action="append", default=[], help="Config overrides in key=value form")
     return parser.parse_args()
 
@@ -86,6 +87,18 @@ def main() -> None:
         cfg.data.image_size,
         device=device,
     )
+    enable_boundary = (not args.disable_boundary) and (
+        args.force_boundary or cfg.boundary.enable_until_step > 0
+    )
+    if enable_boundary:
+        print("sampling_boundary: enabled")
+    else:
+        print(
+            "sampling_boundary: disabled "
+            f"(disable_flag={args.disable_boundary}, force_flag={args.force_boundary}, "
+            f"cfg_enable_until_step={cfg.boundary.enable_until_step})"
+        )
+
     samples, diagnostics = sample_dg_twfd(
         models=models,
         timewarp=models["timewarp"],
@@ -93,7 +106,7 @@ def main() -> None:
         noise=noise,
         steps=args.steps,
         device=device,
-        enable_boundary=not args.disable_boundary,
+        enable_boundary=enable_boundary,
         amp=cfg.runtime.amp,
         gate_weight=cfg.boundary.gate_weight,
     )
@@ -105,7 +118,7 @@ def main() -> None:
         steps_list=[1, 2, 4, 8, 16],
         device=device,
         amp=cfg.runtime.amp,
-        enable_boundary=not args.disable_boundary,
+        enable_boundary=enable_boundary,
         gate_weight=cfg.boundary.gate_weight,
     )
 
@@ -125,6 +138,15 @@ def main() -> None:
 
     print(f"saved_samples: {sample_path}")
     print(f"saved_diagnostics: {diag_path}")
+    print(
+        "sample_stats: min=%.6f max=%.6f mean=%.6f std=%.6f"
+        % (
+            float(samples.min().item()),
+            float(samples.max().item()),
+            float(samples.mean().item()),
+            float(samples.std().item()),
+        )
+    )
     print("sampling profile:")
     for row in profiles:
         print(

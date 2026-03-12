@@ -20,6 +20,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Profile DG-TWFD sampling")
     parser.add_argument("--mode", default="train_a100", help="Config profile name")
     parser.add_argument("--checkpoint", default=None, help="Checkpoint path (default from config)")
+    parser.add_argument("--disable-boundary", action="store_true", help="Skip boundary during profiling")
+    parser.add_argument("--force-boundary", action="store_true", help="Force enable boundary during profiling")
     return parser.parse_args()
 
 
@@ -34,6 +36,18 @@ def main() -> None:
         checkpoint_path = Path(cfg.train.checkpoint_dir) / "best.pt"
     checkpoint = load_checkpoint(checkpoint_path, map_location=device)
     print(f"profile_checkpoint: {checkpoint_path}")
+    enable_boundary = (not args.disable_boundary) and (
+        args.force_boundary or cfg.boundary.enable_until_step > 0
+    )
+    print(
+        "profile_boundary: %s (disable_flag=%s, force_flag=%s, cfg_enable_until_step=%d)"
+        % (
+            "enabled" if enable_boundary else "disabled",
+            args.disable_boundary,
+            args.force_boundary,
+            cfg.boundary.enable_until_step,
+        )
+    )
     for name, model in models.items():
         load_model_state_dict(model, checkpoint["models"][name])
         model.eval()
@@ -47,7 +61,7 @@ def main() -> None:
         steps_list=[1, 2, 4, 8, 16],
         device=device,
         amp=cfg.runtime.amp,
-        enable_boundary=True,
+        enable_boundary=enable_boundary,
         gate_weight=cfg.boundary.gate_weight,
     )
     print("steps | nfe | latency_ms | peak_mem_mib")

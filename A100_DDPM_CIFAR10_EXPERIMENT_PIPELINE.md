@@ -232,8 +232,9 @@ CUDA_VISIBLE_DEVICES=1 python sample.py \
   --mode train_a100 \
   --checkpoint "$CKPT_DIR/best.pt" \
   --output-dir "$ARTIFACT_ROOT" \
-  --steps 4 \
+  --steps 16 \
   --batch-size 64 \
+  --disable-boundary \
   --override data.image_size=32 \
   --override data.channels=3
 ```
@@ -245,7 +246,8 @@ cd $PROJ
 conda activate $ENV_NAME
 CUDA_VISIBLE_DEVICES=1 python scripts/profile_infer.py \
   --mode train_a100 \
-  --checkpoint "$CKPT_DIR/best.pt"
+  --checkpoint "$CKPT_DIR/best.pt" \
+  --disable-boundary
 ```
 
 ### 7.3 采样图片拼接预览（直观查看结果）

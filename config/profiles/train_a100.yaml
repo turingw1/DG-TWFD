@@ -44,6 +44,9 @@ schedule:
   num_bins: 128
   eta: 2.0
 
+boundary:
+  enable_until_step: 0
+
 train:
   epochs: 20
   learning_rate: 4.0e-4
