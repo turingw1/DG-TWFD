@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -15,11 +16,24 @@ from dg_twfd.engine.checkpoint import load_checkpoint
 from dg_twfd.infer import profile_sampling
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Profile DG-TWFD sampling")
+    parser.add_argument("--mode", default="train_a100", help="Config profile name")
+    parser.add_argument("--checkpoint", default=None, help="Checkpoint path (default from config)")
+    return parser.parse_args()
+
+
 def main() -> None:
-    cfg = load_config("debug_4060")
+    args = parse_args()
+    cfg = load_config(args.mode)
     device = resolve_device(cfg.runtime.device)
     models = build_models(cfg, device)
-    checkpoint = load_checkpoint(ROOT / "checkpoints" / "best.pt", map_location=device)
+    if args.checkpoint is not None:
+        checkpoint_path = Path(args.checkpoint)
+    else:
+        checkpoint_path = Path(cfg.train.checkpoint_dir) / "best.pt"
+    checkpoint = load_checkpoint(checkpoint_path, map_location=device)
+    print(f"profile_checkpoint: {checkpoint_path}")
     for name, model in models.items():
         model.load_state_dict(checkpoint["models"][name])
         model.eval()

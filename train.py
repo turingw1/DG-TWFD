@@ -45,6 +45,20 @@ def stage_log(message: str) -> None:
     print(f"{ts} | train.py | {message}", flush=True)
 
 
+def ensure_a100_cache_checkpoint_dir(cfg, mode: str) -> None:
+    # Keep local debug behavior unchanged. On A100 profile, route heavy outputs
+    # to /cache by default unless caller already overrides checkpoint_dir.
+    if mode != "train_a100":
+        return
+    if cfg.train.checkpoint_dir != "checkpoints":
+        return
+    exp_name = cfg.experiment.name.strip() or "unnamed_exp"
+    safe_exp = exp_name.replace("/", "_").replace(" ", "_")
+    cache_ckpt = Path("/cache/Zhengwei/dg_twfd_runs") / safe_exp / "checkpoints"
+    cfg.train.checkpoint_dir = str(cache_ckpt)
+    stage_log(f"auto checkpoint_dir -> {cfg.train.checkpoint_dir}")
+
+
 def main() -> None:
     args = parse_args()
     overrides = list(args.override)
@@ -55,6 +69,7 @@ def main() -> None:
     cfg = load_config(args.mode, overrides=overrides)
     if args.mode == "debug_4060":
         cfg.experiment.name = "dg_twfd_phase4_debug"
+    ensure_a100_cache_checkpoint_dir(cfg, args.mode)
     stage_log(f"seed_everything(seed={cfg.experiment.seed})")
     seed_everything(cfg.experiment.seed)
     device = resolve_device(cfg.runtime.device)

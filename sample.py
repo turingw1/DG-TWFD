@@ -22,6 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Sample from DG-TWFD checkpoints")
     parser.add_argument("--mode", default="debug_4060", help="Config profile name")
     parser.add_argument("--checkpoint", default="checkpoints/best.pt", help="Checkpoint path")
+    parser.add_argument("--output-dir", default=None, help="Directory for sample artifacts")
     parser.add_argument("--steps", type=int, default=4, choices=[1, 2, 4, 8, 16], help="Sampling steps")
     parser.add_argument("--batch-size", type=int, default=2, help="Number of samples")
     parser.add_argument("--disable-boundary", action="store_true", help="Skip boundary corrector")
@@ -55,6 +56,15 @@ def build_models(cfg, device: torch.device) -> dict[str, torch.nn.Module]:
             num_blocks=cfg.model.boundary_num_blocks,
         ).to(device),
     }
+
+
+def resolve_output_dir(args: argparse.Namespace) -> Path:
+    if args.output_dir:
+        return Path(args.output_dir)
+    ckpt_path = Path(args.checkpoint)
+    if ckpt_path.parent.name == "checkpoints":
+        return ckpt_path.parent.parent / "samples"
+    return ckpt_path.parent / "samples"
 
 
 def main() -> None:
@@ -99,7 +109,7 @@ def main() -> None:
         gate_weight=cfg.boundary.gate_weight,
     )
 
-    output_dir = ROOT / "artifacts"
+    output_dir = resolve_output_dir(args)
     output_dir.mkdir(parents=True, exist_ok=True)
     sample_path = output_dir / f"samples_steps{args.steps}.pt"
     diag_path = output_dir / f"sample_diag_steps{args.steps}.pt"

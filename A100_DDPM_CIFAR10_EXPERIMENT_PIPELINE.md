@@ -14,12 +14,14 @@ export PROJ=~/workspace/Zhengwei/DG-TWFD
 export ENV_NAME=consistency
 export EXP_NAME=ddpm_cifar10_a100_v2
 
-# 按你的要求，所有大文件/shard 统一放这里
+# 大文件统一放 /cache/Zhengwei，按 dg_twfd_* 规范分目录
 export SHARD_ROOT=/cache/Zhengwei/dg_twfd_shards/$EXP_NAME
+export RUN_ROOT=/cache/Zhengwei/dg_twfd_runs/$EXP_NAME
 
 export TEACHER_ID=google/ddpm-cifar10-32
-export CKPT_DIR=$PROJ/checkpoints/$EXP_NAME
-export TRAIN_LOG=$CKPT_DIR/train.log
+export CKPT_DIR=$RUN_ROOT/checkpoints
+export ARTIFACT_ROOT=$RUN_ROOT/samples
+export TRAIN_LOG=$RUN_ROOT/train.log
 ```
 
 ---
@@ -164,7 +166,7 @@ cat $SHARD_ROOT/supervision_overrides_train.txt
 ```bash
 cd $PROJ
 conda activate $ENV_NAME
-mkdir -p $CKPT_DIR
+mkdir -p $CKPT_DIR $ARTIFACT_ROOT
 DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=0 python train.py --mode train_a100 --epochs 20 \
   --override experiment.name="$EXP_NAME" \
   --override data.dataset_type='trajectory_shards' \
@@ -228,6 +230,7 @@ conda activate $ENV_NAME
 CUDA_VISIBLE_DEVICES=0 python sample.py \
   --mode train_a100 \
   --checkpoint "$CKPT_DIR/best.pt" \
+  --output-dir "$ARTIFACT_ROOT" \
   --steps 4 \
   --batch-size 64 \
   --override data.image_size=32 \
@@ -239,7 +242,9 @@ CUDA_VISIBLE_DEVICES=0 python sample.py \
 ```bash
 cd $PROJ
 conda activate $ENV_NAME
-CUDA_VISIBLE_DEVICES=0 python scripts/profile_infer.py
+CUDA_VISIBLE_DEVICES=0 python scripts/profile_infer.py \
+  --mode train_a100 \
+  --checkpoint "$CKPT_DIR/best.pt"
 ```
 
 ---
@@ -280,6 +285,7 @@ DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=0 python train.py --mode train_a100 \
 
 - 大文件与 shard 路径固定：
   - `SHARD_ROOT=/cache/Zhengwei/dg_twfd_shards/$EXP_NAME`
+  - `RUN_ROOT=/cache/Zhengwei/dg_twfd_runs/$EXP_NAME`
 - 代码改动后只更新本文件（阶段性要求）
 - 工作流固定：
   - 本地修改 + 更新文档
