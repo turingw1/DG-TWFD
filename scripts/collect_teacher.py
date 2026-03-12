@@ -120,10 +120,10 @@ def recommend_train_batch_size(
     target_mem_util: float,
 ) -> int:
     if peak_mem_mib <= 0.0 or total_mem_mib is None or total_mem_mib <= 0.0:
-        return max(128, observed_batch)
+        return max(256, observed_batch)
     target_mib = max(1.0, min(0.95, target_mem_util) * total_mem_mib)
     raw = int(observed_batch * (target_mib / peak_mem_mib) * 0.9)
-    capped = max(128, min(4096, raw))
+    capped = max(256, min(1024, raw))
     return _round_to_multiple(capped, 64)
 
 
@@ -140,6 +140,7 @@ def write_supervision_overrides(
         total_mem_mib=summary.total_mem_mib,
         target_mem_util=target_mem_util,
     )
+    recommended_lr = 2.0e-4 * (recommended_batch_size / 256.0)
     recommended_overrides = [
         "data.dataset_type='trajectory_shards'",
         f"data.trajectory_shard_dir='{str(shard_root)}'",
@@ -147,8 +148,7 @@ def write_supervision_overrides(
         f"teacher.num_inference_steps={cfg.teacher.num_inference_steps}",
         f"data.time_grid_size={cfg.data.time_grid_size}",
         f"data.batch_size={recommended_batch_size}",
-        "data.num_workers=16",
-        "data.prefetch_factor=8",
+        f"train.learning_rate={recommended_lr:.6f}",
         "train.warp_update_every=1",
         "boundary.enable_until_step=0",
     ]

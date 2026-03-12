@@ -171,9 +171,8 @@ DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode train_a100 --epo
   --override experiment.name="$EXP_NAME" \
   --override data.dataset_type='trajectory_shards' \
   --override data.trajectory_shard_dir="$SHARD_ROOT" \
-  --override data.batch_size=128 \
-  --override data.num_workers=16 \
-  --override data.prefetch_factor=8 \
+  --override data.batch_size=512 \
+  --override train.learning_rate=4e-4 \
   --override teacher.teacher_type='diffusers_ddpm' \
   --override teacher.pretrained_model_name_or_path="$TEACHER_ID" \
   --override teacher.solver='ddim' \
@@ -192,8 +191,10 @@ DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode train_a100 --epo
 ### 5.2 若显存仍低（<60%），继续拉高 batch
 
 ```bash
-# 依次尝试 192 -> 256
---override data.batch_size=192
+# 建议阶梯：512 -> 768 -> 1024
+# 学习率线性放大：lr = 2e-4 * (batch/256)
+# 例如：batch=768 对应 lr=6e-4；batch=1024 对应 lr=8e-4
+--override data.batch_size=768 --override train.learning_rate=6e-4
 ```
 
 ---

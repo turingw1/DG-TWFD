@@ -1,6 +1,6 @@
 data:
   dataset_type: trajectory_shards
-  batch_size: 256
+  batch_size: 512
   num_workers: 8
   pin_memory: true
   persistent_workers: true
@@ -46,7 +46,7 @@ schedule:
 
 train:
   epochs: 20
-  learning_rate: 2.0e-4
+  learning_rate: 4.0e-4
   weight_decay: 1.0e-4
   log_every: 50
   warp_update_every: 1
