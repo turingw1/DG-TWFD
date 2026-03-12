@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 
 from dg_twfd.config import DGConfig
 from dg_twfd.engine.amp import autocast_context, build_grad_scaler
-from dg_twfd.engine.checkpoint import load_checkpoint, save_checkpoint
+from dg_twfd.engine.checkpoint import export_model_state_dict, load_checkpoint, load_model_state_dict, save_checkpoint
 from dg_twfd.engine.metrics import MetricTracker
 from dg_twfd.schedule import DefectAdaptiveScheduler
 from dg_twfd.utils.logging import setup_logger
@@ -380,7 +380,7 @@ class Trainer:
                 "global_step": self.state.global_step,
                 "best_val_loss": self.state.best_val_loss,
             },
-            "models": {name: model.state_dict() for name, model in self.models.items()},
+            "models": {name: export_model_state_dict(model) for name, model in self.models.items()},
             "optimizers": {
                 "student": self.student_optimizer.state_dict(),
                 "warp": self.warp_optimizer.state_dict(),
@@ -406,7 +406,7 @@ class Trainer:
     def resume(self, path: str | Path) -> None:
         payload = load_checkpoint(path, map_location=self.device)
         for name, model in self.models.items():
-            model.load_state_dict(payload["models"][name])
+            load_model_state_dict(model, payload["models"][name])
         self.student_optimizer.load_state_dict(payload["optimizers"]["student"])
         self.warp_optimizer.load_state_dict(payload["optimizers"]["warp"])
         self.scaler.load_state_dict(payload["scaler"])

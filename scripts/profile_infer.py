@@ -12,7 +12,7 @@ if str(ROOT) not in sys.path:
 
 from sample import build_models, resolve_device
 from dg_twfd.config import load_config
-from dg_twfd.engine.checkpoint import load_checkpoint
+from dg_twfd.engine.checkpoint import load_checkpoint, load_model_state_dict
 from dg_twfd.infer import profile_sampling
 
 
@@ -35,7 +35,7 @@ def main() -> None:
     checkpoint = load_checkpoint(checkpoint_path, map_location=device)
     print(f"profile_checkpoint: {checkpoint_path}")
     for name, model in models.items():
-        model.load_state_dict(checkpoint["models"][name])
+        load_model_state_dict(model, checkpoint["models"][name])
         model.eval()
 
     noise = torch.randn(1, cfg.data.channels, cfg.data.image_size, cfg.data.image_size, device=device)

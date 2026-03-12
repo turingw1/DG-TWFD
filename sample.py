@@ -12,7 +12,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from dg_twfd.config import load_config
-from dg_twfd.engine.checkpoint import load_checkpoint
+from dg_twfd.engine.checkpoint import load_checkpoint, load_model_state_dict
 from dg_twfd.infer import profile_sampling, sample_dg_twfd
 from dg_twfd.models import BoundaryCorrector, FlowStudent, TimeWarpMonotone
 from dg_twfd.utils.seed import seed_everything
@@ -76,7 +76,7 @@ def main() -> None:
     models = build_models(cfg, device)
     ckpt = load_checkpoint(args.checkpoint, map_location=device)
     for name, model in models.items():
-        model.load_state_dict(ckpt["models"][name])
+        load_model_state_dict(model, ckpt["models"][name])
         model.eval()
 
     noise = torch.randn(
