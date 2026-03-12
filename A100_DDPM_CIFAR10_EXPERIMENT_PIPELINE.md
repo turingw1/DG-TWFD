@@ -55,7 +55,7 @@ python -m pip install -e '.[dev,teacher]'
 ```bash
 cd $PROJ
 conda activate $ENV_NAME
-CUDA_VISIBLE_DEVICES=0 python scripts/collect_teacher.py \
+CUDA_VISIBLE_DEVICES=1 python scripts/collect_teacher.py \
   --mode train_a100 \
   --split train \
   --num-samples 2048 \
@@ -75,7 +75,7 @@ CUDA_VISIBLE_DEVICES=0 python scripts/collect_teacher.py \
 ```bash
 cd $PROJ
 conda activate $ENV_NAME
-CUDA_VISIBLE_DEVICES=0 python scripts/collect_teacher.py \
+CUDA_VISIBLE_DEVICES=1 python scripts/collect_teacher.py \
   --mode train_a100 \
   --split val \
   --num-samples 512 \
@@ -104,7 +104,7 @@ Smoke 完成后会自动生成：
 ```bash
 cd $PROJ
 conda activate $ENV_NAME
-CUDA_VISIBLE_DEVICES=0 python scripts/collect_teacher.py \
+CUDA_VISIBLE_DEVICES=1 python scripts/collect_teacher.py \
   --mode train_a100 \
   --split train \
   --num-samples 200000 \
@@ -120,7 +120,7 @@ CUDA_VISIBLE_DEVICES=0 python scripts/collect_teacher.py \
 ```bash
 cd $PROJ
 conda activate $ENV_NAME
-CUDA_VISIBLE_DEVICES=0 python scripts/collect_teacher.py \
+CUDA_VISIBLE_DEVICES=1 python scripts/collect_teacher.py \
   --mode train_a100 \
   --split val \
   --num-samples 10000 \
@@ -167,7 +167,7 @@ cat $SHARD_ROOT/supervision_overrides_train.txt
 cd $PROJ
 conda activate $ENV_NAME
 mkdir -p $CKPT_DIR $ARTIFACT_ROOT
-DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=0 python train.py --mode train_a100 --epochs 20 \
+DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode train_a100 --epochs 20 \
   --override experiment.name="$EXP_NAME" \
   --override data.dataset_type='trajectory_shards' \
   --override data.trajectory_shard_dir="$SHARD_ROOT" \
@@ -227,7 +227,7 @@ grep "match=" "$TRAIN_LOG" | tail -n 50
 ```bash
 cd $PROJ
 conda activate $ENV_NAME
-CUDA_VISIBLE_DEVICES=0 python sample.py \
+CUDA_VISIBLE_DEVICES=1 python sample.py \
   --mode train_a100 \
   --checkpoint "$CKPT_DIR/best.pt" \
   --output-dir "$ARTIFACT_ROOT" \
@@ -242,7 +242,7 @@ CUDA_VISIBLE_DEVICES=0 python sample.py \
 ```bash
 cd $PROJ
 conda activate $ENV_NAME
-CUDA_VISIBLE_DEVICES=0 python scripts/profile_infer.py \
+CUDA_VISIBLE_DEVICES=1 python scripts/profile_infer.py \
   --mode train_a100 \
   --checkpoint "$CKPT_DIR/best.pt"
 ```
@@ -268,7 +268,7 @@ cd $PROJ
 git pull --ff-only
 conda activate $ENV_NAME
 
-DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=0 python train.py --mode train_a100 \
+DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode train_a100 \
   --override train.resume_path="$CKPT_DIR/best.pt" \
   --override train.checkpoint_dir="$CKPT_DIR" \
   --override data.dataset_type='trajectory_shards' \
