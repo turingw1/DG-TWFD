@@ -24,6 +24,7 @@ data:
   pair_short_weight: 0.4
   pair_mid_weight: 0.4
   pair_long_weight: 0.2
+  pair_endpoint_weight: 0.3
   high_noise_t_weight: 0.7
   high_noise_t_fraction: 0.5
   triplet_local_gap1: 2

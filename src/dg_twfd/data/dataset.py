@@ -354,11 +354,10 @@ class TrajectoryShardDataset(Dataset[dict[str, Tensor]]):
 
     def _sample_pair_from_sorted(self, t_grid: Tensor, x_grid: Tensor) -> dict[str, Tensor]:
         max_delta = len(t_grid) - 1
-        delta = self._sample_jump_delta(max_delta)
-        max_start = len(t_grid) - delta
-        if max_start <= 1:
-            t_index = 0
-        else:
+        endpoint_prob = float(self.cfg.data.pair_endpoint_weight)
+        if torch.rand(1).item() < endpoint_prob:
+            s_index = len(t_grid) - 1
+            max_start = max(1, s_index)
             high_noise_limit = max(
                 1,
                 int(round(max_start * float(self.cfg.data.high_noise_t_fraction))),
@@ -367,7 +366,21 @@ class TrajectoryShardDataset(Dataset[dict[str, Tensor]]):
                 t_index = int(torch.randint(0, high_noise_limit, (1,)).item())
             else:
                 t_index = int(torch.randint(0, max_start, (1,)).item())
-        s_index = t_index + delta
+        else:
+            delta = self._sample_jump_delta(max_delta)
+            max_start = len(t_grid) - delta
+            if max_start <= 1:
+                t_index = 0
+            else:
+                high_noise_limit = max(
+                    1,
+                    int(round(max_start * float(self.cfg.data.high_noise_t_fraction))),
+                )
+                if torch.rand(1).item() < float(self.cfg.data.high_noise_t_weight):
+                    t_index = int(torch.randint(0, high_noise_limit, (1,)).item())
+                else:
+                    t_index = int(torch.randint(0, max_start, (1,)).item())
+            s_index = t_index + delta
         payload = {
             "x_t": x_grid[t_index],
             "x_s": x_grid[s_index],

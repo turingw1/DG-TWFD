@@ -184,8 +184,9 @@ DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode train_a100 --epo
   --override loss.defect_weight=0.5 \
   --override loss.warp_weight=0.25 \
   --override loss.boundary_weight=0.1 \
-  --override data.high_noise_t_weight=0.8 \
-  --override data.high_noise_t_fraction=0.6 \
+  --override data.pair_endpoint_weight=0.5 \
+  --override data.high_noise_t_weight=0.9 \
+  --override data.high_noise_t_fraction=0.35 \
   --override boundary.enable_until_step=0 \
   2>&1 | tee "$TRAIN_LOG"
 ```
