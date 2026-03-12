@@ -299,7 +299,55 @@ DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode train_a100 \
 
 ---
 
-## 10. 本阶段固定要求（执行时请保持）
+## 10. 并列版本训练（额外算力并行）
+
+当你还有空闲算力时，建议并列跑一个对照版本，路径与主实验并列，不覆盖主结果。
+
+```bash
+export EXP_NAME_ALT=${EXP_NAME}_alt_endpoint70
+export SHARD_ROOT_ALT=/cache/Zhengwei/dg_twfd_shards/$EXP_NAME_ALT
+export RUN_ROOT_ALT=/cache/Zhengwei/dg_twfd_runs/$EXP_NAME_ALT
+export CKPT_DIR_ALT=$RUN_ROOT_ALT/checkpoints
+export ARTIFACT_ROOT_ALT=$RUN_ROOT_ALT/samples
+export TRAIN_LOG_ALT=$RUN_ROOT_ALT/train.log
+mkdir -p $CKPT_DIR_ALT $ARTIFACT_ROOT_ALT
+```
+
+注意：若并列实验复用同一批 teacher shards，可直接用 `$SHARD_ROOT`，无需重新采集。
+
+```bash
+cd $PROJ
+conda activate $ENV_NAME
+DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode train_a100 --epochs 20 \
+  --override experiment.name="$EXP_NAME_ALT" \
+  --override train.checkpoint_dir="$CKPT_DIR_ALT" \
+  --override data.dataset_type='trajectory_shards' \
+  --override data.trajectory_shard_dir="$SHARD_ROOT" \
+  --override data.pair_endpoint_weight=0.7 \
+  --override data.high_noise_t_weight=0.95 \
+  --override data.high_noise_t_fraction=0.30 \
+  --override train.learning_rate=4e-4 \
+  --override boundary.enable_until_step=0 \
+  2>&1 | tee "$TRAIN_LOG_ALT"
+```
+
+并列版本采样：
+
+```bash
+cd $PROJ
+conda activate $ENV_NAME
+CUDA_VISIBLE_DEVICES=1 python sample.py \
+  --mode train_a100 \
+  --checkpoint "$CKPT_DIR_ALT/best.pt" \
+  --output-dir "$ARTIFACT_ROOT_ALT" \
+  --steps 16 \
+  --batch-size 64 \
+  --disable-boundary
+```
+
+---
+
+## 11. 本阶段固定要求（执行时请保持）
 
 - 大文件与 shard 路径固定：
   - `SHARD_ROOT=/cache/Zhengwei/dg_twfd_shards/$EXP_NAME`
