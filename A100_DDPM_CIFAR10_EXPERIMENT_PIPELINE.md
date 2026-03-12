@@ -248,6 +248,18 @@ CUDA_VISIBLE_DEVICES=1 python scripts/profile_infer.py \
   --checkpoint "$CKPT_DIR/best.pt"
 ```
 
+### 7.3 采样图片拼接预览（直观查看结果）
+
+```bash
+cd $PROJ
+conda activate $ENV_NAME
+python scripts/preview_samples.py \
+  --samples "$ARTIFACT_ROOT/samples_steps4.pt" \
+  --output "$ARTIFACT_ROOT/samples_steps4_preview.png" \
+  --nrow 8 \
+  --max-images 64
+```
+
 ---
 
 ## 8. 你每轮需要回传给我的结果
