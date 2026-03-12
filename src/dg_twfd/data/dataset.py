@@ -5,6 +5,7 @@ from __future__ import annotations
 import bisect
 from collections import OrderedDict
 from dataclasses import dataclass
+import os
 from pathlib import Path
 from typing import Any
 
@@ -203,7 +204,8 @@ class TrajectoryShardDataset(Dataset[dict[str, Tensor]]):
             raise FileNotFoundError(
                 f"No shard files found under {self.root} with pattern {cfg.data.trajectory_file_glob}"
             )
-        self.cache_limit = 4
+        self.cache_limit = max(1, int(os.environ.get("DG_TWFD_SHARD_CACHE_LIMIT", "1")))
+        self.debug_io = os.environ.get("DG_TWFD_DATA_DEBUG", "0") == "1"
         self._shard_cache: OrderedDict[int, list[dict[str, Any]]] = OrderedDict()
         self._cache_misses = 0
 
@@ -305,7 +307,7 @@ class TrajectoryShardDataset(Dataset[dict[str, Tensor]]):
         if not isinstance(samples, list):
             raise TypeError(f"Shard must contain a list of samples: {shard_path}")
         self._cache_misses += 1
-        if self._cache_misses <= 5 or self._cache_misses % 50 == 0:
+        if self.debug_io and (self._cache_misses <= 5 or self._cache_misses % 50 == 0):
             print(
                 "[TrajectoryShardDataset] cache miss=%d loaded shard=%s samples=%d"
                 % (self._cache_misses, shard_path.name, len(samples)),
@@ -384,8 +386,15 @@ class TrajectoryShardDataset(Dataset[dict[str, Tensor]]):
         t2_list = []
         t1_list = []
         y_list = []
+        shard_candidates = list(self._shard_cache.keys())
+        if shard_candidates:
+            chosen_shard = shard_candidates[-1]
+        else:
+            chosen_shard = int(torch.randint(0, len(self.shard_files), (1,)).item())
+        shard_samples = self._get_shard_samples(chosen_shard)
+        shard_len = len(shard_samples)
         for _ in range(batch_size):
-            sample = self._get_sample(torch.randint(0, len(self), (1,)).item())
+            sample = shard_samples[int(torch.randint(0, shard_len, (1,)).item())]
             t_grid, x_grid = self._sorted_trajectory(sample)
             gap1 = max(1, self.cfg.data.triplet_local_gap1)
             gap2 = max(gap1 + 1, self.cfg.data.triplet_local_gap2)

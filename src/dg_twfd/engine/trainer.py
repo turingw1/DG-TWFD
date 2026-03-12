@@ -250,7 +250,7 @@ class Trainer:
             self.state.epoch,
             len(self.dataloaders["train"]),
             self.grad_accum,
-            self.cfg.data.num_workers,
+            self.dataloaders["train"].num_workers,
         )
         for batch_idx, batch in enumerate(self.dataloaders["train"], start=1):
             if batch_idx == 1:

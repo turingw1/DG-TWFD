@@ -77,8 +77,13 @@ def main() -> None:
         "val": build_dataloader(cfg, teacher, split="val"),
     }
     stage_log(
-        "dataloaders ready train_len=%d val_len=%d"
-        % (len(dataloaders["train"].dataset), len(dataloaders["val"].dataset))
+        "dataloaders ready train_len=%d val_len=%d train_workers=%d val_workers=%d"
+        % (
+            len(dataloaders["train"].dataset),
+            len(dataloaders["val"].dataset),
+            dataloaders["train"].num_workers,
+            dataloaders["val"].num_workers,
+        )
     )
     stage_log("building models/losses/scheduler")
     models = {

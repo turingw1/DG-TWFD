@@ -30,16 +30,25 @@ def build_dataloader(
     """Build a split-aware DataLoader returning fixed-key batch dictionaries."""
 
     dataset = build_dataset(cfg=cfg, teacher=teacher, split=split)
+    num_workers = cfg.data.num_workers
+    prefetch_factor = cfg.data.prefetch_factor
+    shuffle = split == "train"
+    if cfg.data.dataset_type == "trajectory_shards":
+        # For large shard files, multi-worker loading duplicates shard reads and
+        # can become I/O-bound. Keep a single dataset instance for stable throughput.
+        num_workers = 0
+        prefetch_factor = None
+        shuffle = False
     loader_kwargs = {
         "dataset": dataset,
         "batch_size": cfg.data.batch_size,
-        "shuffle": split == "train",
-        "num_workers": cfg.data.num_workers,
+        "shuffle": shuffle,
+        "num_workers": num_workers,
         "pin_memory": cfg.data.pin_memory,
         "drop_last": cfg.data.drop_last if split == "train" else False,
-        "persistent_workers": cfg.data.persistent_workers and cfg.data.num_workers > 0,
+        "persistent_workers": cfg.data.persistent_workers and num_workers > 0,
         "collate_fn": _collate_fn,
     }
-    if cfg.data.prefetch_factor is not None and cfg.data.num_workers > 0:
-        loader_kwargs["prefetch_factor"] = cfg.data.prefetch_factor
+    if prefetch_factor is not None and num_workers > 0:
+        loader_kwargs["prefetch_factor"] = prefetch_factor
     return DataLoader(**loader_kwargs)
