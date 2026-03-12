@@ -245,7 +245,20 @@ class Trainer:
         if not hasattr(train_dataset, "sample_triplet_batch"):
             raise TypeError("Training dataset must provide sample_triplet_batch()")
         epoch_start_time = time.perf_counter()
+        self.logger.info(
+            "Epoch %d start | train_batches=%d | grad_accum=%d | workers=%d",
+            self.state.epoch,
+            len(self.dataloaders["train"]),
+            self.grad_accum,
+            self.cfg.data.num_workers,
+        )
         for batch_idx, batch in enumerate(self.dataloaders["train"], start=1):
+            if batch_idx == 1:
+                self.logger.info(
+                    "Epoch %d first batch ready after %.2fs",
+                    self.state.epoch,
+                    time.perf_counter() - epoch_start_time,
+                )
             batch = self._move_batch(batch)
             loss_dict, scalar_dict = self._compute_losses(
                 batch=batch,
@@ -339,7 +352,10 @@ class Trainer:
         val_dataset = self.dataloaders["val"].dataset
         if not hasattr(val_dataset, "sample_triplet_batch"):
             raise TypeError("Validation dataset must provide sample_triplet_batch()")
+        val_start_time = time.perf_counter()
         for batch in self.dataloaders["val"]:
+            if num_batches == 0:
+                self.logger.info("Validation first batch ready after %.2fs", time.perf_counter() - val_start_time)
             batch = self._move_batch(batch)
             loss_dict, _ = self._compute_losses(
                 batch=batch,

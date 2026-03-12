@@ -167,6 +167,37 @@ def write_supervision_overrides(
     print(f"wrote supervision override flags: {cmd_path}")
 
 
+def build_manifest(split: str, num_samples: int, shard_size: int) -> dict[str, object]:
+    num_shards = math.ceil(num_samples / shard_size)
+    shards: list[dict[str, object]] = []
+    remaining = num_samples
+    for shard_index in range(num_shards):
+        count = min(shard_size, remaining)
+        shards.append(
+            {
+                "index": shard_index,
+                "file": f"{split}_{shard_index:05d}.pt",
+                "count": count,
+            }
+        )
+        remaining -= count
+    return {
+        "split": split,
+        "num_samples": num_samples,
+        "shard_size": shard_size,
+        "num_shards": num_shards,
+        "shards": shards,
+    }
+
+
+def write_manifest(split_root: Path, split: str, num_samples: int, shard_size: int) -> None:
+    manifest = build_manifest(split=split, num_samples=num_samples, shard_size=shard_size)
+    manifest_path = split_root / "manifest.yaml"
+    with manifest_path.open("w", encoding="utf-8") as handle:
+        yaml.safe_dump(manifest, handle, sort_keys=False, allow_unicode=False)
+    print(f"wrote shard manifest: {manifest_path}")
+
+
 def main() -> None:
     args = parse_args()
     cfg = load_config(args.mode, overrides=args.override)
@@ -245,6 +276,13 @@ def main() -> None:
         "done: %d samples -> %s | elapsed=%.2fs | throughput=%.2f samples/s | peak_mem=%.2f MiB"
         % (written, output_root, summary.elapsed_sec, summary.samples_per_sec, summary.peak_mem_mib)
     )
+    if written == args.num_samples:
+        write_manifest(
+            split_root=output_root,
+            split=args.split,
+            num_samples=written,
+            shard_size=args.shard_size,
+        )
     if args.emit_supervision_overrides:
         write_supervision_overrides(
             output_dir=Path(args.output_dir),

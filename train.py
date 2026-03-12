@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import sys
+import time
 
 import torch
 
@@ -39,23 +40,47 @@ def resolve_device(requested: str) -> torch.device:
     return torch.device(requested)
 
 
+def stage_log(message: str) -> None:
+    ts = time.strftime("%Y-%m-%d %H:%M:%S")
+    print(f"{ts} | train.py | {message}", flush=True)
+
+
 def main() -> None:
     args = parse_args()
     overrides = list(args.override)
     if args.epochs is not None:
         overrides.append(f"train.epochs={args.epochs}")
 
+    stage_log(f"loading config profile={args.mode}")
     cfg = load_config(args.mode, overrides=overrides)
     if args.mode == "debug_4060":
         cfg.experiment.name = "dg_twfd_phase4_debug"
+    stage_log(f"seed_everything(seed={cfg.experiment.seed})")
     seed_everything(cfg.experiment.seed)
     device = resolve_device(cfg.runtime.device)
+    stage_log(
+        "resolved device=%s dataset_type=%s batch_size=%d num_workers=%d prefetch=%s"
+        % (
+            device,
+            cfg.data.dataset_type,
+            cfg.data.batch_size,
+            cfg.data.num_workers,
+            str(cfg.data.prefetch_factor),
+        )
+    )
 
+    stage_log("building teacher")
     teacher = build_teacher(cfg)
+    stage_log("building dataloaders (train/val)")
     dataloaders = {
         "train": build_dataloader(cfg, teacher, split="train"),
         "val": build_dataloader(cfg, teacher, split="val"),
     }
+    stage_log(
+        "dataloaders ready train_len=%d val_len=%d"
+        % (len(dataloaders["train"].dataset), len(dataloaders["val"].dataset))
+    )
+    stage_log("building models/losses/scheduler")
     models = {
         "student": FlowStudent(
             channels=cfg.data.channels,
@@ -103,6 +128,7 @@ def main() -> None:
         dataloaders=dataloaders,
         device=device,
     )
+    stage_log("starting trainer.fit()")
     epoch_losses = trainer.fit()
     print("Loss trend by epoch:")
     for idx, value in enumerate(epoch_losses, start=1):

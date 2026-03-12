@@ -1,10 +1,10 @@
 data:
   dataset_type: trajectory_shards
   batch_size: 256
-  num_workers: 24
+  num_workers: 8
   pin_memory: true
   persistent_workers: true
-  prefetch_factor: 8
+  prefetch_factor: 4
   dataset_size: 4096
   val_dataset_size: 512
   trajectory_cache_mode: true

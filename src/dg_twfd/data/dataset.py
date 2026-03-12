@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import bisect
+from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -9,6 +11,7 @@ from typing import Any
 import torch
 from torch import Tensor
 from torch.utils.data import Dataset
+import yaml
 
 from dg_twfd.config import DGConfig
 from dg_twfd.data.teacher import TeacherTrajectory
@@ -200,21 +203,119 @@ class TrajectoryShardDataset(Dataset[dict[str, Tensor]]):
             raise FileNotFoundError(
                 f"No shard files found under {self.root} with pattern {cfg.data.trajectory_file_glob}"
             )
-        self.index_map: list[tuple[int, int]] = []
-        self._shard_cache: dict[int, list[dict[str, Any]]] = {}
-        for shard_index, shard_path in enumerate(self.shard_files):
-            shard_samples = torch.load(shard_path, map_location="cpu", weights_only=False)
-            if not isinstance(shard_samples, list):
-                raise TypeError(f"Shard must contain a list of samples: {shard_path}")
-            self._shard_cache[shard_index] = shard_samples
-            self.index_map.extend((shard_index, sample_index) for sample_index in range(len(shard_samples)))
+        self.cache_limit = 4
+        self._shard_cache: OrderedDict[int, list[dict[str, Any]]] = OrderedDict()
+        self._cache_misses = 0
+
+        self.shard_lengths = self._resolve_shard_lengths(split_root)
+        if len(self.shard_lengths) != len(self.shard_files):
+            raise RuntimeError("shard_lengths and shard_files mismatch")
+        self.cumulative_sizes: list[int] = []
+        running = 0
+        for length in self.shard_lengths:
+            running += int(length)
+            self.cumulative_sizes.append(running)
+        self.total_samples = running
+        print(
+            "[TrajectoryShardDataset] split=%s shards=%d samples=%d cache_limit=%d"
+            % (self.split, len(self.shard_files), self.total_samples, self.cache_limit),
+            flush=True,
+        )
 
     def __len__(self) -> int:
-        return len(self.index_map)
+        return self.total_samples
 
     def _get_sample(self, index: int) -> dict[str, Any]:
-        shard_index, sample_index = self.index_map[index]
-        return self._shard_cache[shard_index][sample_index]
+        if index < 0:
+            index = self.total_samples + index
+        if index < 0 or index >= self.total_samples:
+            raise IndexError(f"Index out of range: {index}")
+        shard_index = bisect.bisect_right(self.cumulative_sizes, index)
+        shard_start = 0 if shard_index == 0 else self.cumulative_sizes[shard_index - 1]
+        sample_index = index - shard_start
+        shard_samples = self._get_shard_samples(shard_index)
+        return shard_samples[sample_index]
+
+    def _manifest_path(self, split_root: Path) -> Path:
+        return split_root / "manifest.yaml"
+
+    def _resolve_shard_lengths(self, split_root: Path) -> list[int]:
+        manifest_path = self._manifest_path(split_root)
+        if manifest_path.exists():
+            try:
+                with manifest_path.open("r", encoding="utf-8") as handle:
+                    payload = yaml.safe_load(handle) or {}
+                shard_items = payload.get("shards", [])
+                count_by_file = {
+                    str(item["file"]): int(item["count"])
+                    for item in shard_items
+                    if isinstance(item, dict) and "file" in item and "count" in item
+                }
+                lengths = [count_by_file.get(path.name, -1) for path in self.shard_files]
+                if lengths and all(length > 0 for length in lengths):
+                    return lengths
+                print(
+                    "[TrajectoryShardDataset] manifest exists but incomplete, fallback to shard probing: %s"
+                    % manifest_path,
+                    flush=True,
+                )
+            except Exception as exc:
+                print(
+                    "[TrajectoryShardDataset] failed to parse manifest %s (%s), fallback to probing"
+                    % (manifest_path, exc),
+                    flush=True,
+                )
+        return self._probe_shard_lengths()
+
+    def _probe_shard_lengths(self) -> list[int]:
+        # Fast fallback without loading every shard:
+        # infer middle shard lengths from the first shard and only read first/last.
+        if len(self.shard_files) == 1:
+            samples = torch.load(self.shard_files[0], map_location="cpu", weights_only=False)
+            if not isinstance(samples, list):
+                raise TypeError(f"Shard must contain a list of samples: {self.shard_files[0]}")
+            return [len(samples)]
+        first_samples = torch.load(self.shard_files[0], map_location="cpu", weights_only=False)
+        last_samples = torch.load(self.shard_files[-1], map_location="cpu", weights_only=False)
+        if not isinstance(first_samples, list):
+            raise TypeError(f"Shard must contain a list of samples: {self.shard_files[0]}")
+        if not isinstance(last_samples, list):
+            raise TypeError(f"Shard must contain a list of samples: {self.shard_files[-1]}")
+        first_len = len(first_samples)
+        last_len = len(last_samples)
+        if first_len <= 0 or last_len <= 0:
+            raise ValueError("Shard probing found empty shards")
+        lengths = [first_len] * len(self.shard_files)
+        lengths[-1] = last_len
+        print(
+            "[TrajectoryShardDataset] using probed shard lengths (first=%d, last=%d); "
+            "for precise startup metadata, keep manifest.yaml generated by collect_teacher.py"
+            % (first_len, last_len),
+            flush=True,
+        )
+        return lengths
+
+    def _get_shard_samples(self, shard_index: int) -> list[dict[str, Any]]:
+        cached = self._shard_cache.get(shard_index)
+        if cached is not None:
+            self._shard_cache.move_to_end(shard_index)
+            return cached
+        shard_path = self.shard_files[shard_index]
+        samples = torch.load(shard_path, map_location="cpu", weights_only=False)
+        if not isinstance(samples, list):
+            raise TypeError(f"Shard must contain a list of samples: {shard_path}")
+        self._cache_misses += 1
+        if self._cache_misses <= 5 or self._cache_misses % 50 == 0:
+            print(
+                "[TrajectoryShardDataset] cache miss=%d loaded shard=%s samples=%d"
+                % (self._cache_misses, shard_path.name, len(samples)),
+                flush=True,
+            )
+        self._shard_cache[shard_index] = samples
+        self._shard_cache.move_to_end(shard_index)
+        while len(self._shard_cache) > self.cache_limit:
+            self._shard_cache.popitem(last=False)
+        return samples
 
     def _sorted_trajectory(self, sample: dict[str, Any]) -> tuple[Tensor, Tensor]:
         t_grid = sample["t_grid"].float().view(-1)
