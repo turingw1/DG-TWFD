@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import math
+import re
 import sys
 import time
 from dataclasses import asdict, dataclass
@@ -27,6 +28,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--num-samples", type=int, required=True, help="Number of trajectories to collect")
     parser.add_argument("--shard-size", type=int, default=64, help="Samples per shard")
     parser.add_argument("--output-dir", required=True, help="Root output directory for shards")
+    parser.add_argument(
+        "--resume-if-exists",
+        action="store_true",
+        help="Resume from existing split shards instead of restarting from shard 0",
+    )
     parser.add_argument(
         "--emit-supervision-overrides",
         action="store_true",
@@ -76,6 +82,29 @@ class CollectionSummary:
     teacher_solver: str
     teacher_steps: int
     time_grid_size: int
+
+
+def scan_resume_state(split_root: Path, split: str, shard_size: int) -> tuple[int, int]:
+    pattern = re.compile(rf"^{re.escape(split)}_(\d+)\.pt$")
+    shard_files: dict[int, Path] = {}
+    for path in split_root.glob(f"{split}_*.pt"):
+        match = pattern.match(path.name)
+        if match is None:
+            continue
+        shard_index = int(match.group(1))
+        shard_files[shard_index] = path
+    contiguous = 0
+    while contiguous in shard_files:
+        contiguous += 1
+    if contiguous == 0:
+        return 0, 0
+    last_shard_index = contiguous - 1
+    last_samples = torch.load(shard_files[last_shard_index], map_location="cpu", weights_only=False)
+    if not isinstance(last_samples, list):
+        raise TypeError(f"Expected shard list content: {shard_files[last_shard_index]}")
+    last_count = len(last_samples)
+    written = last_shard_index * shard_size + last_count
+    return contiguous, written
 
 
 def _round_to_multiple(value: int, multiple: int) -> int:
@@ -150,11 +179,22 @@ def main() -> None:
     output_root = Path(args.output_dir) / args.split
     output_root.mkdir(parents=True, exist_ok=True)
     num_shards = math.ceil(args.num_samples / args.shard_size)
+    start_shard_index = 0
+    written = 0
+    if args.resume_if_exists:
+        start_shard_index, written = scan_resume_state(output_root, args.split, args.shard_size)
+        if written > 0:
+            print(
+                "resume: detected %d existing shards, %d samples already written, next shard=%05d"
+                % (start_shard_index, written, start_shard_index)
+            )
+        if written >= args.num_samples:
+            print(f"resume: target already satisfied ({written} >= {args.num_samples}), nothing to do.")
+            return
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats(device)
     wall_start = time.perf_counter()
-    written = 0
-    for shard_index in range(num_shards):
+    for shard_index in range(start_shard_index, num_shards):
         remaining = args.num_samples - written
         batch_size = min(args.shard_size, remaining)
         labels = maybe_sample_labels(cfg, batch_size, device)
