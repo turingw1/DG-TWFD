@@ -345,6 +345,8 @@ CUDA_VISIBLE_DEVICES=1 python sample.py \
   --disable-boundary
 ```
 
+说明：`sample.py` 与 `profile_infer.py` 默认优先加载 checkpoint 里的 EMA student；如需对照可加 `--no-ema`。
+
 ---
 
 ## 11. 本阶段固定要求（执行时请保持）

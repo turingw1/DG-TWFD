@@ -22,6 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint", default=None, help="Checkpoint path (default from config)")
     parser.add_argument("--disable-boundary", action="store_true", help="Skip boundary during profiling")
     parser.add_argument("--force-boundary", action="store_true", help="Force enable boundary during profiling")
+    parser.add_argument("--no-ema", action="store_true", help="Do not use EMA student weights from checkpoint")
     return parser.parse_args()
 
 
@@ -48,8 +49,13 @@ def main() -> None:
             cfg.boundary.enable_until_step,
         )
     )
+    use_ema = (not args.no_ema) and ("ema" in checkpoint) and ("student" in checkpoint["ema"])
+    print(f"profile_ema_student: {use_ema}")
     for name, model in models.items():
-        load_model_state_dict(model, checkpoint["models"][name])
+        state_dict = checkpoint["models"][name]
+        if name == "student" and use_ema:
+            state_dict = checkpoint["ema"]["student"]
+        load_model_state_dict(model, state_dict)
         model.eval()
 
     noise = torch.randn(1, cfg.data.channels, cfg.data.image_size, cfg.data.image_size, device=device)

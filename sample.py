@@ -27,6 +27,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=2, help="Number of samples")
     parser.add_argument("--disable-boundary", action="store_true", help="Skip boundary corrector")
     parser.add_argument("--force-boundary", action="store_true", help="Force enable boundary corrector")
+    parser.add_argument("--no-ema", action="store_true", help="Do not use EMA student weights from checkpoint")
     parser.add_argument("--override", action="append", default=[], help="Config overrides in key=value form")
     return parser.parse_args()
 
@@ -76,9 +77,14 @@ def main() -> None:
 
     models = build_models(cfg, device)
     ckpt = load_checkpoint(args.checkpoint, map_location=device)
+    use_ema = (not args.no_ema) and ("ema" in ckpt) and ("student" in ckpt["ema"])
     for name, model in models.items():
-        load_model_state_dict(model, ckpt["models"][name])
+        state_dict = ckpt["models"][name]
+        if name == "student" and use_ema:
+            state_dict = ckpt["ema"]["student"]
+        load_model_state_dict(model, state_dict)
         model.eval()
+    print(f"sampling_ema_student: {use_ema}")
 
     noise = torch.randn(
         args.batch_size,

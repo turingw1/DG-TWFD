@@ -94,6 +94,7 @@ train:
   resume_path: null
   warp_update_every: 2
   max_train_steps: null
+  ema_decay: 0.999
 
 logging:
   level: INFO

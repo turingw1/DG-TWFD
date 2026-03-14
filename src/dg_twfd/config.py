@@ -123,6 +123,7 @@ class TrainConfig:
     resume_path: Optional[str]
     warp_update_every: int
     max_train_steps: Optional[int]
+    ema_decay: Optional[float]
 
 
 @dataclass(slots=True)

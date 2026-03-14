@@ -33,14 +33,20 @@ class WarpLoss(nn.Module):
         timewarp: TimeWarpMonotone,
         triplet_batch: dict[str, Tensor],
     ) -> tuple[Tensor, dict[str, Tensor]]:
-        x_32 = triplet_batch["x_t2"]
-        x_21 = triplet_batch["x_t1"]
+        x_t3 = triplet_batch["x_t3"]
+        x_t2 = triplet_batch["x_t2"]
+        x_t1 = triplet_batch["x_t1"]
         t3 = triplet_batch["t3"]
         t2 = triplet_batch["t2"]
         t1 = triplet_batch["t1"]
 
-        base = (x_32 - x_21) ** 2
-        base_loss = base.mean() if self.per_pixel_mean else base.flatten(1).sum(dim=1).mean()
+        delta_32 = x_t2 - x_t3
+        delta_21 = x_t1 - x_t2
+        diff = (delta_32 - delta_21) ** 2
+        denom = (delta_32.pow(2) + delta_21.pow(2)).detach().flatten(1).mean(dim=1, keepdim=True)
+        denom = denom.view(-1, 1, 1, 1) + self.eps
+        normalized = diff / denom
+        base_loss = normalized.mean() if self.per_pixel_mean else normalized.flatten(1).sum(dim=1).mean()
 
         u3 = timewarp(t3)
         u2 = timewarp(t2)

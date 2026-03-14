@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import copy
 import os
 from pathlib import Path
 import time
@@ -112,6 +113,8 @@ class Trainer:
         self.scaler = build_grad_scaler(self.device_type, cfg.runtime.amp)
         self.grad_accum = max(1, cfg.runtime.gradient_accumulation)
         self.use_channels_last = self.device_type == "cuda"
+        self.student_ema: torch.nn.Module | None = None
+        self.ema_decay = cfg.train.ema_decay if cfg.train.ema_decay is not None else 0.0
 
         if self.device_type == "cuda" and torch.cuda.is_available():
             torch.backends.cudnn.benchmark = True
@@ -123,6 +126,13 @@ class Trainer:
             if os.environ.get("DG_TWFD_COMPILE", "0") == "1" and hasattr(torch, "compile"):
                 self.models["student"] = torch.compile(self.models["student"])
                 self.models["boundary"] = torch.compile(self.models["boundary"])
+
+        if self.ema_decay > 0.0:
+            student_base = getattr(self.models["student"], "_orig_mod", self.models["student"])
+            self.student_ema = copy.deepcopy(student_base).eval()
+            for param in self.student_ema.parameters():
+                param.requires_grad_(False)
+            self.logger.info("EMA enabled for student with decay=%.6f", self.ema_decay)
 
         student_params = list(models["student"].parameters()) + list(models["boundary"].parameters())
         warp_params = list(models["timewarp"].parameters())
@@ -158,6 +168,21 @@ class Trainer:
         self.scaler.unscale_(optimizer)
         torch.nn.utils.clip_grad_norm_(params, self.cfg.train.grad_clip_norm)
         self.scaler.step(optimizer)
+
+    @torch.no_grad()
+    def _update_ema(self) -> None:
+        if self.student_ema is None or self.ema_decay <= 0.0:
+            return
+        student_base = getattr(self.models["student"], "_orig_mod", self.models["student"])
+        ema_params = dict(self.student_ema.named_parameters())
+        model_params = dict(student_base.named_parameters())
+        for name, param in model_params.items():
+            ema_param = ema_params[name]
+            ema_param.data.mul_(self.ema_decay).add_(param.data, alpha=1.0 - self.ema_decay)
+        ema_buffers = dict(self.student_ema.named_buffers())
+        model_buffers = dict(student_base.named_buffers())
+        for name, buffer in model_buffers.items():
+            ema_buffers[name].copy_(buffer)
 
     def _compute_losses(
         self,
@@ -288,6 +313,7 @@ class Trainer:
                     warp_params = [p for p in self.models["timewarp"].parameters()]
                     self._grad_norm_step(self.warp_optimizer, warp_params)
                 self.scaler.update()
+                self._update_ema()
                 self.student_optimizer.zero_grad(set_to_none=True)
                 self.warp_optimizer.zero_grad(set_to_none=True)
                 accumulation_count = 0
@@ -344,6 +370,7 @@ class Trainer:
             if any(param.grad is not None for param in warp_params):
                 self._grad_norm_step(self.warp_optimizer, warp_params)
             self.scaler.update()
+            self._update_ema()
             self.student_optimizer.zero_grad(set_to_none=True)
             self.warp_optimizer.zero_grad(set_to_none=True)
 
@@ -380,7 +407,7 @@ class Trainer:
 
     def checkpoint_state(self) -> dict[str, Any]:
         t_grid, u_grid = self.models["timewarp"].grid_cache()
-        return {
+        payload = {
             "cfg_name": self.cfg.experiment.name,
             "state": {
                 "epoch": self.state.epoch,
@@ -402,6 +429,9 @@ class Trainer:
                 "u_grid": u_grid.detach().cpu(),
             },
         }
+        if self.student_ema is not None:
+            payload["ema"] = {"student": self.student_ema.state_dict()}
+        return payload
 
     def maybe_save_checkpoint(self, is_best: bool = False) -> None:
         ckpt_dir = Path(self.cfg.train.checkpoint_dir)
@@ -414,6 +444,8 @@ class Trainer:
         payload = load_checkpoint(path, map_location=self.device)
         for name, model in self.models.items():
             load_model_state_dict(model, payload["models"][name])
+        if self.student_ema is not None and "ema" in payload and "student" in payload["ema"]:
+            self.student_ema.load_state_dict(payload["ema"]["student"])
         self.student_optimizer.load_state_dict(payload["optimizers"]["student"])
         self.warp_optimizer.load_state_dict(payload["optimizers"]["warp"])
         self.scaler.load_state_dict(payload["scaler"])
