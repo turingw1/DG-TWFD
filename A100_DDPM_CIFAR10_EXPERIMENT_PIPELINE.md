@@ -360,3 +360,127 @@ CUDA_VISIBLE_DEVICES=1 python sample.py \
   - 你在 A100 跑
   - 回传输出
   - 本地继续优化并同步 git
+
+---
+
+## 12. CIFAR 单损失 Ablation（先不做对比分析）
+
+### 12.1 可用 profile
+
+- `train_a100_ablate_match`：只开 match loss
+- `train_a100_ablate_defect`：只开 defect loss
+- `train_a100_ablate_warp`：只开 warp loss
+- `train_a100_ablate_boundary`：只开 boundary loss
+
+> 说明：`warp-only` 与 `boundary-only` 的生成质量通常会显著弱于 match-based 方案，本阶段先完成流程与产物留档。
+
+### 12.2 单个实验通用变量模板
+
+```bash
+export ABLATION_NAME=ablate_match
+export ABLATION_PROFILE=train_a100_ablate_match
+export EXP_ABL=ddpm_cifar10_${ABLATION_NAME}
+export RUN_ROOT_ABL=/cache/Zhengwei/dg_twfd_runs/$EXP_ABL
+export CKPT_DIR_ABL=$RUN_ROOT_ABL/checkpoints
+export ARTIFACT_ROOT_ABL=$RUN_ROOT_ABL/samples
+export TRAIN_LOG_ABL=$RUN_ROOT_ABL/train.log
+mkdir -p $CKPT_DIR_ABL $ARTIFACT_ROOT_ABL
+```
+
+### 12.3 训练（单损失）
+
+```bash
+cd $PROJ
+conda activate $ENV_NAME
+DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode $ABLATION_PROFILE --epochs 20 \
+  --override experiment.name="$EXP_ABL" \
+  --override data.dataset_type='trajectory_shards' \
+  --override data.trajectory_shard_dir="$SHARD_ROOT" \
+  --override train.checkpoint_dir="$CKPT_DIR_ABL" \
+  2>&1 | tee "$TRAIN_LOG_ABL"
+```
+
+### 12.4 采样 + profile + 预览（每个 ablation 都执行）
+
+```bash
+cd $PROJ
+conda activate $ENV_NAME
+CUDA_VISIBLE_DEVICES=1 python sample.py \
+  --mode $ABLATION_PROFILE \
+  --checkpoint "$CKPT_DIR_ABL/best.pt" \
+  --output-dir "$ARTIFACT_ROOT_ABL" \
+  --steps 16 \
+  --batch-size 64 \
+  --disable-boundary
+```
+
+```bash
+cd $PROJ
+conda activate $ENV_NAME
+CUDA_VISIBLE_DEVICES=1 python scripts/profile_infer.py \
+  --mode $ABLATION_PROFILE \
+  --checkpoint "$CKPT_DIR_ABL/best.pt" \
+  --disable-boundary
+```
+
+```bash
+cd $PROJ
+conda activate $ENV_NAME
+python scripts/preview_samples.py \
+  --samples "$ARTIFACT_ROOT_ABL/samples_steps16.pt" \
+  --output "$ARTIFACT_ROOT_ABL/samples_steps16_preview.png" \
+  --nrow 8 \
+  --max-images 64
+```
+
+### 12.5 产物检查（每个 ablation）
+
+```bash
+ls -lh "$CKPT_DIR_ABL"/best.pt
+ls -lh "$ARTIFACT_ROOT_ABL"/samples_steps16.pt
+ls -lh "$ARTIFACT_ROOT_ABL"/sample_diag_steps16.pt
+ls -lh "$ARTIFACT_ROOT_ABL"/samples_steps16_preview.png
+grep "Epoch " "$TRAIN_LOG_ABL"
+grep "match=" "$TRAIN_LOG_ABL" | tail -n 30
+```
+
+### 12.6 四个实验顺序执行示例
+
+```bash
+for pair in \
+  "ablate_match train_a100_ablate_match" \
+  "ablate_defect train_a100_ablate_defect" \
+  "ablate_warp train_a100_ablate_warp" \
+  "ablate_boundary train_a100_ablate_boundary"
+do
+  set -- $pair
+  export ABLATION_NAME=$1
+  export ABLATION_PROFILE=$2
+  export EXP_ABL=ddpm_cifar10_${ABLATION_NAME}
+  export RUN_ROOT_ABL=/cache/Zhengwei/dg_twfd_runs/$EXP_ABL
+  export CKPT_DIR_ABL=$RUN_ROOT_ABL/checkpoints
+  export ARTIFACT_ROOT_ABL=$RUN_ROOT_ABL/samples
+  export TRAIN_LOG_ABL=$RUN_ROOT_ABL/train.log
+  mkdir -p "$CKPT_DIR_ABL" "$ARTIFACT_ROOT_ABL"
+
+  DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode $ABLATION_PROFILE --epochs 20 \
+    --override experiment.name="$EXP_ABL" \
+    --override data.dataset_type='trajectory_shards' \
+    --override data.trajectory_shard_dir="$SHARD_ROOT" \
+    --override train.checkpoint_dir="$CKPT_DIR_ABL" \
+    2>&1 | tee "$TRAIN_LOG_ABL"
+
+  CUDA_VISIBLE_DEVICES=1 python sample.py --mode $ABLATION_PROFILE \
+    --checkpoint "$CKPT_DIR_ABL/best.pt" \
+    --output-dir "$ARTIFACT_ROOT_ABL" \
+    --steps 16 --batch-size 64 --disable-boundary
+
+  CUDA_VISIBLE_DEVICES=1 python scripts/profile_infer.py --mode $ABLATION_PROFILE \
+    --checkpoint "$CKPT_DIR_ABL/best.pt" --disable-boundary
+
+  python scripts/preview_samples.py \
+    --samples "$ARTIFACT_ROOT_ABL/samples_steps16.pt" \
+    --output "$ARTIFACT_ROOT_ABL/samples_steps16_preview.png" \
+    --nrow 8 --max-images 64
+done
+```

@@ -252,7 +252,7 @@ class Trainer:
 
     def _student_total(self, loss_dict: dict[str, torch.Tensor]) -> torch.Tensor:
         return (
-            loss_dict["match"]
+            self.cfg.loss.match_weight * loss_dict["match"]
             + self.cfg.loss.defect_weight * loss_dict["defect"]
             + self.cfg.loss.boundary_weight * loss_dict["boundary"]
         )

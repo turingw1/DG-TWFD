@@ -85,6 +85,7 @@ class ModelConfig:
 
 @dataclass(slots=True)
 class LossConfig:
+    match_weight: float
     match_loss_type: str
     huber_delta: float
     defect_weight: float

@@ -1,0 +1,61 @@
+data:
+  dataset_type: trajectory_shards
+  batch_size: 512
+  num_workers: 8
+  pin_memory: true
+  persistent_workers: true
+  prefetch_factor: 4
+  dataset_size: 4096
+  val_dataset_size: 512
+  trajectory_cache_mode: true
+  num_cached_trajectories: 256
+  time_grid_size: 129
+  teacher_integration_steps: 12
+  pair_short_max: 4
+  pair_mid_max: 16
+  pair_long_max: 64
+  pair_short_weight: 0.4
+  pair_mid_weight: 0.4
+  pair_long_weight: 0.2
+  pair_endpoint_weight: 0.5
+  high_noise_t_weight: 0.9
+  high_noise_t_fraction: 0.35
+  triplet_local_gap1: 2
+  triplet_local_gap2: 4
+
+runtime:
+  amp: true
+  gradient_accumulation: 1
+
+model:
+  hidden_channels: 96
+  boundary_hidden_channels: 48
+  cond_dim: 192
+  time_embed_dim: 96
+  student_num_blocks: 5
+  timewarp_num_bins: 128
+
+loss:
+  match_weight: 0.0
+  defect_weight: 0.0
+  warp_weight: 0.0
+  boundary_weight: 1.0
+  semigroup_short_weight: 0.3
+  semigroup_mid_weight: 0.5
+  semigroup_long_weight: 0.2
+
+schedule:
+  num_bins: 128
+  eta: 2.0
+
+boundary:
+  enable_until_step: 500000
+
+train:
+  epochs: 20
+  learning_rate: 4.0e-4
+  weight_decay: 1.0e-4
+  log_every: 50
+  warp_update_every: 1
+  ema_decay: 0.9995
+

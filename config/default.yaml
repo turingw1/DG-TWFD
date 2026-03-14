@@ -62,6 +62,7 @@ model:
   predict_residual: true
 
 loss:
+  match_weight: 1.0
   match_loss_type: l2
   huber_delta: 0.1
   defect_weight: 0.5
