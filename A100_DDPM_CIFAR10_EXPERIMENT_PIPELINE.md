@@ -305,7 +305,7 @@ DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode train_a100 \
 
 ```bash
 export EXP_NAME_ALT=${EXP_NAME}_alt_endpoint70
-export SHARD_ROOT_ALT=/cache/Zhengwei/dg_twfd_shards/$EXP_NAME_ALT
+export SHARD_ROOT_ALT=$SHARD_ROOT
 export RUN_ROOT_ALT=/cache/Zhengwei/dg_twfd_runs/$EXP_NAME_ALT
 export CKPT_DIR_ALT=$RUN_ROOT_ALT/checkpoints
 export ARTIFACT_ROOT_ALT=$RUN_ROOT_ALT/samples
