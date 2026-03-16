@@ -7,6 +7,10 @@
 #   source scripts/experiments/activate_ddpm_cifar10.sh
 #   source scripts/experiments/activate_ddpm_cifar10.sh stable v3
 #   source scripts/experiments/activate_ddpm_cifar10.sh ablate_match exp01
+#
+# Optional environment controls:
+#   export DG_TWFD_SHARD_ROOT=/cache/Zhengwei/dg_twfd_shards/some_data_version
+#   export DG_TWFD_DATA_TAG=ddpm_cifar10_teacher128_grid129
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   echo "This script must be sourced, not executed." >&2
@@ -62,7 +66,7 @@ export TRAIN_MODE="${train_mode}"
 
 if [[ "${variant}" == ablate_* ]]; then
   export EXP_NAME_ABL="${exp_name}"
-  export EXP_NAME="${EXP_NAME:-${exp_name}}"
+  export EXP_NAME="${exp_name}"
   export RUN_ROOT_ABL="/cache/Zhengwei/dg_twfd_runs/${EXP_NAME_ABL}"
   export CKPT_DIR_ABL="${RUN_ROOT_ABL}/checkpoints"
   export ARTIFACT_ROOT_ABL="${RUN_ROOT_ABL}/samples"
@@ -71,11 +75,18 @@ else
   export EXP_NAME="${exp_name}"
 fi
 
-export SHARD_ROOT="${SHARD_ROOT:-/cache/Zhengwei/dg_twfd_shards/${EXP_NAME}}"
-export RUN_ROOT="${RUN_ROOT:-/cache/Zhengwei/dg_twfd_runs/${EXP_NAME}}"
-export CKPT_DIR="${CKPT_DIR:-${RUN_ROOT}/checkpoints}"
-export ARTIFACT_ROOT="${ARTIFACT_ROOT:-${RUN_ROOT}/samples}"
-export TRAIN_LOG="${TRAIN_LOG:-${RUN_ROOT}/train.log}"
+if [[ -n "${DG_TWFD_SHARD_ROOT:-}" ]]; then
+  export SHARD_ROOT="${DG_TWFD_SHARD_ROOT}"
+elif [[ -n "${DG_TWFD_DATA_TAG:-}" ]]; then
+  export SHARD_ROOT="/cache/Zhengwei/dg_twfd_shards/${DG_TWFD_DATA_TAG}"
+else
+  export SHARD_ROOT="/cache/Zhengwei/dg_twfd_shards/${EXP_NAME}"
+fi
+
+export RUN_ROOT="/cache/Zhengwei/dg_twfd_runs/${EXP_NAME}"
+export CKPT_DIR="${RUN_ROOT}/checkpoints"
+export ARTIFACT_ROOT="${RUN_ROOT}/samples"
+export TRAIN_LOG="${RUN_ROOT}/train.log"
 
 mkdir -p "${CKPT_DIR}" "${ARTIFACT_ROOT}" 2>/dev/null || true
 if [[ "${variant}" == ablate_* ]]; then

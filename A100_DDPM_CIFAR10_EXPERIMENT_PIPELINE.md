@@ -20,6 +20,25 @@ source scripts/experiments/activate_ddpm_cifar10.sh stable
 source scripts/experiments/activate_ddpm_cifar10.sh stable v3
 ```
 
+默认行为：
+
+- `RUN_ROOT` 会随 `variant + tag` 变化
+- `SHARD_ROOT` 也会默认跟随当前实验名变化
+
+若你只是改训练策略、想复用已有 teacher shards，请显式指定数据版本：
+
+```bash
+export DG_TWFD_DATA_TAG=ddpm_cifar10_a100_v2
+source scripts/experiments/activate_ddpm_cifar10.sh stable v3
+```
+
+或者直接指定完整 shard 路径：
+
+```bash
+export DG_TWFD_SHARD_ROOT=/cache/Zhengwei/dg_twfd_shards/ddpm_cifar10_a100_v2
+source scripts/experiments/activate_ddpm_cifar10.sh stable v3
+```
+
 ablation 版本：
 
 ```bash
