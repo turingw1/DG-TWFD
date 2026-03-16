@@ -89,6 +89,7 @@ class LossConfig:
     match_loss_type: str
     huber_delta: float
     composition_weight: float
+    composition_batch_size: int
     defect_weight: float
     warp_weight: float
     boundary_weight: float
@@ -126,6 +127,7 @@ class TrainConfig:
     warp_update_every: int
     max_train_steps: Optional[int]
     ema_decay: Optional[float]
+    composition_update_every: int
 
 
 @dataclass(slots=True)

@@ -66,6 +66,7 @@ loss:
   match_loss_type: l2
   huber_delta: 0.1
   composition_weight: 0.0
+  composition_batch_size: 16
   defect_weight: 0.5
   warp_weight: 0.25
   boundary_weight: 0.1
@@ -97,6 +98,7 @@ train:
   warp_update_every: 2
   max_train_steps: null
   ema_decay: 0.999
+  composition_update_every: 1
 
 logging:
   level: INFO

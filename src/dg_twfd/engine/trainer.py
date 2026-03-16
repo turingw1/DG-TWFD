@@ -151,6 +151,13 @@ class Trainer:
         self.writer, self.writer_backend = build_writer(cfg, ckpt_dir / "logs")
         self.logger.info("Logging backend: %s", self.writer_backend)
         self.logger.info("Training on device=%s with AMP=%s", device, cfg.runtime.amp)
+        if cfg.loss.composition_weight > 0.0:
+            self.logger.info(
+                "Teacher composition enabled: weight=%.4f sub_batch=%d update_every=%d",
+                cfg.loss.composition_weight,
+                cfg.loss.composition_batch_size,
+                cfg.train.composition_update_every,
+            )
 
     def _move_batch(self, batch: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         moved: dict[str, torch.Tensor] = {}
@@ -189,6 +196,7 @@ class Trainer:
         batch: dict[str, torch.Tensor],
         dataset: Any,
         update_scheduler: bool,
+        compute_composition: bool,
     ) -> tuple[dict[str, torch.Tensor], dict[str, float]]:
         student = self.models["student"]
         timewarp = self.models["timewarp"]
@@ -213,13 +221,26 @@ class Trainer:
             if update_scheduler:
                 self.scheduler.update(t.detach(), defect_per_sample.detach())
 
-            composition_loss, _, composition_per_sample = self.losses["composition"](
-                student=student,
-                teacher=self.teacher,
-                x_t=x_t,
-                t=t,
-                s=s,
-            )
+            if compute_composition and self.cfg.loss.composition_weight > 0.0:
+                comp_batch = min(self.cfg.loss.composition_batch_size, x_t.shape[0])
+                if comp_batch < x_t.shape[0]:
+                    indices = torch.randperm(x_t.shape[0], device=x_t.device)[:comp_batch]
+                    x_t_comp = x_t.index_select(0, indices)
+                    t_comp = t.index_select(0, indices)
+                    s_comp = s.index_select(0, indices)
+                else:
+                    x_t_comp = x_t
+                    t_comp = t
+                    s_comp = s
+                composition_loss, _, _ = self.losses["composition"](
+                    student=student,
+                    teacher=self.teacher,
+                    x_t=x_t_comp,
+                    t=t_comp,
+                    s=s_comp,
+                )
+            else:
+                composition_loss = torch.zeros((), device=self.device, dtype=match_loss.dtype)
 
             triplet = self.losses["warp"].sample_triplet_batch(
                 dataset=dataset,
@@ -303,6 +324,7 @@ class Trainer:
                 batch=batch,
                 dataset=train_dataset,
                 update_scheduler=True,
+                compute_composition=self.state.global_step % self.cfg.train.composition_update_every == 0,
             )
             student_loss = self._student_total(loss_dict) / self.grad_accum
             warp_should_step = self.state.global_step % self.cfg.train.warp_update_every == 0
@@ -409,6 +431,7 @@ class Trainer:
                 batch=batch,
                 dataset=val_dataset,
                 update_scheduler=False,
+                compute_composition=False,
             )
             total_loss = self._student_total(loss_dict) + self.cfg.loss.warp_weight * loss_dict["warp"]
             total += float(total_loss.detach().item())

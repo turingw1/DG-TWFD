@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 import sys
 import time
@@ -59,7 +60,34 @@ def ensure_a100_cache_checkpoint_dir(cfg, mode: str) -> None:
     stage_log(f"auto checkpoint_dir -> {cfg.train.checkpoint_dir}")
 
 
+def configure_tensorflow_logging() -> None:
+    # TensorBoard can import TensorFlow even when we do not use it directly.
+    os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+
+
+def maybe_prewarm_teacher(cfg, teacher, device: torch.device) -> None:
+    needs_teacher_runtime = cfg.loss.composition_weight > 0.0 or cfg.boundary.enable_until_step > 0
+    if not needs_teacher_runtime:
+        return
+    if not hasattr(teacher, "forward_map"):
+        return
+    stage_log("prewarming teacher runtime")
+    x = torch.randn(
+        1,
+        cfg.data.channels,
+        cfg.data.image_size,
+        cfg.data.image_size,
+        device=device,
+    )
+    t = torch.ones(1, device=device)
+    s = torch.full((1,), 0.95, device=device)
+    with torch.no_grad():
+        teacher.forward_map(x, t, s)
+    stage_log("teacher runtime ready")
+
+
 def main() -> None:
+    configure_tensorflow_logging()
     args = parse_args()
     overrides = list(args.override)
     if args.epochs is not None:
@@ -86,6 +114,7 @@ def main() -> None:
 
     stage_log("building teacher")
     teacher = build_teacher(cfg)
+    maybe_prewarm_teacher(cfg, teacher, device)
     stage_log("building dataloaders (train/val)")
     dataloaders = {
         "train": build_dataloader(cfg, teacher, split="train"),

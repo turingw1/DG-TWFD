@@ -36,7 +36,8 @@ model:
   timewarp_num_bins: 128
 
 loss:
-  composition_weight: 0.5
+  composition_weight: 0.25
+  composition_batch_size: 8
   defect_weight: 0.5
   warp_weight: 0.25
   boundary_weight: 0.1
@@ -58,3 +59,4 @@ train:
   log_every: 50
   warp_update_every: 1
   ema_decay: 0.9995
+  composition_update_every: 16
