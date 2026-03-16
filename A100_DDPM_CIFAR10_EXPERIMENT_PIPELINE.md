@@ -7,22 +7,23 @@
 
 ---
 
-## 0. 固定路径与实验变量
+## 0. 激活实验（不再手动 export）
 
 ```bash
-export PROJ=~/workspace/Zhengwei/DG-TWFD
-export ENV_NAME=consistency
-export EXP_NAME=ddpm_cifar10_a100_v2
-export TRAIN_MODE=train_a100_stable
+cd ~/workspace/Zhengwei/DG-TWFD
+source scripts/experiments/activate_ddpm_cifar10.sh stable
+```
 
-# 大文件统一放 /cache/Zhengwei，按 dg_twfd_* 规范分目录
-export SHARD_ROOT=/cache/Zhengwei/dg_twfd_shards/$EXP_NAME
-export RUN_ROOT=/cache/Zhengwei/dg_twfd_runs/$EXP_NAME
+若需要给当前实验追加标签：
 
-export TEACHER_ID=google/ddpm-cifar10-32
-export CKPT_DIR=$RUN_ROOT/checkpoints
-export ARTIFACT_ROOT=$RUN_ROOT/samples
-export TRAIN_LOG=$RUN_ROOT/train.log
+```bash
+source scripts/experiments/activate_ddpm_cifar10.sh stable v3
+```
+
+ablation 版本：
+
+```bash
+source scripts/experiments/activate_ddpm_cifar10.sh ablate_match
 ```
 
 ### 0.1 正式实验版本入口
@@ -41,6 +42,7 @@ export TRAIN_LOG=$RUN_ROOT/train.log
 - 正式实验优先切换 `TRAIN_MODE`
 - 文档命令只调用 profile，不在命令行重复拼业务参数
 - 命令行 `--override` 只保留给临时人工试验
+- 运行前统一 `source scripts/experiments/activate_ddpm_cifar10.sh <variant> [tag]`
 
 ---
 
@@ -323,13 +325,7 @@ loss:
 然后只需：
 
 ```bash
-export TRAIN_MODE=train_a100_stable_v2
-export EXP_NAME=ddpm_cifar10_a100_v2_stable_v2
-export SHARD_ROOT=/cache/Zhengwei/dg_twfd_shards/$EXP_NAME
-export RUN_ROOT=/cache/Zhengwei/dg_twfd_runs/$EXP_NAME
-export CKPT_DIR=$RUN_ROOT/checkpoints
-export ARTIFACT_ROOT=$RUN_ROOT/samples
-export TRAIN_LOG=$RUN_ROOT/train.log
+source scripts/experiments/activate_ddpm_cifar10.sh stable v2
 ```
 
 若新版本复用现有 teacher shards，只保留原 `SHARD_ROOT` 不变即可。
@@ -406,13 +402,7 @@ python scripts/preview_samples.py \
 
 ```bash
 export ABLATION_NAME=ablate_match
-export ABLATION_PROFILE=train_a100_ablate_match
-export EXP_ABL=ddpm_cifar10_${ABLATION_NAME}
-export RUN_ROOT_ABL=/cache/Zhengwei/dg_twfd_runs/$EXP_ABL
-export CKPT_DIR_ABL=$RUN_ROOT_ABL/checkpoints
-export ARTIFACT_ROOT_ABL=$RUN_ROOT_ABL/samples
-export TRAIN_LOG_ABL=$RUN_ROOT_ABL/train.log
-mkdir -p $CKPT_DIR_ABL $ARTIFACT_ROOT_ABL
+source scripts/experiments/activate_ddpm_cifar10.sh ablate_match
 ```
 
 ### 12.3 训练（单损失）
@@ -420,7 +410,7 @@ mkdir -p $CKPT_DIR_ABL $ARTIFACT_ROOT_ABL
 ```bash
 cd $PROJ
 conda activate $ENV_NAME
-DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode $ABLATION_PROFILE --epochs 20 \
+DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode "$TRAIN_MODE" --epochs 20 \
   2>&1 | tee "$TRAIN_LOG_ABL"
 ```
 
@@ -430,7 +420,7 @@ DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode $ABLATION_PROFIL
 cd $PROJ
 conda activate $ENV_NAME
 CUDA_VISIBLE_DEVICES=1 python sample.py \
-  --mode $ABLATION_PROFILE \
+  --mode "$TRAIN_MODE" \
   --checkpoint "$CKPT_DIR_ABL/best.pt" \
   --output-dir "$ARTIFACT_ROOT_ABL" \
   --steps 16 \
@@ -442,7 +432,7 @@ CUDA_VISIBLE_DEVICES=1 python sample.py \
 cd $PROJ
 conda activate $ENV_NAME
 CUDA_VISIBLE_DEVICES=1 python scripts/profile_infer.py \
-  --mode $ABLATION_PROFILE \
+  --mode "$TRAIN_MODE" \
   --checkpoint "$CKPT_DIR_ABL/best.pt" \
   --disable-boundary
 ```
@@ -471,31 +461,23 @@ grep "match=" "$TRAIN_LOG_ABL" | tail -n 30
 ### 12.6 四个实验顺序执行示例
 
 ```bash
-for pair in \
-  "ablate_match train_a100_ablate_match" \
-  "ablate_defect train_a100_ablate_defect" \
-  "ablate_warp train_a100_ablate_warp" \
-  "ablate_boundary train_a100_ablate_boundary"
+for variant in \
+  ablate_match \
+  ablate_defect \
+  ablate_warp \
+  ablate_boundary
 do
-  set -- $pair
-  export ABLATION_NAME=$1
-  export ABLATION_PROFILE=$2
-  export EXP_ABL=ddpm_cifar10_${ABLATION_NAME}
-  export RUN_ROOT_ABL=/cache/Zhengwei/dg_twfd_runs/$EXP_ABL
-  export CKPT_DIR_ABL=$RUN_ROOT_ABL/checkpoints
-  export ARTIFACT_ROOT_ABL=$RUN_ROOT_ABL/samples
-  export TRAIN_LOG_ABL=$RUN_ROOT_ABL/train.log
-  mkdir -p "$CKPT_DIR_ABL" "$ARTIFACT_ROOT_ABL"
+  source scripts/experiments/activate_ddpm_cifar10.sh "$variant"
 
-  DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode $ABLATION_PROFILE --epochs 20 \
+  DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode "$TRAIN_MODE" --epochs 20 \
     2>&1 | tee "$TRAIN_LOG_ABL"
 
-  CUDA_VISIBLE_DEVICES=1 python sample.py --mode $ABLATION_PROFILE \
+  CUDA_VISIBLE_DEVICES=1 python sample.py --mode "$TRAIN_MODE" \
     --checkpoint "$CKPT_DIR_ABL/best.pt" \
     --output-dir "$ARTIFACT_ROOT_ABL" \
     --steps 16 --batch-size 64 --disable-boundary
 
-  CUDA_VISIBLE_DEVICES=1 python scripts/profile_infer.py --mode $ABLATION_PROFILE \
+  CUDA_VISIBLE_DEVICES=1 python scripts/profile_infer.py --mode "$TRAIN_MODE" \
     --checkpoint "$CKPT_DIR_ABL/best.pt" --disable-boundary
 
   python scripts/preview_samples.py \
