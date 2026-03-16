@@ -181,6 +181,7 @@ DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode train_a100 --epo
   --override train.checkpoint_dir="$CKPT_DIR" \
   --override train.log_every=20 \
   --override train.warp_update_every=1 \
+  --override loss.composition_weight=0.5 \
   --override loss.defect_weight=0.5 \
   --override loss.warp_weight=0.25 \
   --override loss.boundary_weight=0.1 \
@@ -346,6 +347,23 @@ CUDA_VISIBLE_DEVICES=1 python sample.py \
 ```
 
 说明：`sample.py` 与 `profile_infer.py` 默认优先加载 checkpoint 里的 EMA student；如需对照可加 `--no-ema`。
+同时 `sample.py` 会输出每一步的 `mean/std/min/max`，并把中间态序列保存在 `sample_diag_steps*.pt` 的 `diagnostics.x_steps` 中。
+
+查看第 0 步或最后一步预览：
+
+```bash
+python scripts/preview_samples.py \
+  --samples "$ARTIFACT_ROOT/sample_diag_steps16.pt" \
+  --step-index 0 \
+  --output "$ARTIFACT_ROOT/step0_preview.png"
+```
+
+```bash
+python scripts/preview_samples.py \
+  --samples "$ARTIFACT_ROOT/sample_diag_steps16.pt" \
+  --step-index 16 \
+  --output "$ARTIFACT_ROOT/step16_preview.png"
+```
 
 ---
 

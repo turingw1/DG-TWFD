@@ -65,6 +65,7 @@ loss:
   match_weight: 1.0
   match_loss_type: l2
   huber_delta: 0.1
+  composition_weight: 0.0
   defect_weight: 0.5
   warp_weight: 0.25
   boundary_weight: 0.1

@@ -213,6 +213,14 @@ class Trainer:
             if update_scheduler:
                 self.scheduler.update(t.detach(), defect_per_sample.detach())
 
+            composition_loss, _, composition_per_sample = self.losses["composition"](
+                student=student,
+                teacher=self.teacher,
+                x_t=x_t,
+                t=t,
+                s=s,
+            )
+
             triplet = self.losses["warp"].sample_triplet_batch(
                 dataset=dataset,
                 batch_size=x_t.shape[0],
@@ -238,6 +246,7 @@ class Trainer:
         scalars = {
             "match": float(match_loss.detach().item()),
             "defect": float(defect_loss.detach().item()),
+            "composition": float(composition_loss.detach().item()),
             "warp": float(warp_loss.detach().item()),
             "boundary": float(boundary_loss.detach().item()),
             "warp_balance": float(warp_stats["balance"].item()),
@@ -245,6 +254,7 @@ class Trainer:
         tensors = {
             "match": match_loss,
             "defect": defect_loss,
+            "composition": composition_loss,
             "warp": warp_loss,
             "boundary": boundary_loss,
         }
@@ -253,6 +263,7 @@ class Trainer:
     def _student_total(self, loss_dict: dict[str, torch.Tensor]) -> torch.Tensor:
         return (
             self.cfg.loss.match_weight * loss_dict["match"]
+            + self.cfg.loss.composition_weight * loss_dict["composition"]
             + self.cfg.loss.defect_weight * loss_dict["defect"]
             + self.cfg.loss.boundary_weight * loss_dict["boundary"]
         )
@@ -323,6 +334,7 @@ class Trainer:
             metrics = {
                 "train/l_match": scalar_dict["match"],
                 "train/l_def": scalar_dict["defect"],
+                "train/l_comp": scalar_dict["composition"],
                 "train/l_warp": scalar_dict["warp"],
                 "train/l_boundary": scalar_dict["boundary"],
                 "train/warp_balance": scalar_dict["warp_balance"],
@@ -343,12 +355,13 @@ class Trainer:
                     else 0.0
                 )
                 self.logger.info(
-                    "epoch=%d step=%d total=%.6f match=%.6f defect=%.6f warp=%.6f boundary=%.6f "
+                    "epoch=%d step=%d total=%.6f match=%.6f comp=%.6f defect=%.6f warp=%.6f boundary=%.6f "
                     "t_mean=%.4f s_mean=%.4f delta=%.4f sps=%.2f peak_mem=%.2fMiB",
                     self.state.epoch,
                     self.state.global_step,
                     metrics["train/total_loss"],
                     metrics["train/l_match"],
+                    metrics["train/l_comp"],
                     metrics["train/l_def"],
                     metrics["train/l_warp"],
                     metrics["train/l_boundary"],

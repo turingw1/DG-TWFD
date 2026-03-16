@@ -49,9 +49,29 @@ def sample_dg_twfd(
     t_schedule = build_t_schedule_from_u(timewarp, u_schedule)
 
     x = noise
+    x_steps = [x.detach().cpu()]
+    step_stats: list[dict[str, float]] = [
+        {
+            "step": 0.0,
+            "t": float(t_schedule[0].item()),
+            "mean": float(x.mean().item()),
+            "std": float(x.std().item()),
+            "min": float(x.min().item()),
+            "max": float(x.max().item()),
+        }
+    ]
     with autocast_context(device.type, amp):
         if enable_boundary:
             x = boundary(x, enabled=True, gate_weight=gate_weight)
+            x_steps[0] = x.detach().cpu()
+            step_stats[0] = {
+                "step": 0.0,
+                "t": float(t_schedule[0].item()),
+                "mean": float(x.mean().item()),
+                "std": float(x.std().item()),
+                "min": float(x.min().item()),
+                "max": float(x.max().item()),
+            }
         for idx in range(len(t_schedule) - 1):
             t_current = torch.full((x.shape[0],), float(t_schedule[idx].item()), device=device, dtype=noise.dtype)
             t_next = torch.full(
@@ -61,10 +81,23 @@ def sample_dg_twfd(
                 dtype=noise.dtype,
             )
             x = student(x, t_current, t_next)
+            x_steps.append(x.detach().cpu())
+            step_stats.append(
+                {
+                    "step": float(idx + 1),
+                    "t": float(t_schedule[idx + 1].item()),
+                    "mean": float(x.mean().item()),
+                    "std": float(x.std().item()),
+                    "min": float(x.min().item()),
+                    "max": float(x.max().item()),
+                }
+            )
 
     diagnostics = {
         "u_schedule": u_schedule.detach().cpu(),
         "t_schedule": t_schedule.detach().cpu(),
+        "x_steps": torch.stack(x_steps, dim=0),
+        "step_stats": step_stats,
     }
     return x, diagnostics
 

@@ -12,13 +12,20 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Create a stitched image preview from sampled tensors")
     parser.add_argument("--samples", required=True, help="Path to samples .pt tensor ([B,C,H,W])")
     parser.add_argument("--output", default=None, help="Output PNG path")
+    parser.add_argument("--step-index", type=int, default=None, help="If tensor is [K,B,C,H,W], choose step index")
     parser.add_argument("--nrow", type=int, default=8, help="Number of images per row")
     parser.add_argument("--max-images", type=int, default=64, help="Maximum images used in preview")
     parser.add_argument("--padding", type=int, default=2, help="Padding (pixels) between images")
     return parser.parse_args()
 
 
-def to_image_tensor(samples: torch.Tensor) -> torch.Tensor:
+def to_image_tensor(samples: torch.Tensor, step_index: int | None = None) -> torch.Tensor:
+    if samples.ndim == 5:
+        if step_index is None:
+            raise ValueError("Tensor has shape [K,B,C,H,W]; provide --step-index")
+        if step_index < 0 or step_index >= samples.shape[0]:
+            raise ValueError(f"step_index out of range: {step_index}")
+        samples = samples[step_index]
     if samples.ndim == 3:
         samples = samples.unsqueeze(0)
     if samples.ndim != 4:
@@ -65,9 +72,14 @@ def main() -> None:
     args = parse_args()
     samples_path = Path(args.samples)
     payload = torch.load(samples_path, map_location="cpu", weights_only=False)
+    if isinstance(payload, dict):
+        if "diagnostics" in payload and isinstance(payload["diagnostics"], dict) and "x_steps" in payload["diagnostics"]:
+            payload = payload["diagnostics"]["x_steps"]
+        elif "x_steps" in payload:
+            payload = payload["x_steps"]
     if not torch.is_tensor(payload):
         raise TypeError(f"Expected tensor in {samples_path}, got type={type(payload)}")
-    x = to_image_tensor(payload)
+    x = to_image_tensor(payload, step_index=args.step_index)
     x = x[: max(1, min(args.max_images, x.shape[0]))]
     grid = make_grid(x, nrow=args.nrow, padding=max(0, args.padding))
     grid_u8 = (grid.permute(1, 2, 0).numpy() * 255.0).round().clip(0, 255).astype("uint8")
@@ -82,4 +94,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

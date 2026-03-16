@@ -88,6 +88,7 @@ class LossConfig:
     match_weight: float
     match_loss_type: str
     huber_delta: float
+    composition_weight: float
     defect_weight: float
     warp_weight: float
     boundary_weight: float

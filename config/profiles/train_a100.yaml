@@ -36,6 +36,7 @@ model:
   timewarp_num_bins: 128
 
 loss:
+  composition_weight: 0.5
   defect_weight: 0.5
   warp_weight: 0.25
   boundary_weight: 0.1

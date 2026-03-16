@@ -159,6 +159,19 @@ def main() -> None:
             f"steps={int(row['steps'])} nfe={int(row['nfe'])} "
             f"latency_ms={row['latency_ms']:.3f} peak_mem_mib={row['peak_mem_mib']:.2f}"
         )
+    print("step_stats:")
+    for row in diagnostics["step_stats"]:
+        print(
+            "step=%d t=%.4f mean=%.6f std=%.6f min=%.6f max=%.6f"
+            % (
+                int(row["step"]),
+                row["t"],
+                row["mean"],
+                row["std"],
+                row["min"],
+                row["max"],
+            )
+        )
     print(f"sample_shape: {tuple(samples.shape)}")
     print(f"t_schedule: {diagnostics['t_schedule'].tolist()}")
 

@@ -15,7 +15,7 @@ if str(SRC) not in sys.path:
 from dg_twfd.config import load_config
 from dg_twfd.data import build_dataloader, build_teacher
 from dg_twfd.engine.trainer import Trainer
-from dg_twfd.losses import BoundaryLoss, MatchLoss, SemigroupDefectLoss, WarpLoss
+from dg_twfd.losses import BoundaryLoss, MatchLoss, SemigroupDefectLoss, TeacherCompositionLoss, WarpLoss
 from dg_twfd.models import BoundaryCorrector, FlowStudent, TimeWarpMonotone
 from dg_twfd.schedule import DefectAdaptiveScheduler
 from dg_twfd.utils.seed import seed_everything
@@ -123,6 +123,12 @@ def main() -> None:
     losses = {
         "match": MatchLoss(cfg.loss.match_loss_type, cfg.loss.huber_delta),
         "defect": SemigroupDefectLoss(
+            per_pixel_mean=cfg.loss.per_pixel_mean,
+            short_weight=cfg.loss.semigroup_short_weight,
+            mid_weight=cfg.loss.semigroup_mid_weight,
+            long_weight=cfg.loss.semigroup_long_weight,
+        ),
+        "composition": TeacherCompositionLoss(
             per_pixel_mean=cfg.loss.per_pixel_mean,
             short_weight=cfg.loss.semigroup_short_weight,
             mid_weight=cfg.loss.semigroup_mid_weight,

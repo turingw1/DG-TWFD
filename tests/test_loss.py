@@ -8,7 +8,7 @@ from dg_twfd.config import load_config
 from dg_twfd.data.dataloader import build_dataloader
 from dg_twfd.data.dataset import TrajectoryPairDataset
 from dg_twfd.data.teacher import DummyTeacherTrajectory
-from dg_twfd.losses import BoundaryLoss, MatchLoss, SemigroupDefectLoss, WarpLoss
+from dg_twfd.losses import BoundaryLoss, MatchLoss, SemigroupDefectLoss, TeacherCompositionLoss, WarpLoss
 from dg_twfd.models import BoundaryCorrector, FlowStudent, TimeWarpMonotone
 from dg_twfd.schedule import DefectAdaptiveScheduler
 from dg_twfd.utils.seed import seed_everything
@@ -63,6 +63,12 @@ def test_phase3_losses_backward() -> None:
         mid_weight=cfg.loss.semigroup_mid_weight,
         long_weight=cfg.loss.semigroup_long_weight,
     )
+    composition_loss_fn = TeacherCompositionLoss(
+        per_pixel_mean=cfg.loss.per_pixel_mean,
+        short_weight=cfg.loss.semigroup_short_weight,
+        mid_weight=cfg.loss.semigroup_mid_weight,
+        long_weight=cfg.loss.semigroup_long_weight,
+    )
     warp_loss_fn = WarpLoss(cfg.loss.per_pixel_mean)
     boundary_loss_fn = BoundaryLoss(cfg.loss.match_loss_type, cfg.loss.huber_delta)
     defect_scheduler = DefectAdaptiveScheduler(
@@ -94,6 +100,14 @@ def test_phase3_losses_backward() -> None:
         )
         defect_scheduler.update(t, defect_per_sample.detach())
 
+        composition_loss, u_comp, composition_per_sample = composition_loss_fn(
+            student=student,
+            teacher=teacher,
+            x_t=x_t,
+            t=t,
+            s=s,
+        )
+
         triplet_batch = warp_loss_fn.sample_triplet_batch(
             dataset=dataset,
             batch_size=cfg.data.batch_size,
@@ -115,6 +129,7 @@ def test_phase3_losses_backward() -> None:
 
         total_loss = (
             match_loss
+            + cfg.loss.composition_weight * composition_loss
             + cfg.loss.defect_weight * defect_loss
             + cfg.loss.warp_weight * warp_loss
             + cfg.loss.boundary_weight * boundary_loss
@@ -129,7 +144,10 @@ def test_phase3_losses_backward() -> None:
     assert torch.isfinite(total_loss.detach())
     assert torch.isfinite(warp_stats["base_loss"])
     assert torch.isfinite(defect_loss.detach())
+    assert torch.isfinite(composition_loss.detach())
     assert torch.all(u <= s)
+    assert torch.all(u_comp <= s)
+    assert composition_per_sample.shape[0] == cfg.data.batch_size
 
     for module in (student, timewarp, boundary):
         for param in module.parameters():

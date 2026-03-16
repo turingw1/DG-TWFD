@@ -96,3 +96,59 @@ class SemigroupDefectLoss(nn.Module):
         defect_value = _reduce_loss(per_element, per_pixel_mean=self.per_pixel_mean)
         per_sample = per_element.flatten(1).mean(dim=1)
         return defect_value, u, per_sample
+
+
+class TeacherCompositionLoss(nn.Module):
+    """Teacher-supervised composition loss.
+
+    For `t > s > u`, compose the student twice:
+    `x_u_comp = M_theta(s, u, M_theta(t, s, x_t))`
+    and align it to the teacher target `x_u^T = Phi_T(t->u, x_t)`.
+    """
+
+    def __init__(
+        self,
+        per_pixel_mean: bool = True,
+        eps: float = 1e-4,
+        short_weight: float = 0.3,
+        mid_weight: float = 0.5,
+        long_weight: float = 0.2,
+    ) -> None:
+        super().__init__()
+        self.per_pixel_mean = per_pixel_mean
+        self.eps = eps
+        self.chain_weights = torch.tensor([short_weight, mid_weight, long_weight], dtype=torch.float32)
+
+    def _sample_u(self, s: Tensor) -> Tensor:
+        weights = (self.chain_weights / self.chain_weights.sum()).to(device=s.device)
+        bucket = torch.multinomial(weights, num_samples=s.shape[0], replacement=True)
+        ratio = torch.zeros_like(s)
+        short_mask = bucket == 0
+        mid_mask = bucket == 1
+        long_mask = bucket == 2
+        if short_mask.any():
+            ratio[short_mask] = torch.empty(short_mask.sum(), device=s.device).uniform_(0.75, 0.95)
+        if mid_mask.any():
+            ratio[mid_mask] = torch.empty(mid_mask.sum(), device=s.device).uniform_(0.35, 0.75)
+        if long_mask.any():
+            ratio[long_mask] = torch.empty(long_mask.sum(), device=s.device).uniform_(0.05, 0.35)
+        u = ratio * s
+        return torch.clamp(u, min=0.0, max=1.0 - self.eps)
+
+    def forward(
+        self,
+        student: nn.Module,
+        teacher: object,
+        x_t: Tensor,
+        t: Tensor,
+        s: Tensor,
+    ) -> tuple[Tensor, Tensor, Tensor]:
+        u = self._sample_u(s)
+        x_s_mid = student(x_t, t, s)
+        x_u_comp = student(x_s_mid, s, u)
+        with torch.no_grad():
+            x_u_teacher = teacher.forward_map(x_t, t, u)
+        per_element = (x_u_comp - x_u_teacher) ** 2
+        value = _reduce_loss(per_element, per_pixel_mean=self.per_pixel_mean)
+        per_sample = per_element.flatten(1).mean(dim=1)
+        return value, u, per_sample
