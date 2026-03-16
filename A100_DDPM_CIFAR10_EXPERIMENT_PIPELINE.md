@@ -13,6 +13,7 @@
 export PROJ=~/workspace/Zhengwei/DG-TWFD
 export ENV_NAME=consistency
 export EXP_NAME=ddpm_cifar10_a100_v2
+export TRAIN_MODE=train_a100_stable
 
 # 大文件统一放 /cache/Zhengwei，按 dg_twfd_* 规范分目录
 export SHARD_ROOT=/cache/Zhengwei/dg_twfd_shards/$EXP_NAME
@@ -23,6 +24,23 @@ export CKPT_DIR=$RUN_ROOT/checkpoints
 export ARTIFACT_ROOT=$RUN_ROOT/samples
 export TRAIN_LOG=$RUN_ROOT/train.log
 ```
+
+### 0.1 正式实验版本入口
+
+- `train_a100_base`
+  - A100 DDPM-CIFAR10 的公共基础配置，负责 teacher、数据、路径、A100 训练骨架
+- `train_a100_stable`
+  - 当前推荐正式版本；在 `base` 基础上固定多步稳定性相关设置
+- `train_a100`
+  - 向后兼容入口，等价于 `train_a100_stable`
+- `train_a100_ablate_*`
+  - 单损失 ablation 入口，全部继承自 `train_a100_base`
+
+原则：
+
+- 正式实验优先切换 `TRAIN_MODE`
+- 文档命令只调用 profile，不在命令行重复拼业务参数
+- 命令行 `--override` 只保留给临时人工试验
 
 ---
 
@@ -39,12 +57,14 @@ python -m pip install -e '.[dev,teacher]'
 
 ## 2. 采样逻辑对应（当前实现）
 
-当前代码已切到以下策略：
+当前 profile 已固定以下策略：
 
 - teacher sampler 可配 `ddim/ddpm`，推荐 `ddim`（deterministic）
 - trajectory 缓存推荐 `num_inference_steps=128` + `time_grid_size=129`
 - train/val split 使用不同 seed 偏移，避免重合
 - Diffusers teacher 在 CUDA 上默认 FP16 推理，并减少逐步 CPU 拷贝瓶颈
+- `teacher.pretrained_model_name_or_path` 直接从 `$TEACHER_ID` 注入
+- `trajectory_shard_dir` 与 `checkpoint_dir` 直接从 `$SHARD_ROOT/$CKPT_DIR` 注入
 
 ---
 
@@ -56,18 +76,13 @@ python -m pip install -e '.[dev,teacher]'
 cd $PROJ
 conda activate $ENV_NAME
 CUDA_VISIBLE_DEVICES=1 python scripts/collect_teacher.py \
-  --mode train_a100 \
+  --mode "$TRAIN_MODE" \
   --split train \
   --num-samples 2048 \
   --shard-size 512 \
   --output-dir $SHARD_ROOT \
   --emit-supervision-overrides \
-  --target-mem-util 0.70 \
-  --override teacher.teacher_type='diffusers_ddpm' \
-  --override teacher.pretrained_model_name_or_path="$TEACHER_ID" \
-  --override teacher.solver='ddim' \
-  --override teacher.num_inference_steps=128 \
-  --override data.time_grid_size=129
+  --target-mem-util 0.70
 ```
 
 ### 3.2 Smoke：val split
@@ -76,18 +91,13 @@ CUDA_VISIBLE_DEVICES=1 python scripts/collect_teacher.py \
 cd $PROJ
 conda activate $ENV_NAME
 CUDA_VISIBLE_DEVICES=1 python scripts/collect_teacher.py \
-  --mode train_a100 \
+  --mode "$TRAIN_MODE" \
   --split val \
   --num-samples 512 \
   --shard-size 512 \
   --output-dir $SHARD_ROOT \
   --emit-supervision-overrides \
-  --target-mem-util 0.70 \
-  --override teacher.teacher_type='diffusers_ddpm' \
-  --override teacher.pretrained_model_name_or_path="$TEACHER_ID" \
-  --override teacher.solver='ddim' \
-  --override teacher.num_inference_steps=128 \
-  --override data.time_grid_size=129
+  --target-mem-util 0.70
 ```
 
 Smoke 完成后会自动生成：
@@ -105,32 +115,22 @@ Smoke 完成后会自动生成：
 cd $PROJ
 conda activate $ENV_NAME
 CUDA_VISIBLE_DEVICES=1 python scripts/collect_teacher.py \
-  --mode train_a100 \
+  --mode "$TRAIN_MODE" \
   --split train \
   --num-samples 200000 \
   --shard-size 1024 \
-  --output-dir $SHARD_ROOT \
-  --override teacher.teacher_type='diffusers_ddpm' \
-  --override teacher.pretrained_model_name_or_path="$TEACHER_ID" \
-  --override teacher.solver='ddim' \
-  --override teacher.num_inference_steps=128 \
-  --override data.time_grid_size=129
+  --output-dir $SHARD_ROOT
 ```
 
 ```bash
 cd $PROJ
 conda activate $ENV_NAME
 CUDA_VISIBLE_DEVICES=1 python scripts/collect_teacher.py \
-  --mode train_a100 \
+  --mode "$TRAIN_MODE" \
   --split val \
   --num-samples 10000 \
   --shard-size 1024 \
-  --output-dir $SHARD_ROOT \
-  --override teacher.teacher_type='diffusers_ddpm' \
-  --override teacher.pretrained_model_name_or_path="$TEACHER_ID" \
-  --override teacher.solver='ddim' \
-  --override teacher.num_inference_steps=128 \
-  --override data.time_grid_size=129
+  --output-dir $SHARD_ROOT
 ```
 
 检查 shard：
@@ -156,59 +156,28 @@ find $SHARD_ROOT -maxdepth 2 -type f | sort | tail -n 20
 
 ## 5. A100 训练（shard 监督）
 
-### 5.1 基线训练（推荐先关 boundary，加速稳定）
-
-先查看 smoke 自动给出的监督参数：
-
-```bash
-cat $SHARD_ROOT/supervision_overrides_train.txt
-```
+### 5.1 正式训练（默认使用稳定版 profile）
 
 ```bash
 cd $PROJ
 conda activate $ENV_NAME
 mkdir -p $CKPT_DIR $ARTIFACT_ROOT
-DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode train_a100 --epochs 20 \
-  --override experiment.name="$EXP_NAME" \
-  --override data.dataset_type='trajectory_shards' \
-  --override data.trajectory_shard_dir="$SHARD_ROOT" \
-  --override data.batch_size=1024 \
-  --override train.learning_rate=8e-4 \
-  --override teacher.teacher_type='diffusers_ddpm' \
-  --override teacher.pretrained_model_name_or_path="$TEACHER_ID" \
-  --override teacher.solver='ddim' \
-  --override teacher.num_inference_steps=128 \
-  --override data.time_grid_size=129 \
-  --override train.checkpoint_dir="$CKPT_DIR" \
-  --override train.log_every=20 \
-  --override train.warp_update_every=1 \
-  --override loss.composition_weight=0.25 \
-  --override loss.composition_batch_size=8 \
-  --override train.composition_update_every=16 \
-  --override loss.defect_weight=0.5 \
-  --override loss.warp_weight=0.25 \
-  --override loss.boundary_weight=0.1 \
-  --override model.residual_scale_by_delta=true \
-  --override model.residual_tanh_scale=0.75 \
-  --override data.pair_endpoint_weight=0.5 \
-  --override data.high_noise_t_weight=0.9 \
-  --override data.high_noise_t_fraction=0.35 \
-  --override boundary.enable_until_step=0 \
+DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode "$TRAIN_MODE" --epochs 20 \
   2>&1 | tee "$TRAIN_LOG"
 ```
 
 ### 5.2 若显存仍低（<60%），继续拉高 batch
 
 ```bash
-# 建议阶梯：512 -> 768 -> 1024
-# 学习率线性放大：lr = 2e-4 * (batch/256)
-# 例如：batch=768 对应 lr=6e-4；batch=1024 对应 lr=8e-4
---override data.batch_size=768 --override train.learning_rate=6e-4
+# 临时手动试验才使用 override，不改文档主流程
+DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode "$TRAIN_MODE" \
+  --override data.batch_size=768 \
+  --override train.learning_rate=6e-4
 ```
 
 ### 5.3 当前推荐的稳定性优先开关
 
-针对“1-step 还能看，但 8/16-step 逐步发散”的现象，优先保留以下设置：
+这些设置已固化在 `train_a100_stable` profile 中：
 
 - `model.residual_scale_by_delta=true`
 - `model.residual_tanh_scale=0.75`
@@ -260,14 +229,12 @@ grep "comp=" "$TRAIN_LOG" | tail -n 50
 cd $PROJ
 conda activate $ENV_NAME
 CUDA_VISIBLE_DEVICES=1 python sample.py \
-  --mode train_a100 \
+  --mode "$TRAIN_MODE" \
   --checkpoint "$CKPT_DIR/best.pt" \
   --output-dir "$ARTIFACT_ROOT" \
   --steps 16 \
   --batch-size 64 \
-  --disable-boundary \
-  --override data.image_size=32 \
-  --override data.channels=3
+  --disable-boundary
 ```
 
 重点查看：
@@ -287,7 +254,7 @@ CUDA_VISIBLE_DEVICES=1 python sample.py \
 cd $PROJ
 conda activate $ENV_NAME
 CUDA_VISIBLE_DEVICES=1 python scripts/profile_infer.py \
-  --mode train_a100 \
+  --mode "$TRAIN_MODE" \
   --checkpoint "$CKPT_DIR/best.pt" \
   --disable-boundary
 ```
@@ -325,60 +292,65 @@ cd $PROJ
 git pull --ff-only
 conda activate $ENV_NAME
 
-DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode train_a100 \
-  --override train.resume_path="$CKPT_DIR/best.pt" \
-  --override train.checkpoint_dir="$CKPT_DIR" \
-  --override data.dataset_type='trajectory_shards' \
-  --override data.trajectory_shard_dir="$SHARD_ROOT" \
-  --override teacher.teacher_type='diffusers_ddpm' \
-  --override teacher.pretrained_model_name_or_path="$TEACHER_ID" \
-  --override teacher.solver='ddim' \
-  --override teacher.num_inference_steps=128
+DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode "$TRAIN_MODE" \
+  --override train.resume_path="$CKPT_DIR/best.pt"
 ```
 
 ---
 
-## 10. 并列版本训练（额外算力并行）
+## 10. 新增正式版本的流程（不要直接堆 override）
 
-当你还有空闲算力时，建议并列跑一个对照版本，路径与主实验并列，不覆盖主结果。
+若需要开一个新正式版本，不要直接在命令里堆超参数。做法是：
 
-```bash
-export EXP_NAME_ALT=${EXP_NAME}_alt_endpoint70
-export SHARD_ROOT_ALT=$SHARD_ROOT
-export RUN_ROOT_ALT=/cache/Zhengwei/dg_twfd_runs/$EXP_NAME_ALT
-export CKPT_DIR_ALT=$RUN_ROOT_ALT/checkpoints
-export ARTIFACT_ROOT_ALT=$RUN_ROOT_ALT/samples
-export TRAIN_LOG_ALT=$RUN_ROOT_ALT/train.log
-mkdir -p $CKPT_DIR_ALT $ARTIFACT_ROOT_ALT
+1. 复制一个现有 profile，例如从 `train_a100_stable.yaml` 派生
+2. 给新版本起明确名字，例如 `train_a100_stable_v2`
+3. 把该版本的差异固化在 profile
+4. 文档与实验命令只切换 `TRAIN_MODE`
+
+示例：
+
+```yaml
+# config/profiles/train_a100_stable_v2.yaml
+extends: train_a100_base
+
+model:
+  residual_tanh_scale: 0.50
+
+loss:
+  composition_weight: 0.35
 ```
 
-注意：若并列实验复用同一批 teacher shards，可直接用 `$SHARD_ROOT`，无需重新采集。
+然后只需：
+
+```bash
+export TRAIN_MODE=train_a100_stable_v2
+export EXP_NAME=ddpm_cifar10_a100_v2_stable_v2
+export SHARD_ROOT=/cache/Zhengwei/dg_twfd_shards/$EXP_NAME
+export RUN_ROOT=/cache/Zhengwei/dg_twfd_runs/$EXP_NAME
+export CKPT_DIR=$RUN_ROOT/checkpoints
+export ARTIFACT_ROOT=$RUN_ROOT/samples
+export TRAIN_LOG=$RUN_ROOT/train.log
+```
+
+若新版本复用现有 teacher shards，只保留原 `SHARD_ROOT` 不变即可。
 
 ```bash
 cd $PROJ
 conda activate $ENV_NAME
-DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode train_a100 --epochs 20 \
-  --override experiment.name="$EXP_NAME_ALT" \
-  --override train.checkpoint_dir="$CKPT_DIR_ALT" \
-  --override data.dataset_type='trajectory_shards' \
-  --override data.trajectory_shard_dir="$SHARD_ROOT" \
-  --override data.pair_endpoint_weight=0.7 \
-  --override data.high_noise_t_weight=0.95 \
-  --override data.high_noise_t_fraction=0.30 \
-  --override train.learning_rate=4e-4 \
-  --override boundary.enable_until_step=0 \
-  2>&1 | tee "$TRAIN_LOG_ALT"
+mkdir -p "$CKPT_DIR" "$ARTIFACT_ROOT"
+DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode "$TRAIN_MODE" --epochs 20 \
+  2>&1 | tee "$TRAIN_LOG"
 ```
 
-并列版本采样：
+对应采样：
 
 ```bash
 cd $PROJ
 conda activate $ENV_NAME
 CUDA_VISIBLE_DEVICES=1 python sample.py \
-  --mode train_a100 \
-  --checkpoint "$CKPT_DIR_ALT/best.pt" \
-  --output-dir "$ARTIFACT_ROOT_ALT" \
+  --mode "$TRAIN_MODE" \
+  --checkpoint "$CKPT_DIR/best.pt" \
+  --output-dir "$ARTIFACT_ROOT" \
   --steps 16 \
   --batch-size 64 \
   --disable-boundary
@@ -449,10 +421,6 @@ mkdir -p $CKPT_DIR_ABL $ARTIFACT_ROOT_ABL
 cd $PROJ
 conda activate $ENV_NAME
 DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode $ABLATION_PROFILE --epochs 20 \
-  --override experiment.name="$EXP_ABL" \
-  --override data.dataset_type='trajectory_shards' \
-  --override data.trajectory_shard_dir="$SHARD_ROOT" \
-  --override train.checkpoint_dir="$CKPT_DIR_ABL" \
   2>&1 | tee "$TRAIN_LOG_ABL"
 ```
 
@@ -520,10 +488,6 @@ do
   mkdir -p "$CKPT_DIR_ABL" "$ARTIFACT_ROOT_ABL"
 
   DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode $ABLATION_PROFILE --epochs 20 \
-    --override experiment.name="$EXP_ABL" \
-    --override data.dataset_type='trajectory_shards' \
-    --override data.trajectory_shard_dir="$SHARD_ROOT" \
-    --override train.checkpoint_dir="$CKPT_DIR_ABL" \
     2>&1 | tee "$TRAIN_LOG_ABL"
 
   CUDA_VISIBLE_DEVICES=1 python sample.py --mode $ABLATION_PROFILE \

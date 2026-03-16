@@ -1,0 +1,4 @@
+extends: train_a100_base
+
+experiment:
+  name: ${EXP_NAME}

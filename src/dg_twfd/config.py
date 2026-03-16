@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from ast import literal_eval
 from dataclasses import dataclass
+import os
 from pathlib import Path
 from typing import Any, Optional
 
@@ -175,6 +176,30 @@ def _merge_dicts(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]
     return merged
 
 
+def _expand_env_vars(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: _expand_env_vars(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_expand_env_vars(item) for item in value]
+    if isinstance(value, str):
+        return os.path.expandvars(value)
+    return value
+
+
+def _load_profile_yaml(profile: str) -> dict[str, Any]:
+    profile_path = _ROOT / "config" / "profiles" / f"{profile}.yaml"
+    if not profile_path.exists():
+        raise FileNotFoundError(f"Unknown profile: {profile}")
+    loaded = _read_yaml(profile_path)
+    parent = loaded.pop("extends", None)
+    if parent is None:
+        return loaded
+    if not isinstance(parent, str):
+        raise TypeError(f"'extends' must be a string profile name, got: {type(parent)!r}")
+    base = _load_profile_yaml(parent)
+    return _merge_dicts(base, loaded)
+
+
 def _parse_override_value(raw_value: str) -> Any:
     lowered = raw_value.lower()
     if lowered in {"true", "false"}:
@@ -225,10 +250,8 @@ def load_config(profile: str, overrides: Optional[list[str]] = None) -> DGConfig
     """
 
     base = _read_yaml(_ROOT / "config" / "default.yaml")
-    profile_path = _ROOT / "config" / "profiles" / f"{profile}.yaml"
-    if not profile_path.exists():
-        raise FileNotFoundError(f"Unknown profile: {profile}")
-    merged = _merge_dicts(base, _read_yaml(profile_path))
+    merged = _merge_dicts(base, _load_profile_yaml(profile))
     if overrides:
         merged = _apply_overrides(merged, overrides)
+    merged = _expand_env_vars(merged)
     return _build_dataclass(merged)
