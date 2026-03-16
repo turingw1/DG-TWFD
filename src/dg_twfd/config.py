@@ -81,6 +81,8 @@ class ModelConfig:
     timewarp_num_bins: int
     timewarp_init_bias: float
     predict_residual: bool
+    residual_scale_by_delta: bool
+    residual_tanh_scale: float
 
 
 @dataclass(slots=True)

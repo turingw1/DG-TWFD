@@ -58,9 +58,13 @@ class FlowStudent(nn.Module):
         cond_dim: int,
         num_blocks: int = 4,
         predict_residual: bool = True,
+        residual_scale_by_delta: bool = True,
+        residual_tanh_scale: float = 1.0,
     ) -> None:
         super().__init__()
         self.predict_residual = predict_residual
+        self.residual_scale_by_delta = residual_scale_by_delta
+        self.residual_tanh_scale = residual_tanh_scale
         self.conditioner = PairTimeConditioner(time_embed_dim, cond_dim)
         self.in_proj = nn.Conv2d(channels, hidden_channels, kernel_size=3, padding=1)
         self.blocks = nn.ModuleList(
@@ -77,5 +81,10 @@ class FlowStudent(nn.Module):
             hidden = block(hidden, cond)
         predicted = self.out_proj(self.out_act(self.out_norm(hidden)))
         if self.predict_residual:
+            if self.residual_tanh_scale > 0.0:
+                predicted = torch.tanh(predicted / self.residual_tanh_scale) * self.residual_tanh_scale
+            if self.residual_scale_by_delta:
+                delta = torch.clamp(t - s, min=0.0).view(-1, 1, 1, 1)
+                predicted = predicted * delta
             return x_t + predicted
         return predicted

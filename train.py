@@ -138,6 +138,8 @@ def main() -> None:
             cond_dim=cfg.model.cond_dim,
             num_blocks=cfg.model.student_num_blocks,
             predict_residual=cfg.model.predict_residual,
+            residual_scale_by_delta=cfg.model.residual_scale_by_delta,
+            residual_tanh_scale=cfg.model.residual_tanh_scale,
         ).to(device),
         "timewarp": TimeWarpMonotone(
             num_bins=cfg.model.timewarp_num_bins,

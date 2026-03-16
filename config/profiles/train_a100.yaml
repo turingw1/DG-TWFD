@@ -34,6 +34,8 @@ model:
   time_embed_dim: 96
   student_num_blocks: 5
   timewarp_num_bins: 128
+  residual_scale_by_delta: true
+  residual_tanh_scale: 0.75
 
 loss:
   composition_weight: 0.25

@@ -39,6 +39,8 @@ def test_phase2_model_components() -> None:
         cond_dim=cfg.model.cond_dim,
         num_blocks=cfg.model.student_num_blocks,
         predict_residual=cfg.model.predict_residual,
+        residual_scale_by_delta=cfg.model.residual_scale_by_delta,
+        residual_tanh_scale=cfg.model.residual_tanh_scale,
     ).to(device)
 
     batch_size = cfg.data.batch_size
@@ -74,5 +76,29 @@ def test_phase2_model_components() -> None:
         x_s_pred = student(x, t, s)
         print(f"student output shape: {tuple(x_s_pred.shape)}")
         assert x_s_pred.shape == x.shape
+
+
+def test_student_residual_scales_with_delta() -> None:
+    cfg = load_config("debug_4060")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    student = FlowStudent(
+        channels=cfg.data.channels,
+        hidden_channels=cfg.model.hidden_channels,
+        time_embed_dim=cfg.model.time_embed_dim,
+        cond_dim=cfg.model.cond_dim,
+        num_blocks=cfg.model.student_num_blocks,
+        predict_residual=cfg.model.predict_residual,
+        residual_scale_by_delta=cfg.model.residual_scale_by_delta,
+        residual_tanh_scale=cfg.model.residual_tanh_scale,
+    ).to(device)
+    x = torch.randn(4, cfg.data.channels, cfg.data.image_size, cfg.data.image_size, device=device)
+    t = torch.ones(4, device=device)
+    s_small = torch.full((4,), 0.95, device=device)
+    s_large = torch.zeros(4, device=device)
+    out_small = student(x, t, s_small)
+    out_large = student(x, t, s_large)
+    delta_small = (out_small - x).abs().mean().item()
+    delta_large = (out_large - x).abs().mean().item()
+    assert delta_large > delta_small
 
     _report_memory()

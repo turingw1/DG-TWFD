@@ -149,6 +149,7 @@ find $SHARD_ROOT -maxdepth 2 -type f | sort | tail -n 20
 - pair 抽样：短/中/长跨度默认 `4:4:2`
 - semigroup 三元组链长分布：短/中/长默认 `3:5:2`
 - warp triplet：local 邻域采样（默认 gap `2/4`）
+- student 输出改为“按 `delta=t-s` 缩放的有界残差”，用于抑制多步采样时每一步漂移累积
 - 训练日志新增 `steps_per_sec`，便于吞吐调优
 
 ---
@@ -181,10 +182,14 @@ DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode train_a100 --epo
   --override train.checkpoint_dir="$CKPT_DIR" \
   --override train.log_every=20 \
   --override train.warp_update_every=1 \
-  --override loss.composition_weight=0.5 \
+  --override loss.composition_weight=0.25 \
+  --override loss.composition_batch_size=8 \
+  --override train.composition_update_every=16 \
   --override loss.defect_weight=0.5 \
   --override loss.warp_weight=0.25 \
   --override loss.boundary_weight=0.1 \
+  --override model.residual_scale_by_delta=true \
+  --override model.residual_tanh_scale=0.75 \
   --override data.pair_endpoint_weight=0.5 \
   --override data.high_noise_t_weight=0.9 \
   --override data.high_noise_t_fraction=0.35 \
@@ -200,6 +205,22 @@ DG_TWFD_COMPILE=1 CUDA_VISIBLE_DEVICES=1 python train.py --mode train_a100 --epo
 # 例如：batch=768 对应 lr=6e-4；batch=1024 对应 lr=8e-4
 --override data.batch_size=768 --override train.learning_rate=6e-4
 ```
+
+### 5.3 当前推荐的稳定性优先开关
+
+针对“1-step 还能看，但 8/16-step 逐步发散”的现象，优先保留以下设置：
+
+- `model.residual_scale_by_delta=true`
+- `model.residual_tanh_scale=0.75`
+- `loss.composition_weight=0.25`
+- `loss.composition_batch_size=8`
+- `train.composition_update_every=16`
+
+理由：
+
+- `delta` 缩放保证小步长采样时单步更新幅度同步缩小，减少多步误差累积；
+- `tanh` 限幅避免 student 在高噪声区输出过大残差；
+- composition 监督保留但降频，避免 teacher runtime 成为训练主耗时。
 
 ---
 
@@ -223,6 +244,12 @@ grep "sps=" "$TRAIN_LOG" | tail -n 50
 grep "match=" "$TRAIN_LOG" | tail -n 50
 ```
 
+重点检查多步稳定性：
+
+```bash
+grep "comp=" "$TRAIN_LOG" | tail -n 50
+```
+
 ---
 
 ## 7. 采样与分析验证
@@ -242,6 +269,17 @@ CUDA_VISIBLE_DEVICES=1 python sample.py \
   --override data.image_size=32 \
   --override data.channels=3
 ```
+
+重点查看：
+
+- `sampling_ema_student: True`
+- `sample_stats`
+- `step_stats`
+
+判据：
+
+- 若 `step_stats` 中 `std` 在后半程持续快速上升，同时 `|mean|` 单向漂移变大，说明 student 单步更新仍偏大；
+- 若 1-step 质量尚可但 16-step 明显崩坏，优先继续调 `model.residual_tanh_scale` 到 `0.5~0.75`，其次再调 `loss.composition_weight`。
 
 ### 7.2 推理 profile（1/2/4/8/16 steps）
 

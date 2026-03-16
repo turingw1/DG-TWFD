@@ -60,6 +60,8 @@ model:
   timewarp_num_bins: 64
   timewarp_init_bias: 0.0
   predict_residual: true
+  residual_scale_by_delta: true
+  residual_tanh_scale: 1.0
 
 loss:
   match_weight: 1.0
