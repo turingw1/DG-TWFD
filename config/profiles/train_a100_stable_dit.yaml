@@ -1,0 +1,23 @@
+extends: train_a100_base
+
+experiment:
+  name: ${EXP_NAME}
+
+model:
+  student_backbone: dit
+  hidden_channels: 256
+  cond_dim: 256
+  time_embed_dim: 128
+  student_num_blocks: 8
+  student_num_heads: 8
+  student_patch_size: 4
+  student_mlp_ratio: 4.0
+  residual_tanh_scale: 0.5
+
+loss:
+  composition_weight: 0.15
+  defect_weight: 0.5
+  warp_weight: 0.25
+
+train:
+  learning_rate: 3.0e-4

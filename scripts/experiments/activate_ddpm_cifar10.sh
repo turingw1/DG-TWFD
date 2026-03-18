@@ -30,6 +30,10 @@ case "${variant}" in
     train_mode="train_a100_stable"
     exp_prefix="ddpm_cifar10_a100_stable"
     ;;
+  stable_dit)
+    train_mode="train_a100_stable_dit"
+    exp_prefix="ddpm_cifar10_a100_stable_dit"
+    ;;
   ablate_match)
     train_mode="train_a100_ablate_match"
     exp_prefix="ddpm_cifar10_ablate_match"
@@ -48,7 +52,7 @@ case "${variant}" in
     ;;
   *)
     echo "Unknown experiment variant: ${variant}" >&2
-    echo "Expected one of: base stable ablate_match ablate_defect ablate_warp ablate_boundary" >&2
+    echo "Expected one of: base stable stable_dit ablate_match ablate_defect ablate_warp ablate_boundary" >&2
     return 1
     ;;
 esac

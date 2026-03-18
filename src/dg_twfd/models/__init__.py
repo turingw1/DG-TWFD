@@ -2,7 +2,9 @@
 
 from .boundary import BoundaryCorrector
 from .embeddings import PairTimeConditioner, TimeEmbedding
+from .factory import build_student_from_config
 from .student import FlowStudent
+from .student_dit import PatchDiTStudent
 from .timewarp import TimeWarpMonotone
 
 __all__ = [
@@ -11,4 +13,6 @@ __all__ = [
     "TimeWarpMonotone",
     "BoundaryCorrector",
     "FlowStudent",
+    "PatchDiTStudent",
+    "build_student_from_config",
 ]

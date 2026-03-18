@@ -20,6 +20,12 @@ source scripts/experiments/activate_ddpm_cifar10.sh stable
 source scripts/experiments/activate_ddpm_cifar10.sh stable v3
 ```
 
+若要切到 DiT 基座版本：
+
+```bash
+source scripts/experiments/activate_ddpm_cifar10.sh stable_dit v1
+```
+
 默认行为：
 
 - `RUN_ROOT` 会随 `variant + tag` 变化
@@ -51,6 +57,8 @@ source scripts/experiments/activate_ddpm_cifar10.sh ablate_match
   - A100 DDPM-CIFAR10 的公共基础配置，负责 teacher、数据、路径、A100 训练骨架
 - `train_a100_stable`
   - 当前推荐正式版本；在 `base` 基础上固定多步稳定性相关设置
+- `train_a100_stable_dit`
+  - 参考 pMF/DiT 的 patch-transformer student，用于验证当前瓶颈是否来自 CNN 基座容量与全局建模不足
 - `train_a100`
   - 向后兼容入口，等价于 `train_a100_stable`
 - `train_a100_ablate_*`

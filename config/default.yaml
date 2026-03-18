@@ -51,12 +51,16 @@ teacher:
   x0_std: 1.0
 
 model:
+  student_backbone: conv
   time_embed_dim: 64
   cond_dim: 128
   hidden_channels: 64
   boundary_hidden_channels: 32
   boundary_num_blocks: 3
   student_num_blocks: 4
+  student_num_heads: 4
+  student_patch_size: 4
+  student_mlp_ratio: 4.0
   timewarp_num_bins: 64
   timewarp_init_bias: 0.0
   predict_residual: true

@@ -73,12 +73,16 @@ class TeacherConfig:
 
 @dataclass(slots=True)
 class ModelConfig:
+    student_backbone: str
     time_embed_dim: int
     cond_dim: int
     hidden_channels: int
     boundary_hidden_channels: int
     boundary_num_blocks: int
     student_num_blocks: int
+    student_num_heads: int
+    student_patch_size: int
+    student_mlp_ratio: float
     timewarp_num_bins: int
     timewarp_init_bias: float
     predict_residual: bool

@@ -14,7 +14,7 @@ if str(SRC) not in sys.path:
 from dg_twfd.config import load_config
 from dg_twfd.engine.checkpoint import load_checkpoint, load_model_state_dict
 from dg_twfd.infer import profile_sampling, sample_dg_twfd
-from dg_twfd.models import BoundaryCorrector, FlowStudent, TimeWarpMonotone
+from dg_twfd.models import BoundaryCorrector, TimeWarpMonotone, build_student_from_config
 from dg_twfd.utils.seed import seed_everything
 
 
@@ -40,16 +40,7 @@ def resolve_device(requested: str) -> torch.device:
 
 def build_models(cfg, device: torch.device) -> dict[str, torch.nn.Module]:
     return {
-        "student": FlowStudent(
-            channels=cfg.data.channels,
-            hidden_channels=cfg.model.hidden_channels,
-            time_embed_dim=cfg.model.time_embed_dim,
-            cond_dim=cfg.model.cond_dim,
-            num_blocks=cfg.model.student_num_blocks,
-            predict_residual=cfg.model.predict_residual,
-            residual_scale_by_delta=cfg.model.residual_scale_by_delta,
-            residual_tanh_scale=cfg.model.residual_tanh_scale,
-        ).to(device),
+        "student": build_student_from_config(cfg).to(device),
         "timewarp": TimeWarpMonotone(
             num_bins=cfg.model.timewarp_num_bins,
             init_bias=cfg.model.timewarp_init_bias,
