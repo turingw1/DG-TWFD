@@ -25,6 +25,16 @@ def load_model_from_checkpoint(config: dict, checkpoint: str | Path, device: tor
     return model
 
 
+def solver_nfe(step_count: int, method: str = "midpoint") -> int:
+    if step_count <= 0:
+        raise ValueError(f"step_count must be positive, got {step_count}")
+    if method == "euler":
+        return step_count
+    if method in {"midpoint", "heun2"}:
+        return 2 * step_count
+    raise ValueError(f"Unsupported solver method: {method}")
+
+
 @torch.no_grad()
 def sample_with_ode(model: torch.nn.Module, x_init: torch.Tensor, step_count: int, method: str = "midpoint") -> torch.Tensor:
     x = x_init

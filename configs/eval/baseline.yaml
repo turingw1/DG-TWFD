@@ -1,5 +1,6 @@
 eval:
   metrics: [fid]
+  fid_protocol: torch_fidelity_inceptionv3_2048
   step_counts: [1, 2, 4, 8, 16]
   num_fid_samples: 50000
   fid_batch_size: 256

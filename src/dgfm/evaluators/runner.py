@@ -10,7 +10,7 @@ import torch
 from torchvision.utils import save_image
 
 from dgfm.datasets import build_image_dataloaders
-from .common import device_from_config, load_model_from_checkpoint, sample_with_ode, to_unit_interval
+from .common import device_from_config, load_model_from_checkpoint, sample_with_ode, solver_nfe, to_unit_interval
 from .fid import InceptionFeatureExtractor, compute_dataset_stats, compute_generator_stats, frechet_distance, load_stats, save_stats
 
 
@@ -49,6 +49,9 @@ class EvaluationRunner:
         save_stats(cache_path, stats)
         return stats, cache_path
 
+    def _fid_sample_mode(self, fid_samples: int) -> str:
+        return "full" if fid_samples >= 50000 else "approximate"
+
     def _save_fixed_grid(self, model, device: torch.device, step_count: int, step_dir: Path, solver_method: str) -> dict:
         eval_cfg = self._eval_cfg()
         fixed_seed = int(eval_cfg.get("fixed_seed", 42))
@@ -85,15 +88,18 @@ class EvaluationRunner:
         eval_cfg = self._eval_cfg()
         fid_samples = int(eval_cfg.get("num_fid_samples", 50000))
         fid_batch_size = int(eval_cfg.get("fid_batch_size", 256))
+        fid_protocol = str(eval_cfg.get("fid_protocol", "torch_fidelity_inceptionv3_2048"))
         solver_method = str(eval_cfg.get("solver_method", "midpoint"))
         channels = int(self.config["dataset"]["channels"])
         image_size = int(self.config["dataset"]["image_size"])
+        reference_count = int(reference_stats.count)
 
         records = []
         for step_count in step_counts:
             step_dir = self.eval_root / f"steps{step_count}"
             step_dir.mkdir(parents=True, exist_ok=True)
             t0 = time.time()
+            nfe = solver_nfe(step_count=step_count, method=solver_method)
 
             def sample_fn(batch_size: int) -> torch.Tensor:
                 noise = torch.randn(batch_size, channels, image_size, image_size, device=device)
@@ -120,20 +126,28 @@ class EvaluationRunner:
             save_stats(step_dir / "generated_stats.npz", fake_stats)
             record = {
                 "step_count": step_count,
+                "integration_steps": step_count,
+                "nfe": nfe,
+                "nfe_per_step": nfe / step_count,
                 "fid": fid,
+                "fid_protocol": fid_protocol,
                 "num_fid_samples": fid_samples,
+                "fid_sample_mode": self._fid_sample_mode(fid_samples),
                 "fid_batch_size": fid_batch_size,
+                "reference_count": reference_count,
                 "reference_stats": str(cache_path),
                 "checkpoint": str(self.checkpoint),
                 "solver_method": solver_method,
                 "elapsed_sec": elapsed,
+                "samples_per_sec": fid_samples / max(elapsed, 1.0e-8),
                 **grid_meta,
             }
             with (step_dir / "metrics.json").open("w", encoding="utf-8") as handle:
                 json.dump(record, handle, indent=2)
             records.append(record)
             print(
-                f"eval step_count={step_count} fid={fid:.4f} num_fid_samples={fid_samples} elapsed_sec={elapsed:.2f}",
+                f"eval step_count={step_count} nfe={nfe} fid={fid:.4f} "
+                f"num_fid_samples={fid_samples} fid_mode={record['fid_sample_mode']} elapsed_sec={elapsed:.2f}",
                 flush=True,
             )
 

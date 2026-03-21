@@ -5,38 +5,27 @@ from pathlib import Path
 from typing import Iterable
 
 import numpy as np
-from scipy import linalg
 import torch
 from torch import nn
-import torch.nn.functional as F
-from torchvision.models import Inception_V3_Weights, inception_v3
+from torch_fidelity.feature_extractor_inceptionv3 import FeatureExtractorInceptionV3
+from torch_fidelity.metric_fid import KEY_METRIC_FID, fid_statistics_to_metric
+
+
+FID_FEATURE_LAYER = "2048"
 
 
 class InceptionFeatureExtractor(nn.Module):
     def __init__(self) -> None:
         super().__init__()
-        weights = Inception_V3_Weights.DEFAULT
-        model = inception_v3(weights=weights, aux_logits=True, transform_input=False)
-        model.fc = nn.Identity()
-        model.AuxLogits = None
-        model.eval()
-        self.model = model
-        self.register_buffer(
-            "mean",
-            torch.tensor(weights.transforms().mean, dtype=torch.float32).view(1, 3, 1, 1),
-            persistent=False,
-        )
-        self.register_buffer(
-            "std",
-            torch.tensor(weights.transforms().std, dtype=torch.float32).view(1, 3, 1, 1),
-            persistent=False,
+        self.model = FeatureExtractorInceptionV3(
+            name="inception-v3-compat",
+            features_list=[FID_FEATURE_LAYER],
         )
 
     @torch.no_grad()
     def forward(self, images: torch.Tensor) -> torch.Tensor:
-        images = F.interpolate(images, size=(299, 299), mode="bilinear", align_corners=False)
-        images = (images - self.mean) / self.std
-        feats = self.model(images)
+        images = to_uint8(images)
+        feats = self.model(images)[0]
         if feats.ndim > 2:
             feats = torch.flatten(feats, start_dim=1)
         return feats
@@ -66,6 +55,13 @@ class RunningStats:
         mu = self.sum / max(1, self.count)
         sigma = self.sum_sq / max(1, self.count) - np.outer(mu, mu)
         return GaussianStats(mu=mu, sigma=sigma, count=self.count)
+
+
+def to_uint8(images: torch.Tensor) -> torch.Tensor:
+    if images.dtype == torch.uint8:
+        return images
+    images = torch.clamp(images, 0.0, 1.0)
+    return torch.round(images * 255.0).to(torch.uint8)
 
 
 @torch.no_grad()
@@ -120,17 +116,18 @@ def compute_generator_stats(
 
 
 def frechet_distance(real: GaussianStats, fake: GaussianStats) -> float:
-    mu1 = np.asarray(real.mu, dtype=np.float64)
-    mu2 = np.asarray(fake.mu, dtype=np.float64)
-    sigma1 = np.asarray(real.sigma, dtype=np.float64)
-    sigma2 = np.asarray(fake.sigma, dtype=np.float64)
-
-    diff = mu1 - mu2
-    covmean, _ = linalg.sqrtm(sigma1 @ sigma2, disp=False)
-    if np.iscomplexobj(covmean):
-        covmean = covmean.real
-    fid = diff @ diff + np.trace(sigma1 + sigma2 - 2.0 * covmean)
-    return float(np.real(fid))
+    metric = fid_statistics_to_metric(
+        {
+            "mu": np.asarray(real.mu, dtype=np.float64),
+            "sigma": np.asarray(real.sigma, dtype=np.float64),
+        },
+        {
+            "mu": np.asarray(fake.mu, dtype=np.float64),
+            "sigma": np.asarray(fake.sigma, dtype=np.float64),
+        },
+        verbose=False,
+    )
+    return float(metric[KEY_METRIC_FID])
 
 
 def save_stats(path: str | Path, stats: GaussianStats) -> None:

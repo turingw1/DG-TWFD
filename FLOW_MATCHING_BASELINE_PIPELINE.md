@@ -36,11 +36,11 @@ cd $PROJ
 python -m pip install -U pip
 python -m pip install -e .
 python -m pip install -e ./flow_matching
-python -m pip install torchvision scipy pandas
+python -m pip install torchvision scipy pandas torch_fidelity
 ```
 
 Notes:
-- `run_eval.py` uses `torchvision` InceptionV3 and `scipy` for FID.
+- `run_eval.py` uses `torch_fidelity` InceptionV3-2048 features for FID.
 - The first FID run may download Inception weights if they are not already cached.
 - Use `TORCH_HOME` under the run root so pretrained weights and caches do not spill into the home directory.
 - Dataset preparation is manual-first. Training will not auto-download CIFAR-10.
@@ -178,7 +178,7 @@ Default evaluation protocol:
 - qualitative grid size: `64`
 
 Outputs per step:
-- `metrics.json`: FID and runtime metadata
+- `metrics.json`: FID, `integration_steps`, `nfe`, runtime metadata, and cache references
 - `generated_stats.npz`: Gaussian stats of generated features
 - `fixed_seed_grid.png`: fixed-seed qualitative grid
 - `fixed_seed_images/*.png`: dumped qualitative images
@@ -188,6 +188,11 @@ Summary outputs:
 - `reports/summary.json`
 - `reports/summary.csv`
 - `reports/best.json`
+
+Evaluation notes:
+- `nfe` is the hardware-independent compute budget and should be used for method comparison.
+- `elapsed_sec` and `samples_per_sec` are hardware-dependent and should only be compared on the same machine/setup.
+- `num_fid_samples=50000` is the full evaluation setting. Smaller values are only approximate FID and should not be used as headline numbers.
 
 ## 8. Fast Evaluation Smoke
 
@@ -199,11 +204,16 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
   --checkpoint $CKPT_DIR/best.pt \
   --eval-root $METRIC_ROOT/smoke \
   --steps 1 4 16 \
-  --set eval.num_fid_samples=512 \
-  --set eval.fid_batch_size=64 \
+  --fid-samples 512 \
+  --fid-batch-size 64 \
   --set eval.fixed_grid_size=16 \
   --set eval.dump_image_count=16
 ```
+
+Recommended approximate FID settings:
+- `--fid-samples 5000`: quick model ranking
+- `--fid-samples 10000`: stronger smoke comparison
+- `50000` only for final reporting
 
 ## 9. Qualitative Sampling Only
 
@@ -258,6 +268,7 @@ For this repo, the most actionable near-term target is the vendored CIFAR-10 ima
 Interpretation:
 - your Phase-1 baseline should first establish a stable FID-vs-step curve and sensible qualitative grids
 - after that, compare your best `step_count` and full-sample FID against the vendored example and the paper tables
+- when comparing to official results, use the `nfe` field together with FID rather than wall-clock time
 - do not compare smoke-eval FID numbers to the paper
 
 ## 12. Teacher Interface Usage
