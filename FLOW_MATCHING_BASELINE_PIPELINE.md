@@ -33,15 +33,28 @@ Notes:
 - `run_eval.py` uses `torchvision` InceptionV3 and `scipy` for FID.
 - The first FID run may download Inception weights if they are not already cached.
 - Use `TORCH_HOME` under the run root so pretrained weights and caches do not spill into the home directory.
+- Dataset preparation is manual-first. Training will not auto-download CIFAR-10.
 
 ## 2. Dataset Preparation
 
 ### CIFAR-10
 
+Manual-first check:
+
 ```bash
 cd $PROJ
 python scripts/build_dataset.py --dataset cifar10 --data-root $DATA_ROOT/cifar10
 ```
+
+If the dataset is missing and you explicitly want the script to download it once:
+
+```bash
+python scripts/build_dataset.py --dataset cifar10 --data-root $DATA_ROOT/cifar10 --download
+```
+
+Fastest practical option:
+- manually place `cifar-10-batches-py/` under `$DATA_ROOT/cifar10`
+- then run the check command above
 
 Expected layout:
 
@@ -88,6 +101,8 @@ $METRIC_ROOT/
 ```
 
 ## 4. Baseline Training
+
+Training expects the dataset to already exist. It will fail fast instead of downloading in the background.
 
 ```bash
 cd $PROJ

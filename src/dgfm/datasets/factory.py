@@ -7,6 +7,11 @@ from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, transforms
 
 
+def _require_path(path: Path, message: str) -> None:
+    if not path.exists():
+        raise FileNotFoundError(message)
+
+
 def _build_transform(image_size: int):
     return transforms.Compose(
         [
@@ -28,8 +33,16 @@ def build_image_dataloaders(config: dict) -> dict[str, DataLoader]:
 
     if dataset_cfg["name"] == "cifar10":
         root = Path(dataset_cfg["data_root"])
-        full_train = datasets.CIFAR10(root=root, train=True, download=True, transform=transform)
-        test_set = datasets.CIFAR10(root=root, train=False, download=True, transform=transform)
+        _require_path(
+            root / "cifar-10-batches-py",
+            (
+                f"CIFAR-10 data not found under {root}. "
+                "Prepare it manually or run `python scripts/build_dataset.py --dataset cifar10 "
+                f"--data-root {root} --download` once."
+            ),
+        )
+        full_train = datasets.CIFAR10(root=root, train=True, download=False, transform=transform)
+        test_set = datasets.CIFAR10(root=root, train=False, download=False, transform=transform)
         val_size = max(1, int(len(full_train) * val_split))
         train_size = len(full_train) - val_size
         train_set, val_set = random_split(
@@ -39,8 +52,12 @@ def build_image_dataloaders(config: dict) -> dict[str, DataLoader]:
         )
     elif dataset_cfg["name"] == "imagenet32":
         root = Path(dataset_cfg["data_root"])
-        train_set = datasets.ImageFolder(root=root / dataset_cfg.get("train_split", "train"), transform=transform)
-        val_set = datasets.ImageFolder(root=root / dataset_cfg.get("val_split", "val"), transform=transform)
+        train_root = root / dataset_cfg.get("train_split", "train")
+        val_root = root / dataset_cfg.get("val_split", "val")
+        _require_path(train_root, f"ImageNet train split not found: {train_root}")
+        _require_path(val_root, f"ImageNet val split not found: {val_root}")
+        train_set = datasets.ImageFolder(root=train_root, transform=transform)
+        val_set = datasets.ImageFolder(root=val_root, transform=transform)
         test_set = val_set
     else:
         raise ValueError(f"Unsupported dataset: {dataset_cfg['name']}")
