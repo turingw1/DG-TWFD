@@ -37,9 +37,14 @@ class BaselineTrainer:
         model.train(train)
         total = 0.0
         count = 0
+        train_cfg = self.config.get("train", {})
+        batch_limit_key = "max_train_batches" if train else "max_val_batches"
+        batch_limit = int(train_cfg.get(batch_limit_key, 0) or 0)
         ctx = torch.enable_grad if train else torch.no_grad
         with ctx():
-            for images, _labels in loader:
+            for batch_idx, (images, _labels) in enumerate(loader):
+                if batch_limit > 0 and batch_idx >= batch_limit:
+                    break
                 images = images.to(device)
                 images = images * 2.0 - 1.0
                 noise = torch.randn_like(images)

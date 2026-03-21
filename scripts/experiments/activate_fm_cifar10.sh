@@ -36,6 +36,7 @@ export CKPT_DIR="${RUN_ROOT}/checkpoints"
 export SAMPLE_ROOT="${RUN_ROOT}/samples"
 export LOG_ROOT="${RUN_ROOT}/logs"
 export METRIC_ROOT="${EVAL_ROOT}/${FM_EXP}"
+export TORCH_HOME="${TORCH_HOME:-${RUN_ROOT}/.torch}"
 mkdir -p "${CKPT_DIR}" "${SAMPLE_ROOT}" "${LOG_ROOT}" "${METRIC_ROOT}" 2>/dev/null || true
 
 echo "Activated dgfm experiment"

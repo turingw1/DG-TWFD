@@ -13,8 +13,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from dgfm.config import load_experiment_config
-from dgfm.models import build_velocity_model
-from dgfm.paths import ensure_flow_matching_on_path
+from dgfm.evaluators.common import device_from_config, load_model_from_checkpoint, sample_with_ode, to_unit_interval
 
 
 def parse_args() -> argparse.Namespace:
@@ -29,25 +28,11 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _device_from_config(config: dict) -> torch.device:
-    requested = config.get("runtime", {}).get("device", "auto")
-    if requested == "auto":
-        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    return torch.device(requested)
-
-
 def main() -> None:
     args = parse_args()
     config = load_experiment_config(args.config, overrides=args.set)
-    device = _device_from_config(config)
-    ensure_flow_matching_on_path()
-    from flow_matching.solver import ODESolver
-
-    ckpt = torch.load(args.checkpoint, map_location=device)
-    model = build_velocity_model(config).to(device)
-    model.load_state_dict(ckpt["model"])
-    model.eval()
-    solver = ODESolver(velocity_model=model)
+    device = device_from_config(config)
+    model = load_model_from_checkpoint(config, args.checkpoint, device=device)
 
     torch.manual_seed(args.fixed_seed)
     output_dir = Path(args.output_dir)
@@ -59,11 +44,14 @@ def main() -> None:
         int(config["dataset"]["image_size"]),
         device=device,
     )
-    time_grid = torch.linspace(0.0, 1.0, steps=args.steps + 1, device=device)
-    samples = solver.sample(x_init=noise, time_grid=time_grid, step_size=None, method="midpoint")
-    samples = torch.clamp(samples * 0.5 + 0.5, 0.0, 1.0)
+    samples = sample_with_ode(model=model, x_init=noise, step_count=args.steps)
+    samples = to_unit_interval(samples)
     torch.save(samples.detach().cpu(), output_dir / "samples.pt")
     save_image(samples, output_dir / "grid.png", nrow=max(1, int(args.num_samples**0.5)))
+    image_dir = output_dir / "images"
+    image_dir.mkdir(parents=True, exist_ok=True)
+    for idx in range(samples.shape[0]):
+        save_image(samples[idx], image_dir / f"{idx:06d}.png")
     print("dgfm sampling completed")
     print(f"checkpoint: {args.checkpoint}")
     print(f"output_dir: {output_dir}")
