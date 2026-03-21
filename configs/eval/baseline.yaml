@@ -9,4 +9,4 @@ eval:
   fixed_grid_size: 64
   grid_nrow: 8
   dump_image_count: 64
-  solver_method: midpoint
+  solver_method: heun2

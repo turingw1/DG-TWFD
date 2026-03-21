@@ -7,7 +7,7 @@ def test_load_experiment_config_merges_base_and_includes() -> None:
     cfg = load_experiment_config("configs/experiment/fm_cifar10_baseline.yaml")
     assert cfg["experiment"]["name"] == "fm_cifar10_baseline"
     assert cfg["dataset"]["name"] == "cifar10"
-    assert cfg["model"]["family"] == "unet_fm"
+    assert cfg["model"]["family"] == "official_fm_unet"
     assert cfg["teacher"]["type"] == "none"
     assert cfg["eval"]["step_counts"] == [1, 2, 4, 8, 16]
 

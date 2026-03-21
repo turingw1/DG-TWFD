@@ -19,7 +19,8 @@ def device_from_config(config: dict) -> torch.device:
 def load_model_from_checkpoint(config: dict, checkpoint: str | Path, device: torch.device) -> torch.nn.Module:
     ckpt = torch.load(checkpoint, map_location=device)
     model = build_velocity_model(config).to(device)
-    model.load_state_dict(ckpt["model"])
+    state_dict = ckpt.get("ema_model") or ckpt["model"]
+    model.load_state_dict(state_dict)
     model.eval()
     return model
 

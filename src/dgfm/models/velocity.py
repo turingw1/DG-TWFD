@@ -3,6 +3,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor, nn
 
+from .official_unet import OfficialVelocityUNet
 from dg_twfd.models.embeddings import TimeEmbedding
 
 
@@ -65,6 +66,30 @@ class VelocityConvNet(nn.Module):
 def build_velocity_model(config: dict) -> nn.Module:
     dataset_cfg = config["dataset"]
     model_cfg = config["model"]
+    family = str(model_cfg.get("family", "unet_fm"))
+    if family in {"unet_fm", "official_fm_unet"}:
+        return OfficialVelocityUNet(
+            in_channels=int(dataset_cfg["channels"]),
+            model_channels=int(model_cfg.get("hidden_channels", 128)),
+            out_channels=int(dataset_cfg["channels"]),
+            num_res_blocks=int(model_cfg.get("num_res_blocks", 4)),
+            attention_resolutions=tuple(model_cfg.get("attention_resolutions", [2])),
+            dropout=float(model_cfg.get("dropout", 0.3)),
+            channel_mult=tuple(model_cfg.get("channel_mult", [2, 2, 2])),
+            conv_resample=bool(model_cfg.get("conv_resample", False)),
+            dims=int(model_cfg.get("dims", 2)),
+            num_classes=model_cfg.get("num_classes", None),
+            use_checkpoint=bool(model_cfg.get("use_checkpoint", False)),
+            num_heads=int(model_cfg.get("num_heads", 1)),
+            num_head_channels=int(model_cfg.get("num_head_channels", -1)),
+            num_heads_upsample=int(model_cfg.get("num_heads_upsample", -1)),
+            use_scale_shift_norm=bool(model_cfg.get("use_scale_shift_norm", True)),
+            resblock_updown=bool(model_cfg.get("resblock_updown", False)),
+            use_new_attention_order=bool(model_cfg.get("use_new_attention_order", True)),
+            with_fourier_features=bool(model_cfg.get("with_fourier_features", False)),
+        )
+    if family != "legacy_conv":
+        raise ValueError(f"Unsupported model family: {family}")
     return VelocityConvNet(
         channels=int(dataset_cfg["channels"]),
         hidden_channels=int(model_cfg.get("hidden_channels", 128)),

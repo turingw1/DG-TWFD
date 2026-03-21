@@ -2,6 +2,12 @@
 
 This is the active Phase-1 baseline workflow for the refactored `dgfm` stack.
 It is the only document you should follow for the new baseline path.
+The current baseline is no longer the old lightweight velocity CNN. It now targets the
+official `flow_matching/examples/image` CIFAR-10 recipe more closely:
+- official-style UNet backbone
+- EMA checkpointing
+- skewed timestep sampling
+- Heun2-style evaluation solver
 
 ## 0. Activate Experiment
 
@@ -14,6 +20,10 @@ conda activate consistency
 Current variants:
 - `baseline`
 - `stable`
+
+Important:
+- runs produced before the official-style UNet/EMA update are not comparable to the current baseline
+- start a fresh experiment tag, for example `baseline v2`, when collecting the next official-aligned result
 
 Local smoke convention:
 - local verification runs should stay under `./outputs/debug/`
@@ -117,6 +127,10 @@ Produced files:
 - `$LOG_ROOT/config_resolved.yaml`
 - `$LOG_ROOT/train.jsonl`
 
+Checkpoint note:
+- `best.pt` and `last.pt` now store both raw model weights and `ema_model`
+- evaluation and sampling use EMA weights by default
+
 ## 5. Smoke Training
 
 Use this before a long run:
@@ -159,6 +173,7 @@ Default evaluation protocol:
 - reference size: full test set
 - generated sample count per step: `50000`
 - FID batch size: `256`
+- solver method: `heun2`
 - qualitative grid seed: `42`
 - qualitative grid size: `64`
 
