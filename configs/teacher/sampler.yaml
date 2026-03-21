@@ -1,0 +1,5 @@
+teacher:
+  type: sampler
+  backend: diffusers_ddpm
+  name_or_path: null
+  target_type: endpoint

@@ -1,0 +1,11 @@
+base: configs/base.yaml
+includes:
+  - dataset/imagenet32
+  - model/unet_fm
+  - path/ot
+  - scheduler/polynomial
+  - teacher/none
+  - eval/baseline
+
+experiment:
+  name: fm_imagenet32_baseline

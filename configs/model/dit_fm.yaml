@@ -1,0 +1,6 @@
+model:
+  family: dit_fm
+  hidden_channels: 192
+  num_blocks: 6
+  num_heads: 6
+  patch_size: 4

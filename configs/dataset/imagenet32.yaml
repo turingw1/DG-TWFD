@@ -1,0 +1,9 @@
+dataset:
+  name: imagenet32
+  type: image_folder
+  data_root: ${DATA_ROOT}/imagenet32
+  image_size: 32
+  channels: 3
+  num_classes: 1000
+  train_split: train
+  val_split: val

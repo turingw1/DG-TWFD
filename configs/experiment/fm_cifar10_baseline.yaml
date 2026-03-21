@@ -1,0 +1,11 @@
+base: configs/base.yaml
+includes:
+  - dataset/cifar10
+  - model/unet_fm
+  - path/condot
+  - scheduler/condot
+  - teacher/none
+  - eval/baseline
+
+experiment:
+  name: fm_cifar10_baseline

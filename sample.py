@@ -16,6 +16,7 @@ from dg_twfd.engine.checkpoint import load_checkpoint, load_model_state_dict
 from dg_twfd.infer import profile_sampling, sample_dg_twfd
 from dg_twfd.models import BoundaryCorrector, TimeWarpMonotone, build_student_from_config
 from dg_twfd.utils.seed import seed_everything
+from dgfm.utils import print_legacy_notice
 
 
 def parse_args() -> argparse.Namespace:
@@ -63,6 +64,7 @@ def resolve_output_dir(args: argparse.Namespace) -> Path:
 
 
 def main() -> None:
+    print_legacy_notice("sample.py")
     args = parse_args()
     cfg = load_config(args.mode, overrides=args.override)
     seed_everything(cfg.experiment.seed)

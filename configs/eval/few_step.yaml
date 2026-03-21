@@ -1,0 +1,5 @@
+eval:
+  metrics: [fid, kid]
+  step_counts: [1, 2, 4, 8, 16]
+  num_fid_samples: 50000
+  fixed_seed: 42

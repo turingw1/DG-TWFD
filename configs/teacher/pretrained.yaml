@@ -1,0 +1,4 @@
+teacher:
+  type: pretrained
+  name_or_path: null
+  target_type: velocity

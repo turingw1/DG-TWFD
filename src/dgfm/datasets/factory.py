@@ -1,0 +1,57 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import torch
+from torch.utils.data import DataLoader, random_split
+from torchvision import datasets, transforms
+
+
+def _build_transform(image_size: int):
+    return transforms.Compose(
+        [
+            transforms.Resize(image_size),
+            transforms.CenterCrop(image_size),
+            transforms.ToTensor(),
+        ]
+    )
+
+
+def build_image_dataloaders(config: dict) -> dict[str, DataLoader]:
+    dataset_cfg = config["dataset"]
+    train_cfg = config["train"]
+    image_size = int(dataset_cfg["image_size"])
+    batch_size = int(train_cfg["batch_size"])
+    num_workers = int(train_cfg.get("num_workers", 4))
+    val_split = float(train_cfg.get("val_fraction", 0.05))
+    transform = _build_transform(image_size=image_size)
+
+    if dataset_cfg["name"] == "cifar10":
+        root = Path(dataset_cfg["data_root"])
+        full_train = datasets.CIFAR10(root=root, train=True, download=True, transform=transform)
+        test_set = datasets.CIFAR10(root=root, train=False, download=True, transform=transform)
+        val_size = max(1, int(len(full_train) * val_split))
+        train_size = len(full_train) - val_size
+        train_set, val_set = random_split(
+            full_train,
+            [train_size, val_size],
+            generator=torch.Generator().manual_seed(int(config["experiment"].get("seed", 42))),
+        )
+    elif dataset_cfg["name"] == "imagenet32":
+        root = Path(dataset_cfg["data_root"])
+        train_set = datasets.ImageFolder(root=root / dataset_cfg.get("train_split", "train"), transform=transform)
+        val_set = datasets.ImageFolder(root=root / dataset_cfg.get("val_split", "val"), transform=transform)
+        test_set = val_set
+    else:
+        raise ValueError(f"Unsupported dataset: {dataset_cfg['name']}")
+
+    common = {
+        "batch_size": batch_size,
+        "num_workers": num_workers,
+        "pin_memory": bool(train_cfg.get("pin_memory", True)),
+    }
+    return {
+        "train": DataLoader(train_set, shuffle=True, drop_last=True, **common),
+        "val": DataLoader(val_set, shuffle=False, drop_last=False, **common),
+        "test": DataLoader(test_set, shuffle=False, drop_last=False, **common),
+    }

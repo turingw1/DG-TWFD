@@ -1,0 +1,6 @@
+model:
+  family: unet_fm
+  hidden_channels: 128
+  num_res_blocks: 4
+  attention_resolutions: [2]
+  dropout: 0.3

@@ -1,0 +1,11 @@
+base: configs/base.yaml
+includes:
+  - dataset/cifar10
+  - model/dit_fm
+  - path/condot
+  - scheduler/timewarp_hook
+  - teacher/none
+  - eval/few_step
+
+experiment:
+  name: fm_cifar10_stable

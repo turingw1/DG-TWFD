@@ -20,6 +20,7 @@ from dg_twfd.losses import BoundaryLoss, MatchLoss, SemigroupDefectLoss, Teacher
 from dg_twfd.models import BoundaryCorrector, TimeWarpMonotone, build_student_from_config
 from dg_twfd.schedule import DefectAdaptiveScheduler
 from dg_twfd.utils.seed import seed_everything
+from dgfm.utils import print_legacy_notice
 
 
 def parse_args() -> argparse.Namespace:
@@ -87,6 +88,7 @@ def maybe_prewarm_teacher(cfg, teacher, device: torch.device) -> None:
 
 
 def main() -> None:
+    print_legacy_notice("train.py")
     configure_tensorflow_logging()
     args = parse_args()
     overrides = list(args.override)
