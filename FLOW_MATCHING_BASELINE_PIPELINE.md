@@ -1,237 +1,156 @@
 # Flow Matching Baseline Pipeline
 
-This document is the Phase-1 replacement for the old A100 DDPM pipeline. It keeps the same workflow philosophy:
-- one activation path,
-- one training path,
-- one evaluation path,
-- one result root.
+This is the Phase-1 baseline training path for the refactored framework.
 
-## 0. Scope
-Phase 1 targets:
-- baseline continuous flow matching reproduction,
-- CIFAR-10 first,
-- few-step evaluation under one interface,
-- future-ready teacher and time-warp hooks.
+## 0. Activate Experiment
 
-Phase 1 does not include semigroup defect in the core training path.
+```bash
+cd ~/workspace/Zhengwei/DG-TWFD
+source scripts/experiments/activate_fm_cifar10.sh baseline v1
+conda activate consistency
+```
+
+Current variants:
+- `baseline`
+- `stable`
 
 ## 1. Environment
 
 ```bash
-cd ~/workspace/Zhengwei/DG-TWFD
-conda create -n consistency python=3.10 -y
-conda activate consistency
+cd $PROJ
 python -m pip install -U pip
 python -m pip install -e .
 python -m pip install -e ./flow_matching
-python -m pip install torchmetrics torchvision torchdiffeq clean-fid pandas
+python -m pip install torchvision torchmetrics torchdiffeq clean-fid pandas
 ```
 
-Recommended runtime roots:
-
-```bash
-export PROJ=~/workspace/Zhengwei/DG-TWFD
-export DATA_ROOT=/cache/Zhengwei/datasets
-export RUNS_ROOT=/cache/Zhengwei/dgfm_runs
-export EVAL_ROOT=/cache/Zhengwei/dgfm_eval
-export FM_EXP=fm_cifar10_baseline_v1
-export RUN_ROOT=$RUNS_ROOT/$FM_EXP
-export CKPT_DIR=$RUN_ROOT/checkpoints
-export SAMPLE_ROOT=$RUN_ROOT/samples
-export METRIC_ROOT=$EVAL_ROOT/$FM_EXP
-mkdir -p "$CKPT_DIR" "$SAMPLE_ROOT" "$METRIC_ROOT"
-```
-
-## 2. Expected Directory Layout
-
-```text
-/cache/Zhengwei/
-├── datasets/
-│   ├── cifar10/
-│   ├── imagenet32/
-│   └── imagenet64/
-├── dgfm_runs/
-│   └── fm_cifar10_baseline_v1/
-│       ├── checkpoints/
-│       ├── logs/
-│       └── samples/
-└── dgfm_eval/
-    └── fm_cifar10_baseline_v1/
-        ├── ckpt_best/
-        ├── ckpt_last/
-        └── reports/
-```
-
-## 3. Dataset Preparation
+## 2. Dataset Preparation
 
 ### CIFAR-10
-No manual preprocessing is required if torchvision download is enabled.
 
 ```bash
 cd $PROJ
-conda activate consistency
 python scripts/build_dataset.py --dataset cifar10 --data-root $DATA_ROOT/cifar10
 ```
 
-Expected:
-- train and test data are available under `$DATA_ROOT/cifar10`
-- the config uses `train` for training and `test` or a held-out validation policy for evaluation
-
 ### Future ImageNet Preparation
-Not required for Phase 1, but reserve:
 
 ```bash
 python scripts/build_dataset.py --dataset imagenet32 --data-root $DATA_ROOT/imagenet32
 python scripts/build_dataset.py --dataset imagenet64 --data-root $DATA_ROOT/imagenet64
 ```
 
-## 4. Baseline Training Command for CIFAR-10
+## 3. Expected Result Layout
 
-Primary launch command:
+```text
+$RUN_ROOT/
+├── checkpoints/
+├── logs/
+└── samples/
+
+$METRIC_ROOT/
+├── steps1/
+├── steps2/
+├── steps4/
+├── steps8/
+├── steps16/
+└── reports/
+```
+
+## 4. Baseline Training Command
 
 ```bash
 cd $PROJ
-conda activate consistency
 CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
-  --config configs/experiment/fm_cifar10_baseline.yaml \
+  --config $FM_CONFIG \
   --run-root $RUN_ROOT
 ```
 
-Required outputs:
-- `$RUN_ROOT/checkpoints/best.pt`
-- `$RUN_ROOT/checkpoints/last.pt`
-- `$RUN_ROOT/logs/train.jsonl`
-- `$RUN_ROOT/logs/config_resolved.yaml`
+Produced files:
+- `$CKPT_DIR/best.pt`
+- `$CKPT_DIR/last.pt`
+- `$LOG_ROOT/config_resolved.yaml`
+- `$LOG_ROOT/train.jsonl`
 
-## 5. Resume Training
+## 5. Smoke Training Command
+
+Use this before a long run:
 
 ```bash
 CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
-  --config configs/experiment/fm_cifar10_baseline.yaml \
+  --config $FM_CONFIG \
+  --run-root $RUN_ROOT/smoke \
+  --set train.epochs=1 \
+  --set train.batch_size=8 \
+  --set train.num_workers=0
+```
+
+## 6. Resume Training
+
+```bash
+CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
+  --config $FM_CONFIG \
   --run-root $RUN_ROOT \
   --resume $CKPT_DIR/last.pt
 ```
 
-## 6. Baseline Evaluation Command
-
-Evaluate the best checkpoint over multiple NFEs in one call:
+## 7. Evaluate a Checkpoint
 
 ```bash
 CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
-  --config configs/experiment/fm_cifar10_baseline.yaml \
+  --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
   --eval-root $METRIC_ROOT \
   --steps 1 2 4 8 16
 ```
 
-Expected outputs:
-- per-step generated samples
-- FID metrics
-- fixed-seed preview grids
-- one summary table under `$METRIC_ROOT/reports/summary.csv`
+Current Phase-1 evaluator exports:
+- cached `samples.pt`
+- `grid.png`
+- lightweight `metrics.json`
+- `reports/summary.json`
 
-## 7. Sampling and Visualization Command
+Full FID/KID integration is the next implementation slice.
 
-Single checkpoint qualitative sampling:
+## 8. Qualitative Sampling
 
 ```bash
 CUDA_VISIBLE_DEVICES=1 python scripts/run_sample.py \
-  --config configs/experiment/fm_cifar10_baseline.yaml \
+  --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
-  --output-dir $SAMPLE_ROOT \
+  --output-dir $SAMPLE_ROOT/steps16 \
   --steps 16 \
   --num-samples 64 \
   --fixed-seed 42
 ```
 
-Expected outputs:
-- `$SAMPLE_ROOT/steps16/samples.pt`
-- `$SAMPLE_ROOT/steps16/grid.png`
-- `$SAMPLE_ROOT/steps16/step_stats.json`
-
-## 8. Evaluate a Specific Checkpoint
-
-```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
-  --config configs/experiment/fm_cifar10_baseline.yaml \
-  --checkpoint $CKPT_DIR/epoch_0100.pt \
-  --eval-root $METRIC_ROOT/epoch_0100 \
-  --steps 4 8 16
-```
-
 ## 9. Few-Step Evaluation Protocol
-Mandatory step counts in Phase 1:
+Mandatory step counts:
 - `1`
 - `2`
 - `4`
 - `8`
 - `16`
 
-Each evaluation run must export:
-- `metrics.json`
-- `metrics.csv`
-- `grid.png`
-- `sample_manifest.json`
-- optional cached generated samples for metric reuse
+## 10. Benchmark Targets
+Use the Flow Matching paper as the scientific baseline reference, and the vendored `flow_matching` repo example results as the engineering reference.
 
-## 10. Logs, Checkpoints, Images, Metrics
+Reference targets to track:
+- CIFAR-10 paper baseline: `FID ~= 6.35`
+- ImageNet 32x32 paper baseline: `FID ~= 5.02`
+- ImageNet 64x64 paper baseline: `FID ~= 14.45`
+- vendored image example README for CIFAR-10: `FID 2.07`
 
-- Training logs: `$RUN_ROOT/logs/`
-- Checkpoints: `$RUN_ROOT/checkpoints/`
-- Qualitative samples: `$RUN_ROOT/samples/`
-- Evaluation metrics: `$METRIC_ROOT/`
-- Final tables: `$METRIC_ROOT/reports/`
+Interpretation:
+- first get stable training and sensible qualitative samples,
+- then add full FID evaluation,
+- only then compare against the paper and repo-example targets.
 
-## 11. Reference Targets from Flow Matching Paper
-Use the original Flow Matching paper as the baseline reference for practical target ranges on supported image datasets.
-
-Paper-level reference targets for FM with OT paths:
-- CIFAR-10: `FID ~= 6.35`, `NFE ~= 142`
-- ImageNet 32x32: `FID ~= 5.02`, `NFE ~= 122`
-- ImageNet 64x64: `FID ~= 14.45`, `NFE ~= 138`
-
-These values are from the original FM paper benchmark table as surfaced in public summaries of the paper's reported results. The vendored `flow_matching` example README reports stronger later-guide-code results for CIFAR-10 (`FID 2.07` with a different training/eval recipe). Phase 1 should therefore track two references:
-- paper reference target: baseline scientific sanity check,
-- repo-example reference target: practical implementation target for the vendored code family.
-
-Use the following interpretation:
-- first reproduce stable CIFAR-10 training with correct qualitative samples,
-- then compare your FID curve against the paper target range,
-- only after that compare against the stronger example-repo target.
-
-## 12. Future ImageNet Preparation
-Phase 1 does not require full ImageNet runs, but the framework must already support:
-- dataset configs for `imagenet32` and `imagenet64`,
-- image-folder loading,
-- class-conditional labels,
-- distributed evaluation.
-
-Reserved launch style:
-
-```bash
-CUDA_VISIBLE_DEVICES=0,1,2,3 python scripts/run_train.py \
-  --config configs/experiment/fm_imagenet32_baseline.yaml \
-  --run-root /cache/Zhengwei/dgfm_runs/fm_imagenet32_baseline_v1
-```
-
-## 13. Teacher Interface Usage
-Baseline training must default to:
+## 11. Teacher Interface Usage
+Phase 1 baseline uses:
 - `teacher.type = none`
 
-Future teacher-based experiments must preserve the same CLI shape:
+Future teacher-based runs must keep the same CLI shape and change only config.
 
-```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
-  --config configs/experiment/fm_cifar10_teacher.yaml \
-  --run-root /cache/Zhengwei/dgfm_runs/fm_cifar10_teacher_v1
-```
-
-Only the config changes. The trainer entrypoint stays the same.
-
-## 14. Future Time-Warp Hooks
-Time-warp is not enabled in baseline Phase 1 training, but the framework must reserve:
-- scheduler wrapper insertion,
-- warped time sampling for evaluation,
-- identity-warp default for baseline runs.
-
-The user-facing command must remain unchanged; time-warp should be enabled by config only.
+## 12. Time-Warp Hook
+Time-warp is not active in Phase 1 baseline training. The hook is reserved in scheduler config and will be enabled through config, not new CLI entrypoints.

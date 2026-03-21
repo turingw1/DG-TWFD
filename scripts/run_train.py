@@ -18,12 +18,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--config", required=True, help="Experiment config path")
     parser.add_argument("--run-root", required=True, help="Run root directory")
     parser.add_argument("--resume", default=None, help="Optional checkpoint to resume from")
+    parser.add_argument("--set", action="append", default=[], help="Config override in key=value form")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    config = load_experiment_config(args.config)
+    config = load_experiment_config(args.config, overrides=args.set)
     roots = resolve_run_roots(args.run_root)
     trainer = BaselineTrainer(config=config, roots=roots)
     trainer.run(resume=args.resume)

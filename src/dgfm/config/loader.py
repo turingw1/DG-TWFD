@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ast import literal_eval
 from dataclasses import dataclass
 import os
 from pathlib import Path
@@ -51,7 +52,34 @@ def _resolve_include(path_like: str) -> Path:
     return include_path
 
 
-def load_experiment_config(config_path: str | Path) -> dict[str, Any]:
+def _parse_override_value(raw_value: str) -> Any:
+    lowered = raw_value.lower()
+    if lowered in {"true", "false"}:
+        return lowered == "true"
+    if lowered == "null":
+        return None
+    try:
+        return literal_eval(raw_value)
+    except (ValueError, SyntaxError):
+        return raw_value
+
+
+def _apply_overrides(config_dict: dict[str, Any], overrides: list[str]) -> dict[str, Any]:
+    merged = dict(config_dict)
+    for override in overrides:
+        if "=" not in override:
+            raise ValueError(f"Override must be key=value, got: {override}")
+        key_path, raw_value = override.split("=", 1)
+        value = _parse_override_value(raw_value)
+        target = merged
+        keys = key_path.split(".")
+        for key in keys[:-1]:
+            target = target.setdefault(key, {})
+        target[keys[-1]] = value
+    return merged
+
+
+def load_experiment_config(config_path: str | Path, overrides: list[str] | None = None) -> dict[str, Any]:
     path = Path(config_path)
     if not path.is_absolute():
         path = ROOT / path
@@ -68,6 +96,8 @@ def load_experiment_config(config_path: str | Path) -> dict[str, Any]:
         merged = _merge_dicts(merged, _read_yaml(_resolve_include(include)))
 
     merged = _merge_dicts(merged, loaded)
+    if overrides:
+        merged = _apply_overrides(merged, overrides)
     return _expand_env_vars(merged)
 
 

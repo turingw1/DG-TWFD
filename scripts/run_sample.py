@@ -25,6 +25,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--steps", type=int, default=16, help="Sampling step count")
     parser.add_argument("--num-samples", type=int, default=64, help="Number of samples")
     parser.add_argument("--fixed-seed", type=int, default=42, help="Fixed seed for qualitative generation")
+    parser.add_argument("--set", action="append", default=[], help="Config override in key=value form")
     return parser.parse_args()
 
 
@@ -37,7 +38,7 @@ def _device_from_config(config: dict) -> torch.device:
 
 def main() -> None:
     args = parse_args()
-    config = load_experiment_config(args.config)
+    config = load_experiment_config(args.config, overrides=args.set)
     device = _device_from_config(config)
     ensure_flow_matching_on_path()
     from flow_matching.solver import ODESolver
