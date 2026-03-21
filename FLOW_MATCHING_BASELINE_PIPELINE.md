@@ -296,3 +296,31 @@ Future teacher-based experiments must keep the same CLI shape and switch only co
 
 Time-warp is not active in Phase 1 baseline training.
 The future hook remains configuration-driven; do not create a new user-facing CLI path for it.
+
+## 14. Paper-Style Multi-Step Qualitative Panel
+
+Generate a single stitched panel using the same fixed noise across `1/2/4/8/16` steps.
+This is the recommended qualitative figure format for reports and paper-style comparisons.
+
+```bash
+CUDA_VISIBLE_DEVICES=1 python scripts/run_multistep_panel.py \
+  --config $FM_CONFIG \
+  --checkpoint $CKPT_DIR/best.pt \
+  --output-dir $SAMPLE_ROOT/multistep_panel \
+  --steps 1 2 4 8 16 \
+  --num-examples 8 \
+  --fixed-seed 42
+```
+
+Outputs:
+- `$SAMPLE_ROOT/multistep_panel/multistep_panel.png`
+- `$SAMPLE_ROOT/multistep_panel/multistep_panel.pt`
+
+Layout convention:
+- rows: fixed latent seeds
+- first column: initial noise
+- following columns: outputs at `1`, `2`, `4`, `8`, `16` steps
+
+Use this panel together with `reports/summary.csv`:
+- the panel shows qualitative degradation/improvement as step count changes
+- the summary table provides the corresponding `FID` and `NFE`
