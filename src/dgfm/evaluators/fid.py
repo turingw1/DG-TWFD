@@ -1,25 +1,57 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
 from typing import Iterable
 
 import numpy as np
 import torch
 from torch import nn
+from torch.hub import download_url_to_file, get_dir
 from torch_fidelity.feature_extractor_inceptionv3 import FeatureExtractorInceptionV3
+from torch_fidelity.feature_extractor_inceptionv3 import URL_INCEPTION_V3
 from torch_fidelity.metric_fid import KEY_METRIC_FID, fid_statistics_to_metric
 
 
 FID_FEATURE_LAYER = "2048"
+FID_WEIGHTS_FILENAME = Path(URL_INCEPTION_V3).name
+
+
+def _resolve_inception_weights_path() -> str | None:
+    explicit_path = os.environ.get("DGFM_TORCH_FIDELITY_WEIGHTS_PATH")
+    if explicit_path:
+        return explicit_path
+
+    mirror_url = os.environ.get("DGFM_TORCH_FIDELITY_MIRROR_URL")
+    mirror_prefix = os.environ.get("DGFM_TORCH_FIDELITY_MIRROR_PREFIX")
+    if not mirror_url and not mirror_prefix:
+        return None
+
+    hub_dir = Path(get_dir())
+    checkpoint_dir = hub_dir / "checkpoints"
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    target_path = checkpoint_dir / FID_WEIGHTS_FILENAME
+    if target_path.exists():
+        return str(target_path)
+
+    if mirror_url:
+        resolved_url = mirror_url
+    else:
+        prefix = str(mirror_prefix)
+        resolved_url = prefix + URL_INCEPTION_V3
+    download_url_to_file(resolved_url, str(target_path), progress=True)
+    return str(target_path)
 
 
 class InceptionFeatureExtractor(nn.Module):
     def __init__(self) -> None:
         super().__init__()
+        weights_path = _resolve_inception_weights_path()
         self.model = FeatureExtractorInceptionV3(
             name="inception-v3-compat",
             features_list=[FID_FEATURE_LAYER],
+            feature_extractor_weights_path=weights_path,
         )
 
     @torch.no_grad()

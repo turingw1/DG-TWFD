@@ -44,6 +44,20 @@ Notes:
 - The first FID run may download Inception weights if they are not already cached.
 - Use `TORCH_HOME` under the run root so pretrained weights and caches do not spill into the home directory.
 - Dataset preparation is manual-first. Training will not auto-download CIFAR-10.
+- If GitHub download is slow, set a mirror before evaluation:
+
+```bash
+export DGFM_TORCH_FIDELITY_MIRROR_PREFIX=https://githubfast.com/
+```
+
+This rewrites the default `torch_fidelity` weight URL to:
+- `https://githubfast.com/https://github.com/...`
+
+If you already downloaded the weight file manually, you can pin it directly:
+
+```bash
+export DGFM_TORCH_FIDELITY_WEIGHTS_PATH=/path/to/weights-inception-2015-12-05-6726825d.pth
+```
 
 ## 2. Dataset Preparation
 
