@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import csv
 import json
+import re
 import time
 
 import torch
@@ -29,8 +30,10 @@ class EvaluationRunner:
         split = str(eval_cfg.get("reference_split", "test"))
         image_size = int(dataset_cfg["image_size"])
         dataset_name = str(dataset_cfg["name"])
+        fid_protocol = str(eval_cfg.get("fid_protocol", "torch_fidelity_inceptionv3_2048"))
+        protocol_slug = re.sub(r"[^a-zA-Z0-9]+", "_", fid_protocol).strip("_").lower()
         cache_root = Path(dataset_cfg["data_root"]) / ".dgfm_cache"
-        return cache_root / f"fid_stats_{dataset_name}_{split}_{image_size}_inceptionv3.npz"
+        return cache_root / f"fid_stats_{dataset_name}_{split}_{image_size}_{protocol_slug}.npz"
 
     def _prepare_reference_stats(self, feature_extractor, device: torch.device):
         cache_path = self._stats_cache_path()

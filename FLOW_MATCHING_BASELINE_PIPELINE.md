@@ -85,7 +85,7 @@ Expected layout:
 ```text
 $DATA_ROOT/cifar10/
 ├── cifar-10-batches-py/
-└── .dgfm_cache/               # created later by run_eval.py for cached FID stats
+└── .dgfm_cache/               # created later by run_eval.py for protocol-specific cached FID stats
 ```
 
 ### Future ImageNet Preparation
@@ -207,6 +207,7 @@ Evaluation notes:
 - `nfe` is the hardware-independent compute budget and should be used for method comparison.
 - `elapsed_sec` and `samples_per_sec` are hardware-dependent and should only be compared on the same machine/setup.
 - `num_fid_samples=50000` is the full evaluation setting. Smaller values are only approximate FID and should not be used as headline numbers.
+- cached reference stats are keyed by `fid_protocol`; after changing the FID backend, do not reuse old cache files
 
 ## 8. Fast Evaluation Smoke
 
