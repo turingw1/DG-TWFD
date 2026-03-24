@@ -28,6 +28,26 @@ def build_multistep_panel(
     return torch.stack(panel_rows, dim=0)
 
 
+def build_strategy_panel(
+    noise: torch.Tensor,
+    samples_by_strategy: dict[str, torch.Tensor],
+    strategy_names: list[str],
+    include_noise: bool = True,
+) -> torch.Tensor:
+    rows = noise.shape[0]
+    columns: list[torch.Tensor] = []
+    if include_noise:
+        columns.append(to_unit_interval(noise))
+    for name in strategy_names:
+        columns.append(samples_by_strategy[name])
+
+    panel_rows = []
+    for row_idx in range(rows):
+        for column in columns:
+            panel_rows.append(column[row_idx])
+    return torch.stack(panel_rows, dim=0)
+
+
 @torch.no_grad()
 def save_multistep_qualitative_panel(
     model: torch.nn.Module,

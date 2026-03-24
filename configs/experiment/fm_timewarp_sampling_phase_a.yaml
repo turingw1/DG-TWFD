@@ -1,0 +1,23 @@
+base: configs/base.yaml
+includes:
+  - dataset/cifar10
+  - model/unet_fm
+  - path/condot
+  - scheduler/condot
+  - teacher/none
+  - eval/baseline
+
+experiment:
+  name: fm_timewarp_sampling_phase_a
+
+timewarp_sampling:
+  strategies:
+    - uniform
+    - source_dense_power2
+    - data_dense_power2
+    - random_dirichlet
+  power_gamma: 2.0
+  random_concentration: 1.0
+  random_seed: 123
+  qualitative_panel_step: 16
+  qualitative_num_examples: 8

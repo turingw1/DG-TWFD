@@ -36,9 +36,20 @@ def solver_nfe(step_count: int, method: str = "midpoint") -> int:
 
 
 @torch.no_grad()
-def sample_with_ode(model: torch.nn.Module, x_init: torch.Tensor, step_count: int, method: str = "midpoint") -> torch.Tensor:
+def sample_with_ode(
+    model: torch.nn.Module,
+    x_init: torch.Tensor,
+    step_count: int,
+    method: str = "midpoint",
+    time_grid: torch.Tensor | None = None,
+) -> torch.Tensor:
     x = x_init
-    time_grid = torch.linspace(0.0, 1.0, steps=step_count + 1, device=x_init.device, dtype=x_init.dtype)
+    if time_grid is None:
+        time_grid = torch.linspace(0.0, 1.0, steps=step_count + 1, device=x_init.device, dtype=x_init.dtype)
+    else:
+        time_grid = time_grid.to(device=x_init.device, dtype=x_init.dtype)
+        if time_grid.ndim != 1 or time_grid.shape[0] != step_count + 1:
+            raise ValueError(f"time_grid must have shape ({step_count + 1},), got {tuple(time_grid.shape)}")
     batch = x.shape[0]
     for idx in range(step_count):
         t0 = time_grid[idx]
