@@ -14,9 +14,13 @@ case "${variant}" in
     export FM_TIMEWARP_CONFIG="configs/experiment/fm_timewarp_sampling_phase_a.yaml"
     exp_prefix="fm_timewarp_sampling_phase_a"
     ;;
+  phase_b1)
+    export FM_TIMEWARP_CONFIG="configs/experiment/fm_timewarp_sampling_phase_b1.yaml"
+    exp_prefix="fm_timewarp_sampling_phase_b1"
+    ;;
   *)
     echo "Unknown fm_timewarp_sampling variant: ${variant}" >&2
-    echo "Expected: phase_a" >&2
+    echo "Expected: phase_a phase_b1" >&2
     return 1
     ;;
 esac

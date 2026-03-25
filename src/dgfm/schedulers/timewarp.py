@@ -81,19 +81,36 @@ def build_time_grid(
     if step_count <= 0:
         raise ValueError(f"step_count must be positive, got {step_count}")
 
-    if strategy == "uniform":
+    strategy_name = strategy
+    gamma_override: float | None = None
+    if "@" in strategy_name:
+        strategy_name, raw_gamma = strategy_name.split("@", 1)
+        gamma_override = float(raw_gamma)
+    gamma = power_gamma if gamma_override is None else gamma_override
+
+    if strategy_name == "uniform":
         return _validate_time_grid(_uniform_grid(step_count, device=device, dtype=dtype), step_count)
-    if strategy == "source_dense_power2":
+    if strategy_name == "source_dense_power2":
         return _validate_time_grid(
-            _source_dense_power_grid(step_count, gamma=power_gamma, device=device, dtype=dtype),
+            _source_dense_power_grid(step_count, gamma=2.0, device=device, dtype=dtype),
             step_count,
         )
-    if strategy == "data_dense_power2":
+    if strategy_name == "data_dense_power2":
         return _validate_time_grid(
-            _data_dense_power_grid(step_count, gamma=power_gamma, device=device, dtype=dtype),
+            _data_dense_power_grid(step_count, gamma=2.0, device=device, dtype=dtype),
             step_count,
         )
-    if strategy == "random_dirichlet":
+    if strategy_name == "source_dense_power":
+        return _validate_time_grid(
+            _source_dense_power_grid(step_count, gamma=gamma, device=device, dtype=dtype),
+            step_count,
+        )
+    if strategy_name == "data_dense_power":
+        return _validate_time_grid(
+            _data_dense_power_grid(step_count, gamma=gamma, device=device, dtype=dtype),
+            step_count,
+        )
+    if strategy_name == "random_dirichlet":
         return _validate_time_grid(
             _random_dirichlet_grid(
                 step_count,

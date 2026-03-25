@@ -37,3 +37,16 @@ def test_random_dirichlet_grid_is_monotone_and_deterministic() -> None:
     assert float(grid_a[0]) == 0.0
     assert float(grid_a[-1]) == 1.0
     assert torch.all(grid_a[1:] >= grid_a[:-1])
+
+
+def test_parameterized_power_grid_string_is_supported() -> None:
+    grid = build_time_grid(
+        4,
+        "data_dense_power@1.5",
+        device=torch.device("cpu"),
+        dtype=torch.float32,
+    )
+    assert grid.shape == (5,)
+    assert float(grid[0]) == 0.0
+    assert float(grid[-1]) == 1.0
+    assert torch.all(grid[1:] >= grid[:-1])

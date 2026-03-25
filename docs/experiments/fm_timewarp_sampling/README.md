@@ -12,9 +12,14 @@ Keep all future time-warp experiment notes here instead of the repository root.
   - compare `uniform`, `source_dense_power2`, `data_dense_power2`, `random_dirichlet`
 
 - `phase_b_v1`
+  - scalar gamma search in the `data_dense_power` family
+  - objective-driven warp selection
+  - same evaluation protocol as Phase A
+
+- `phase_b2_v1`
   - learnable warp module
   - training-time warp parameterization
-  - same evaluation protocol as Phase A
+  - reserved for later
 
 - `phase_c_v1`
   - optional teacher-coupled warp optimization

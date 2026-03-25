@@ -32,6 +32,14 @@ class TimewarpSamplingRunner:
     def _tw_cfg(self) -> dict:
         return self.config.get("timewarp_sampling", {})
 
+    def _strategy_dir_name(self, strategy: str) -> str:
+        return (
+            strategy.replace("@", "_at_")
+            .replace(".", "p")
+            .replace("/", "_")
+            .replace(":", "_")
+        )
+
     def _stats_cache_path(self) -> Path:
         from .runner import EvaluationRunner
         dummy = EvaluationRunner(config=self.config, checkpoint=self.checkpoint, eval_root=self.eval_root)
@@ -221,6 +229,87 @@ class TimewarpSamplingRunner:
         with (report_dir / "best_overall.json").open("w", encoding="utf-8") as handle:
             json.dump(best, handle, indent=2)
 
+    def _evaluate_strategy_step(
+        self,
+        *,
+        model: torch.nn.Module,
+        feature_extractor: torch.nn.Module,
+        reference_stats,
+        cache_path: Path,
+        device: torch.device,
+        strategy: str,
+        step_count: int,
+        eval_root: Path,
+        fid_samples: int,
+        fid_batch_size: int,
+        fid_protocol: str,
+        solver_method: str,
+        channels: int,
+        image_size: int,
+        reference_count: int,
+    ) -> dict:
+        step_dir = eval_root / self._strategy_dir_name(strategy) / f"steps{step_count}"
+        step_dir.mkdir(parents=True, exist_ok=True)
+        t0 = time.time()
+        nfe = solver_nfe(step_count=step_count, method=solver_method)
+
+        def sample_fn(batch_size: int) -> torch.Tensor:
+            noise = torch.randn(batch_size, channels, image_size, image_size, device=device)
+            time_grid = self._time_grid(step_count, strategy, device=device, dtype=noise.dtype)
+            with torch.no_grad():
+                samples = sample_with_ode(
+                    model=model,
+                    x_init=noise,
+                    step_count=step_count,
+                    method=solver_method,
+                    time_grid=time_grid,
+                )
+            return to_unit_interval(samples)
+
+        fake_stats = compute_generator_stats(
+            sample_fn=sample_fn,
+            feature_extractor=feature_extractor,
+            batch_size=fid_batch_size,
+            total_samples=fid_samples,
+            device=device,
+        )
+        fid = frechet_distance(reference_stats, fake_stats)
+        grid_meta = self._save_strategy_grid(
+            model=model,
+            device=device,
+            step_count=step_count,
+            strategy=strategy,
+            step_dir=step_dir,
+            solver_method=solver_method,
+        )
+        elapsed = time.time() - t0
+        save_stats(step_dir / "generated_stats.npz", fake_stats)
+        record = {
+            "strategy": strategy,
+            "step_count": step_count,
+            "integration_steps": step_count,
+            "nfe": nfe,
+            "fid": fid,
+            "fid_protocol": fid_protocol,
+            "num_fid_samples": fid_samples,
+            "fid_batch_size": fid_batch_size,
+            "reference_count": reference_count,
+            "reference_stats": str(cache_path),
+            "checkpoint": str(self.checkpoint),
+            "solver_method": solver_method,
+            "elapsed_sec": elapsed,
+            "samples_per_sec": fid_samples / max(elapsed, 1.0e-8),
+            **grid_meta,
+        }
+        with (step_dir / "metrics.json").open("w", encoding="utf-8") as handle:
+            json.dump(record, handle, indent=2)
+        print(
+            f"timewarp_eval strategy={strategy} step_count={step_count} nfe={nfe} "
+            f"fid={fid:.4f} elapsed_sec={elapsed:.2f}",
+            flush=True,
+        )
+        return record
+
     def run(self, *, step_counts: list[int], strategy_names: list[str]) -> None:
         self.eval_root.mkdir(parents=True, exist_ok=True)
         report_dir = self.eval_root / "reports"
@@ -242,67 +331,24 @@ class TimewarpSamplingRunner:
         records: list[dict] = []
         for strategy in strategy_names:
             for step_count in step_counts:
-                strategy_dir = self.eval_root / strategy / f"steps{step_count}"
-                strategy_dir.mkdir(parents=True, exist_ok=True)
-                t0 = time.time()
-                nfe = solver_nfe(step_count=step_count, method=solver_method)
-
-                def sample_fn(batch_size: int) -> torch.Tensor:
-                    noise = torch.randn(batch_size, channels, image_size, image_size, device=device)
-                    time_grid = self._time_grid(step_count, strategy, device=device, dtype=noise.dtype)
-                    with torch.no_grad():
-                        samples = sample_with_ode(
-                            model=model,
-                            x_init=noise,
-                            step_count=step_count,
-                            method=solver_method,
-                            time_grid=time_grid,
-                        )
-                    return to_unit_interval(samples)
-
-                fake_stats = compute_generator_stats(
-                    sample_fn=sample_fn,
-                    feature_extractor=feature_extractor,
-                    batch_size=fid_batch_size,
-                    total_samples=fid_samples,
-                    device=device,
-                )
-                fid = frechet_distance(reference_stats, fake_stats)
-                grid_meta = self._save_strategy_grid(
+                record = self._evaluate_strategy_step(
                     model=model,
+                    feature_extractor=feature_extractor,
+                    reference_stats=reference_stats,
+                    cache_path=cache_path,
                     device=device,
-                    step_count=step_count,
                     strategy=strategy,
-                    step_dir=strategy_dir,
+                    step_count=step_count,
+                    eval_root=self.eval_root,
+                    fid_samples=fid_samples,
+                    fid_batch_size=fid_batch_size,
+                    fid_protocol=fid_protocol,
                     solver_method=solver_method,
+                    channels=channels,
+                    image_size=image_size,
+                    reference_count=reference_count,
                 )
-                elapsed = time.time() - t0
-                save_stats(strategy_dir / "generated_stats.npz", fake_stats)
-                record = {
-                    "strategy": strategy,
-                    "step_count": step_count,
-                    "integration_steps": step_count,
-                    "nfe": nfe,
-                    "fid": fid,
-                    "fid_protocol": fid_protocol,
-                    "num_fid_samples": fid_samples,
-                    "fid_batch_size": fid_batch_size,
-                    "reference_count": reference_count,
-                    "reference_stats": str(cache_path),
-                    "checkpoint": str(self.checkpoint),
-                    "solver_method": solver_method,
-                    "elapsed_sec": elapsed,
-                    "samples_per_sec": fid_samples / max(elapsed, 1.0e-8),
-                    **grid_meta,
-                }
-                with (strategy_dir / "metrics.json").open("w", encoding="utf-8") as handle:
-                    json.dump(record, handle, indent=2)
                 records.append(record)
-                print(
-                    f"timewarp_eval strategy={strategy} step_count={step_count} nfe={nfe} "
-                    f"fid={fid:.4f} elapsed_sec={elapsed:.2f}",
-                    flush=True,
-                )
 
         self._write_reports(records, report_dir)
         self._save_plot(records, report_dir)
