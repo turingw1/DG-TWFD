@@ -4,12 +4,14 @@ from ast import literal_eval
 from dataclasses import dataclass
 import os
 from pathlib import Path
+import re
 from typing import Any
 
 import yaml
 
 
 ROOT = Path(__file__).resolve().parents[3]
+_ENV_DEFAULT_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\:?-([^}]*)\}")
 
 
 @dataclass(slots=True)
@@ -39,13 +41,25 @@ def _merge_dicts(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]
     return merged
 
 
+def _expand_bash_style_defaults(text: str) -> str:
+    def replace(match: re.Match[str]) -> str:
+        var_name = match.group(1)
+        default_value = match.group(2)
+        env_value = os.environ.get(var_name)
+        if env_value is None or env_value == "":
+            return default_value
+        return env_value
+
+    return _ENV_DEFAULT_PATTERN.sub(replace, text)
+
+
 def _expand_env_vars(value: Any) -> Any:
     if isinstance(value, dict):
         return {key: _expand_env_vars(item) for key, item in value.items()}
     if isinstance(value, list):
         return [_expand_env_vars(item) for item in value]
     if isinstance(value, str):
-        return os.path.expandvars(value)
+        return os.path.expandvars(_expand_bash_style_defaults(value))
     return value
 
 
