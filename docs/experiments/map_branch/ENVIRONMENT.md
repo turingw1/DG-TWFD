@@ -57,10 +57,22 @@ The experiment activation script also defaults the HuggingFace cache to:
 /cache/huggingface
 ```
 
+It also defaults the HuggingFace online endpoint to:
+
+```bash
+https://hf-mirror.com
+```
+
 This is important for offline teacher rollout, because the current teacher
 configuration uses:
 
 - `teacher.local_files_only=true`
+
+If you later switch to:
+
+- `teacher.local_files_only=false`
+
+the mirror endpoint will be used automatically unless you override `HF_ENDPOINT`.
 
 If you want a different writable cache root:
 

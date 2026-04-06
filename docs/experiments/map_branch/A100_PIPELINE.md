@@ -35,6 +35,7 @@ This sets:
 - `TRAJ_ROOT=/cache/Zhengwei/dgfm_teacher_traj/cifar10_ddpm128_p33`
 - `HF_HOME=/cache/huggingface`
 - `HF_HUB_CACHE=/cache/huggingface/hub`
+- `HF_ENDPOINT=https://hf-mirror.com`
 - `DGFM_ARCHIVE_ROOT=/temp/Zhengwei/dgfm_runs/fm_cifar10_map_branch_v2`
 
 Training will mirror:
@@ -113,6 +114,7 @@ Fix A: point to the shared HuggingFace cache before running the command:
 ```bash
 export HF_HOME=/cache/huggingface
 export HF_HUB_CACHE=/cache/huggingface/hub
+export HF_ENDPOINT=https://hf-mirror.com
 ```
 
 Fix B: allow online lookup once if the server has outbound access:
@@ -124,6 +126,15 @@ CUDA_VISIBLE_DEVICES=1 python scripts/prepare_teacher_trajectories.py \
   --batch-size 64 \
   --set teacher.local_files_only=false
 ```
+
+When `teacher.local_files_only=false`, the current branch will use:
+
+```bash
+HF_ENDPOINT=https://hf-mirror.com
+```
+
+by default. Override it manually if your environment requires a different mirror
+or the official HuggingFace endpoint.
 
 If your server already has a local snapshot path, you can also bypass the repo
 lookup entirely:
