@@ -5,6 +5,7 @@
 ```bash
 cd ~/workspace/Zhengwei/DG-TWFD
 git checkout map_branch_ctm_explicit_map
+git pull --ff-only
 conda activate consistency
 ```
 
@@ -36,16 +37,7 @@ If missing and you explicitly want download:
 python scripts/build_dataset.py --dataset cifar10 --data-root $DATA_ROOT/cifar10 --download
 ```
 
-## 4. Baseline FM reproduction command
-
-Use this only to keep the old baseline comparable:
-
-```bash
-source scripts/experiments/activate_fm_cifar10.sh baseline v2
-CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py --config $FM_CONFIG --run-root $RUN_ROOT
-```
-
-## 5. Map-branch training command
+## 4. Map-branch training command
 
 ```bash
 source scripts/experiments/activate_fm_cifar10.sh map_branch v1
@@ -60,7 +52,7 @@ Current semantics:
 - sample `0 <= t < s <= 1`
 - train `M_theta(x_t, t, s) -> x_s`
 
-## 6. Resume command
+## 5. Resume command
 
 ```bash
 CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
@@ -69,7 +61,7 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
   --resume $CKPT_DIR/last.pt
 ```
 
-## 7. Map-branch evaluation command
+## 6. Map-branch evaluation command
 
 If FID weights download is slow on A100, set a mirror before evaluation:
 
@@ -105,7 +97,7 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
   --steps 1 2 4 8 16
 ```
 
-## 8. Qualitative sampling command
+## 7. Qualitative sampling command
 
 ```bash
 CUDA_VISIBLE_DEVICES=1 python scripts/run_sample.py \
@@ -117,7 +109,7 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_sample.py \
   --fixed-seed 42
 ```
 
-## 9. Multistep panel command
+## 8. Multistep panel command
 
 ```bash
 CUDA_VISIBLE_DEVICES=1 python scripts/run_multistep_panel.py \
@@ -129,7 +121,7 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_multistep_panel.py \
   --fixed-seed 42
 ```
 
-## 10. Output layout
+## 9. Output layout
 
 Training:
 - `$CKPT_DIR/best.pt`
@@ -146,7 +138,7 @@ Sampling:
 - `$SAMPLE_ROOT/steps16/grid.png`
 - `$SAMPLE_ROOT/multistep_panel/multistep_panel.png`
 
-## 11. Trajectory-shard teacher targets
+## 10. Trajectory-shard teacher targets
 
 Not implemented in the first map-branch patch.
 
@@ -159,7 +151,7 @@ Expected future role:
 - consume cached `(x_t, t, s, x_s_target)` supervision
 - keep `MapTrainer` unchanged
 
-## 12. Future teacher sampler mode
+## 11. Future teacher sampler mode
 
 Not implemented in the first map-branch patch.
 
@@ -172,7 +164,7 @@ Expected future role:
 - use a high-NFE teacher rollout to build `x_s_target`
 - compare explicit map learning against sampler-distilled targets
 
-## 13. Future time-warp integration
+## 12. Future time-warp integration
 
 The current map branch is designed so time-warp attaches in two places:
 
