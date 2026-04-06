@@ -33,6 +33,8 @@ This sets:
 - `LOG_ROOT=$RUN_ROOT/logs`
 - `METRIC_ROOT=/cache/Zhengwei/dgfm_eval/fm_cifar10_map_branch_v2`
 - `TRAJ_ROOT=/cache/Zhengwei/dgfm_teacher_traj/cifar10_ddpm128_p33`
+- `HF_HOME=/cache/huggingface`
+- `HF_HUB_CACHE=/cache/huggingface/hub`
 - `DGFM_ARCHIVE_ROOT=/temp/Zhengwei/dgfm_runs/fm_cifar10_map_branch_v2`
 
 Training will mirror:
@@ -97,6 +99,42 @@ Expected files:
 - `$TRAJ_ROOT/val/manifest.yaml`
 - `$TRAJ_ROOT/train/train_00000.pt`
 - `$TRAJ_ROOT/val/val_00000.pt`
+
+If teacher loading fails with:
+
+```text
+LocalEntryNotFoundError: Cannot find an appropriate cached snapshot folder ...
+```
+
+use one of these two fixes.
+
+Fix A: point to the shared HuggingFace cache before running the command:
+
+```bash
+export HF_HOME=/cache/huggingface
+export HF_HUB_CACHE=/cache/huggingface/hub
+```
+
+Fix B: allow online lookup once if the server has outbound access:
+
+```bash
+CUDA_VISIBLE_DEVICES=1 python scripts/prepare_teacher_trajectories.py \
+  --config $FM_CONFIG \
+  --output-root $TRAJ_ROOT \
+  --batch-size 64 \
+  --set teacher.local_files_only=false
+```
+
+If your server already has a local snapshot path, you can also bypass the repo
+lookup entirely:
+
+```bash
+CUDA_VISIBLE_DEVICES=1 python scripts/prepare_teacher_trajectories.py \
+  --config $FM_CONFIG \
+  --output-root $TRAJ_ROOT \
+  --batch-size 64 \
+  --set teacher.name_or_path='/cache/huggingface/hub/models--google--ddpm-cifar10-32/snapshots/<snapshot_id>'
+```
 
 ## 5. Map-branch training command
 

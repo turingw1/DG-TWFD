@@ -51,6 +51,17 @@ By default, the script creates the environment under:
 /cache/$USER/conda_envs/<env_name>
 ```
 
+The experiment activation script also defaults the HuggingFace cache to:
+
+```bash
+/cache/huggingface
+```
+
+This is important for offline teacher rollout, because the current teacher
+configuration uses:
+
+- `teacher.local_files_only=true`
+
 If you want a different writable cache root:
 
 ```bash
