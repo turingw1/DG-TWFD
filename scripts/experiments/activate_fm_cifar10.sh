@@ -40,8 +40,10 @@ export CKPT_DIR="${RUN_ROOT}/checkpoints"
 export SAMPLE_ROOT="${RUN_ROOT}/samples"
 export LOG_ROOT="${RUN_ROOT}/logs"
 export METRIC_ROOT="${EVAL_ROOT}/${FM_EXP}"
+export ARCHIVE_ROOT="${ARCHIVE_ROOT:-/temp/Zhengwei/dgfm_runs/${FM_EXP}}"
+export DGFM_ARCHIVE_ROOT="${DGFM_ARCHIVE_ROOT:-${ARCHIVE_ROOT}}"
 export TORCH_HOME="${TORCH_HOME:-${RUN_ROOT}/.torch}"
-mkdir -p "${CKPT_DIR}" "${SAMPLE_ROOT}" "${LOG_ROOT}" "${METRIC_ROOT}" 2>/dev/null || true
+mkdir -p "${CKPT_DIR}" "${SAMPLE_ROOT}" "${LOG_ROOT}" "${METRIC_ROOT}" "${DGFM_ARCHIVE_ROOT}" 2>/dev/null || true
 
 echo "Activated dgfm experiment"
 echo "  variant=${variant}"
@@ -49,3 +51,4 @@ echo "  FM_CONFIG=${FM_CONFIG}"
 echo "  FM_EXP=${FM_EXP}"
 echo "  RUN_ROOT=${RUN_ROOT}"
 echo "  METRIC_ROOT=${METRIC_ROOT}"
+echo "  DGFM_ARCHIVE_ROOT=${DGFM_ARCHIVE_ROOT}"

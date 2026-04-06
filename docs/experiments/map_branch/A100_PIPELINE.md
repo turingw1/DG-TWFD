@@ -32,6 +32,15 @@ This sets:
 - `SAMPLE_ROOT=$RUN_ROOT/samples`
 - `LOG_ROOT=$RUN_ROOT/logs`
 - `METRIC_ROOT=/cache/Zhengwei/dgfm_eval/fm_cifar10_map_branch_v1`
+- `DGFM_ARCHIVE_ROOT=/temp/Zhengwei/dgfm_runs/fm_cifar10_map_branch_v1`
+
+Training will mirror:
+- `logs/config_resolved.yaml`
+- `logs/train.jsonl`
+- `checkpoints/last.pt`
+- `checkpoints/best.pt`
+
+into the archive root during training.
 
 ## 3. Dataset preparation
 
@@ -138,6 +147,10 @@ Training:
 - `$CKPT_DIR/last.pt`
 - `$LOG_ROOT/train.jsonl`
 - `$LOG_ROOT/config_resolved.yaml`
+- `/temp/Zhengwei/dgfm_runs/<FM_EXP>/checkpoints/best.pt`
+- `/temp/Zhengwei/dgfm_runs/<FM_EXP>/checkpoints/last.pt`
+- `/temp/Zhengwei/dgfm_runs/<FM_EXP>/logs/train.jsonl`
+- `/temp/Zhengwei/dgfm_runs/<FM_EXP>/logs/config_resolved.yaml`
 
 Evaluation:
 - `$METRIC_ROOT/reports/summary.csv`

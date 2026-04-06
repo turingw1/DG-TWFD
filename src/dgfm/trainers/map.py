@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 import time
 
@@ -14,6 +14,7 @@ from dgfm.datasets import build_image_dataloaders
 from dgfm.models import ModelEMA, build_map_model
 from dgfm.paths import build_path, ensure_flow_matching_on_path
 from dgfm.targets import build_target_builder
+from dgfm.utils import build_experiment_archive
 
 
 def _device_from_config(config: dict) -> torch.device:
@@ -42,6 +43,7 @@ def _compute_map_loss(pred: torch.Tensor, target: torch.Tensor, target_cfg: dict
 class MapTrainer:
     config: dict
     roots: RunRoots
+    archive: object | None = field(init=False, default=None)
 
     def prepare(self) -> None:
         self.roots.checkpoint_dir.mkdir(parents=True, exist_ok=True)
@@ -49,6 +51,8 @@ class MapTrainer:
         self.roots.log_dir.mkdir(parents=True, exist_ok=True)
         with (self.roots.log_dir / "config_resolved.yaml").open("w", encoding="utf-8") as handle:
             yaml.safe_dump(self.config, handle, sort_keys=False)
+        self.archive = build_experiment_archive(self.roots)
+        self.archive.dump_yaml("config_resolved.yaml", self.config)
 
     def _run_epoch(
         self,
@@ -158,6 +162,7 @@ class MapTrainer:
             }
             with history_path.open("a", encoding="utf-8") as handle:
                 handle.write(json.dumps(payload) + "\n")
+            self.archive.append_jsonl("train.jsonl", payload)
             ckpt = {
                 "epoch": epoch,
                 "model": model.state_dict(),
@@ -168,10 +173,12 @@ class MapTrainer:
                 "config": self.config,
             }
             torch.save(ckpt, self.roots.checkpoint_dir / "last.pt")
+            self.archive.save_checkpoint("last.pt", ckpt)
             if val_stats["loss"] <= best_val:
                 best_val = val_stats["loss"]
                 ckpt["best_val"] = best_val
                 torch.save(ckpt, self.roots.checkpoint_dir / "best.pt")
+                self.archive.save_checkpoint("best.pt", ckpt)
             print(
                 f"epoch={epoch + 1}/{epochs} train_loss={train_stats['loss']:.6f} "
                 f"val_loss={val_stats['loss']:.6f} target={target_mode} "

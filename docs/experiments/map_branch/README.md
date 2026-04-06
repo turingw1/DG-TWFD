@@ -43,6 +43,8 @@ This directory is the complete documentation context for the current
   - `0 <= t < s <= 1`
 - first-stage target builder:
   - `analytic_path`
+- training-time archive mirror:
+  - `/temp/Zhengwei/dgfm_runs/<FM_EXP>`
 
 ## Active code entrypoints
 

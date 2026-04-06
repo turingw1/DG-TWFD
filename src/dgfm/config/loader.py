@@ -18,6 +18,10 @@ class RunRoots:
     checkpoint_dir: Path
     sample_dir: Path
     log_dir: Path
+    archive_root: Path | None
+    archive_checkpoint_dir: Path | None
+    archive_sample_dir: Path | None
+    archive_log_dir: Path | None
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -103,9 +107,15 @@ def load_experiment_config(config_path: str | Path, overrides: list[str] | None 
 
 def resolve_run_roots(run_root: str | Path) -> RunRoots:
     root = Path(run_root)
+    archive_root_raw = os.environ.get("DGFM_ARCHIVE_ROOT")
+    archive_root = Path(archive_root_raw) if archive_root_raw else None
     return RunRoots(
         run_root=root,
         checkpoint_dir=root / "checkpoints",
         sample_dir=root / "samples",
         log_dir=root / "logs",
+        archive_root=archive_root,
+        archive_checkpoint_dir=(archive_root / "checkpoints") if archive_root else None,
+        archive_sample_dir=(archive_root / "samples") if archive_root else None,
+        archive_log_dir=(archive_root / "logs") if archive_root else None,
     )
