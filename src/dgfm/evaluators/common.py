@@ -4,7 +4,17 @@ from pathlib import Path
 
 import torch
 
-from dgfm.models import build_velocity_model
+from dgfm.models import build_map_model, build_velocity_model
+from dgfm.samplers import rollout_with_map
+
+
+def objective_mode(config: dict) -> str:
+    objective = str(config.get("train", {}).get("objective", "flow_matching_velocity"))
+    if objective in {"flow_matching_velocity", "velocity_fm"}:
+        return "velocity_fm"
+    if objective in {"explicit_map", "map_branch"}:
+        return "explicit_map"
+    raise ValueError(f"Unsupported train.objective: {objective}")
 
 
 @torch.no_grad()
@@ -18,16 +28,21 @@ def device_from_config(config: dict) -> torch.device:
 @torch.no_grad()
 def load_model_from_checkpoint(config: dict, checkpoint: str | Path, device: torch.device) -> torch.nn.Module:
     ckpt = torch.load(checkpoint, map_location=device)
-    model = build_velocity_model(config).to(device)
+    if objective_mode(config) == "explicit_map":
+        model = build_map_model(config).to(device)
+    else:
+        model = build_velocity_model(config).to(device)
     state_dict = ckpt.get("ema_model") or ckpt["model"]
     model.load_state_dict(state_dict)
     model.eval()
     return model
 
 
-def solver_nfe(step_count: int, method: str = "midpoint") -> int:
+def solver_nfe(step_count: int, method: str = "midpoint", mode: str = "velocity_fm") -> int:
     if step_count <= 0:
         raise ValueError(f"step_count must be positive, got {step_count}")
+    if mode == "explicit_map":
+        return step_count
     if method == "euler":
         return step_count
     if method in {"midpoint", "heun2"}:
@@ -75,6 +90,21 @@ def sample_with_ode(
             continue
         raise ValueError(f"Unsupported solver method: {method}")
     return x
+
+
+@torch.no_grad()
+def sample_from_model(
+    config: dict,
+    model: torch.nn.Module,
+    x_init: torch.Tensor,
+    step_count: int,
+    method: str = "midpoint",
+    time_grid: torch.Tensor | None = None,
+) -> torch.Tensor:
+    mode = objective_mode(config)
+    if mode == "explicit_map":
+        return rollout_with_map(model=model, x_init=x_init, step_count=step_count, time_grid=time_grid)
+    return sample_with_ode(model=model, x_init=x_init, step_count=step_count, method=method, time_grid=time_grid)
 
 
 @torch.no_grad()

@@ -1,16 +1,18 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
+os.environ.setdefault("MPLCONFIGDIR", str(ROOT / "outputs" / "debug" / ".mplconfig"))
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from dgfm.config import load_experiment_config
-from dgfm.evaluators import EvaluationRunner
+from dgfm.evaluators import build_evaluator
 
 
 def parse_args() -> argparse.Namespace:
@@ -27,13 +29,14 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    os.environ.setdefault("TORCH_HOME", str(Path(args.eval_root) / ".torch"))
     overrides = list(args.set)
     if args.fid_samples is not None:
         overrides.append(f"eval.num_fid_samples={args.fid_samples}")
     if args.fid_batch_size is not None:
         overrides.append(f"eval.fid_batch_size={args.fid_batch_size}")
     config = load_experiment_config(args.config, overrides=overrides)
-    runner = EvaluationRunner(
+    runner = build_evaluator(
         config=config,
         checkpoint=Path(args.checkpoint),
         eval_root=Path(args.eval_root),

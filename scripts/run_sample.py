@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 import sys
 
@@ -9,11 +10,12 @@ from torchvision.utils import save_image
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
+os.environ.setdefault("MPLCONFIGDIR", str(ROOT / "outputs" / "debug" / ".mplconfig"))
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from dgfm.config import load_experiment_config
-from dgfm.evaluators.common import device_from_config, load_model_from_checkpoint, sample_with_ode, to_unit_interval
+from dgfm.evaluators.common import device_from_config, load_model_from_checkpoint, objective_mode, sample_from_model, to_unit_interval
 
 
 def parse_args() -> argparse.Namespace:
@@ -44,7 +46,7 @@ def main() -> None:
         int(config["dataset"]["image_size"]),
         device=device,
     )
-    samples = sample_with_ode(model=model, x_init=noise, step_count=args.steps)
+    samples = sample_from_model(config=config, model=model, x_init=noise, step_count=args.steps)
     samples = to_unit_interval(samples)
     torch.save(samples.detach().cpu(), output_dir / "samples.pt")
     save_image(samples, output_dir / "grid.png", nrow=max(1, int(args.num_samples**0.5)))
@@ -55,6 +57,7 @@ def main() -> None:
     print("dgfm sampling completed")
     print(f"checkpoint: {args.checkpoint}")
     print(f"output_dir: {output_dir}")
+    print(f"objective_mode: {objective_mode(config)}")
     print(f"steps: {args.steps}")
     print(f"num_samples: {args.num_samples}")
     print(f"fixed_seed: {args.fixed_seed}")

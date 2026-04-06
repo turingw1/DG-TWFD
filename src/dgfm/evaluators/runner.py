@@ -11,7 +11,7 @@ import torch
 from torchvision.utils import save_image
 
 from dgfm.datasets import build_image_dataloaders
-from .common import device_from_config, load_model_from_checkpoint, sample_with_ode, solver_nfe, to_unit_interval
+from .common import device_from_config, load_model_from_checkpoint, objective_mode, sample_from_model, solver_nfe, to_unit_interval
 from .fid import InceptionFeatureExtractor, compute_dataset_stats, compute_generator_stats, frechet_distance, load_stats, save_stats
 
 
@@ -64,7 +64,13 @@ class EvaluationRunner:
         image_size = int(self.config["dataset"]["image_size"])
         generator = torch.Generator(device=device).manual_seed(fixed_seed)
         noise = torch.randn(fixed_grid_size, channels, image_size, image_size, generator=generator, device=device)
-        samples = sample_with_ode(model=model, x_init=noise, step_count=step_count, method=solver_method)
+        samples = sample_from_model(
+            config=self.config,
+            model=model,
+            x_init=noise,
+            step_count=step_count,
+            method=solver_method,
+        )
         samples = to_unit_interval(samples)
         torch.save(samples.detach().cpu(), step_dir / "fixed_seed_samples.pt")
         save_image(samples, step_dir / "fixed_seed_grid.png", nrow=nrow)
@@ -93,6 +99,7 @@ class EvaluationRunner:
         fid_batch_size = int(eval_cfg.get("fid_batch_size", 256))
         fid_protocol = str(eval_cfg.get("fid_protocol", "torch_fidelity_inceptionv3_2048"))
         solver_method = str(eval_cfg.get("solver_method", "midpoint"))
+        mode = objective_mode(self.config)
         channels = int(self.config["dataset"]["channels"])
         image_size = int(self.config["dataset"]["image_size"])
         reference_count = int(reference_stats.count)
@@ -102,12 +109,18 @@ class EvaluationRunner:
             step_dir = self.eval_root / f"steps{step_count}"
             step_dir.mkdir(parents=True, exist_ok=True)
             t0 = time.time()
-            nfe = solver_nfe(step_count=step_count, method=solver_method)
+            nfe = solver_nfe(step_count=step_count, method=solver_method, mode=mode)
 
             def sample_fn(batch_size: int) -> torch.Tensor:
                 noise = torch.randn(batch_size, channels, image_size, image_size, device=device)
                 with torch.no_grad():
-                    samples = sample_with_ode(model=model, x_init=noise, step_count=step_count, method=solver_method)
+                    samples = sample_from_model(
+                        config=self.config,
+                        model=model,
+                        x_init=noise,
+                        step_count=step_count,
+                        method=solver_method,
+                    )
                 return to_unit_interval(samples)
 
             fake_stats = compute_generator_stats(
@@ -141,6 +154,7 @@ class EvaluationRunner:
                 "reference_stats": str(cache_path),
                 "checkpoint": str(self.checkpoint),
                 "solver_method": solver_method,
+                "objective_mode": mode,
                 "elapsed_sec": elapsed,
                 "samples_per_sec": fid_samples / max(elapsed, 1.0e-8),
                 **grid_meta,

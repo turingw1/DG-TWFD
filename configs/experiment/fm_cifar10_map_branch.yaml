@@ -1,0 +1,15 @@
+base: configs/base.yaml
+includes:
+  - dataset/cifar10
+  - model/map_unet
+  - path/condot
+  - scheduler/condot
+  - target/analytic_path
+  - teacher/none
+  - eval/map_branch
+
+experiment:
+  name: fm_cifar10_map_branch
+
+train:
+  objective: explicit_map

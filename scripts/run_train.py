@@ -10,7 +10,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from dgfm.config import load_experiment_config, resolve_run_roots
-from dgfm.trainers import BaselineTrainer
+from dgfm.trainers import build_trainer
 
 
 def parse_args() -> argparse.Namespace:
@@ -26,7 +26,7 @@ def main() -> None:
     args = parse_args()
     config = load_experiment_config(args.config, overrides=args.set)
     roots = resolve_run_roots(args.run_root)
-    trainer = BaselineTrainer(config=config, roots=roots)
+    trainer = build_trainer(config=config, roots=roots)
     trainer.run(resume=args.resume)
 
 

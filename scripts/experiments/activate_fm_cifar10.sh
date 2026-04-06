@@ -14,13 +14,17 @@ case "${variant}" in
     export FM_CONFIG="configs/experiment/fm_cifar10_baseline.yaml"
     exp_prefix="fm_cifar10_baseline"
     ;;
+  map_branch)
+    export FM_CONFIG="configs/experiment/fm_cifar10_map_branch.yaml"
+    exp_prefix="fm_cifar10_map_branch"
+    ;;
   stable)
     export FM_CONFIG="configs/experiment/fm_cifar10_stable.yaml"
     exp_prefix="fm_cifar10_stable"
     ;;
   *)
     echo "Unknown FM variant: ${variant}" >&2
-    echo "Expected one of: baseline stable" >&2
+    echo "Expected one of: baseline map_branch stable" >&2
     return 1
     ;;
 esac

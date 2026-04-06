@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
+os.environ.setdefault("MPLCONFIGDIR", str(ROOT / "outputs" / "debug" / ".mplconfig"))
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
@@ -38,6 +40,7 @@ def main() -> None:
     model = load_model_from_checkpoint(config, args.checkpoint, device=device)
 
     result = save_multistep_qualitative_panel(
+        config=config,
         model=model,
         output_dir=Path(args.output_dir),
         channels=int(config["dataset"]["channels"]),
