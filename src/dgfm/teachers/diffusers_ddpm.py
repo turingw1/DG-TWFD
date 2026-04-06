@@ -119,13 +119,25 @@ class DiffusersDDPMTeacher:
     ) -> TeacherTrajectoryBatch:
         device = torch.device(device)
         self.prepare(device)
+        x_0 = self.sample_x0(batch_size=batch_size, device=device)
+        return self.sample_trajectory_from_x0(x_0=x_0, u_grid=u_grid, device=device)
+
+    @torch.no_grad()
+    def sample_trajectory_from_x0(
+        self,
+        x_0: Tensor,
+        u_grid: Tensor,
+        device: torch.device | str,
+    ) -> TeacherTrajectoryBatch:
+        device = torch.device(device)
+        self.prepare(device)
         if u_grid.ndim != 1:
             raise ValueError("u_grid must be a 1D tensor")
         u_grid = torch.sort(u_grid.float()).values.to(device)
         tau_grid_desc = 1.0 - u_grid
         index_grid = [self._noise_time_to_inference_index(float(tau.item())) for tau in tau_grid_desc]
 
-        current = self.sample_x0(batch_size=batch_size, device=device)
+        current = x_0.to(device=device)
         x_desc = [current.detach()]
         for idx in range(len(index_grid) - 1):
             current = self._rollout_between_indices(current, index_grid[idx], index_grid[idx + 1])

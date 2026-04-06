@@ -32,6 +32,7 @@ python -m pip install \
   'transformers>=4.40' \
   'accelerate>=0.30' \
   'safetensors>=0.4' \
+  'piq>=0.8' \
   matplotlib \
   pillow \
   pytest

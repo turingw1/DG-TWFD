@@ -18,8 +18,9 @@ The current working local environment used for this branch is:
 - transformers `>=4.40`
 - accelerate `>=0.30`
 - safetensors `>=0.4`
+- piq `>=0.8`
 
-For the current `map_branch v2` experiment, the minimum practical package set is:
+For the current `map_branch v3` experiment, the minimum practical package set is:
 
 - `python=3.10`
 - `torch==2.10.0`
@@ -32,6 +33,7 @@ For the current `map_branch v2` experiment, the minimum practical package set is
 - `transformers>=4.40`
 - `accelerate>=0.30`
 - `safetensors>=0.4`
+- `piq>=0.8`
 - `matplotlib`
 - `pillow`
 - `pytest`
@@ -63,7 +65,7 @@ It also defaults the HuggingFace online endpoint to:
 https://hf-mirror.com
 ```
 
-This is important for offline teacher rollout, because the current teacher
+This is important for teacher rollout, because the current teacher
 configuration uses:
 
 - `teacher.local_files_only=true`
@@ -104,6 +106,7 @@ python -m pip install \
   'transformers>=4.40' \
   'accelerate>=0.30' \
   'safetensors>=0.4' \
+  'piq>=0.8' \
   matplotlib \
   pillow \
   pytest
@@ -129,5 +132,5 @@ PY
 Then run the branch smoke tests:
 
 ```bash
-pytest tests/test_dgfm_map_branch.py tests/test_dgfm_teacher_trajectory.py tests/test_dgfm_velocity_model.py tests/test_dgfm_config.py tests/test_dgfm_overrides.py -q
+pytest tests/test_dgfm_map_branch.py tests/test_dgfm_teacher_trajectory.py tests/test_dgfm_teacher_sampler.py tests/test_dgfm_velocity_model.py tests/test_dgfm_config.py tests/test_dgfm_overrides.py -q
 ```

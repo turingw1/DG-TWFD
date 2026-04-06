@@ -9,6 +9,8 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 import yaml
 
+from dgfm.targets.pair_sampling import sample_pair_indices
+
 
 class TrajectoryShardPairDataset(Dataset[dict[str, torch.Tensor]]):
     def __init__(self, config: dict, split: str) -> None:
@@ -87,55 +89,22 @@ class TrajectoryShardPairDataset(Dataset[dict[str, torch.Tensor]]):
         sample_index = index - shard_start
         return self._load_shard(shard_index)[sample_index]
 
-    def _sample_jump_delta(self, max_delta: int) -> int:
-        short_max = min(max_delta, int(self.target_cfg.get("pair_short_max", 4)))
-        mid_max = min(max_delta, int(self.target_cfg.get("pair_mid_max", 12)))
-        long_max = min(max_delta, int(self.target_cfg.get("pair_long_max", 32)))
-        choices: list[tuple[int, int, float]] = []
-        if short_max >= 1:
-            choices.append((1, short_max, float(self.target_cfg.get("pair_short_weight", 0.55))))
-        if mid_max >= short_max + 1:
-            choices.append((short_max + 1, mid_max, float(self.target_cfg.get("pair_mid_weight", 0.30))))
-        if long_max >= mid_max + 1:
-            choices.append((mid_max + 1, long_max, float(self.target_cfg.get("pair_long_weight", 0.15))))
-        if not choices:
-            return 1
-        weights = torch.tensor([weight for _, _, weight in choices], dtype=torch.float32)
-        weights = weights / weights.sum()
-        bucket_idx = int(torch.multinomial(weights, 1).item())
-        low, high, _ = choices[bucket_idx]
-        return int(torch.randint(low, high + 1, (1,)).item())
-
     def _sample_pair(self, t_grid: torch.Tensor, x_grid: torch.Tensor) -> dict[str, torch.Tensor]:
-        max_delta = len(t_grid) - 1
-        endpoint_prob = float(self.target_cfg.get("pair_endpoint_weight", 0.35))
-        high_noise_weight = float(self.target_cfg.get("high_noise_t_weight", 0.75))
-        high_noise_fraction = float(self.target_cfg.get("high_noise_t_fraction", 0.35))
-        if torch.rand(1).item() < endpoint_prob:
-            s_index = len(t_grid) - 1
-            max_start = max(1, s_index)
-            high_noise_limit = max(1, int(round(max_start * high_noise_fraction)))
-            if torch.rand(1).item() < high_noise_weight:
-                t_index = int(torch.randint(0, high_noise_limit, (1,)).item())
-            else:
-                t_index = int(torch.randint(0, max_start, (1,)).item())
-        else:
-            delta = self._sample_jump_delta(max_delta)
-            max_start = len(t_grid) - delta
-            if max_start <= 1:
-                t_index = 0
-            else:
-                high_noise_limit = max(1, int(round(max_start * high_noise_fraction)))
-                if torch.rand(1).item() < high_noise_weight:
-                    t_index = int(torch.randint(0, high_noise_limit, (1,)).item())
-                else:
-                    t_index = int(torch.randint(0, max_start, (1,)).item())
-            s_index = t_index + delta
+        t_indices, s_indices = sample_pair_indices(
+            num_points=len(t_grid),
+            target_cfg=self.target_cfg,
+            batch_size=1,
+            device=t_grid.device,
+        )
+        t_index = int(t_indices[0].item())
+        s_index = int(s_indices[0].item())
         return {
             "x_t": x_grid[t_index].float(),
             "x_s": x_grid[s_index].float(),
             "t": t_grid[t_index].float(),
             "s": t_grid[s_index].float(),
+            "x_0": x_grid[0].float(),
+            "x_1": x_grid[-1].float(),
         }
 
     def __getitem__(self, index: int) -> dict[str, torch.Tensor]:
@@ -168,4 +137,3 @@ def build_trajectory_dataloaders(config: dict) -> dict[str, DataLoader]:
         "train": DataLoader(train_set, shuffle=True, drop_last=True, **common),
         "val": DataLoader(val_set, shuffle=False, drop_last=False, **common),
     }
-

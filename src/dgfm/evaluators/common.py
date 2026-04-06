@@ -92,7 +92,6 @@ def sample_with_ode(
     return x
 
 
-@torch.no_grad()
 def sample_from_model(
     config: dict,
     model: torch.nn.Module,

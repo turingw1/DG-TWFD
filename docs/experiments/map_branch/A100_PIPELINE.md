@@ -22,21 +22,21 @@ conda activate /cache/$USER/conda_envs/dgfm_map
 ## 2. Activate experiment
 
 ```bash
-source scripts/experiments/activate_fm_cifar10.sh map_branch v2
+source scripts/experiments/activate_fm_cifar10.sh map_branch v3
 ```
 
 This sets:
 - `FM_CONFIG=configs/experiment/fm_cifar10_map_branch.yaml`
-- `RUN_ROOT=/cache/Zhengwei/dgfm_runs/fm_cifar10_map_branch_v2`
+- `RUN_ROOT=/cache/Zhengwei/dgfm_runs/fm_cifar10_map_branch_v3`
 - `CKPT_DIR=$RUN_ROOT/checkpoints`
 - `SAMPLE_ROOT=$RUN_ROOT/samples`
 - `LOG_ROOT=$RUN_ROOT/logs`
-- `METRIC_ROOT=/cache/Zhengwei/dgfm_eval/fm_cifar10_map_branch_v2`
+- `METRIC_ROOT=/cache/Zhengwei/dgfm_eval/fm_cifar10_map_branch_v3`
 - `TRAJ_ROOT=/cache/Zhengwei/dgfm_teacher_traj/cifar10_ddpm128_p33`
 - `HF_HOME=/cache/huggingface`
 - `HF_HUB_CACHE=/cache/huggingface/hub`
 - `HF_ENDPOINT=https://hf-mirror.com`
-- `DGFM_ARCHIVE_ROOT=/temp/Zhengwei/dgfm_runs/fm_cifar10_map_branch_v2`
+- `DGFM_ARCHIVE_ROOT=/temp/Zhengwei/dgfm_runs/fm_cifar10_map_branch_v3`
 
 Training will mirror:
 - `logs/config_resolved.yaml`
@@ -60,10 +60,11 @@ If missing and you explicitly want download:
 python scripts/build_dataset.py --dataset cifar10 --data-root $DATA_ROOT/cifar10 --download
 ```
 
-## 4. Teacher trajectory preparation
+## 4. Teacher target mode
 
-Current map-branch supervision comes from offline teacher trajectories, not
-from the old analytic path target.
+Current `map_branch v3` uses **online `teacher_sampler` targets** by default.
+Offline teacher trajectories remain available as a fallback path, but they are
+no longer the primary training mode.
 
 Teacher rollout policy:
 - backend:
@@ -81,12 +82,14 @@ Teacher rollout policy:
   - `u=0.0` means noisiest state
   - `u=1.0` means cleanest state
 
-Rationale:
-- keep teacher rollout strong with `128` internal steps
-- retain only `33` anchors to keep shard size manageable
-- still cover local / mid / endpoint transitions for `1/2/4/8/16` map rollout evaluation
+Primary online target path:
+- sample teacher noise state `x_0`
+- rollout teacher with `128` internal DDIM steps
+- retain `33` anchor states on ascending `u-grid`
+- sample `(t, s)` from the retained anchors with the same short/mid/long/endpoint policy used by the branch
+- supervise the explicit map on `M_theta(x_t, t, s) -> x_s_teacher`
 
-Prepare the trajectory cache:
+Optional offline cache path:
 
 ```bash
 CUDA_VISIBLE_DEVICES=1 python scripts/prepare_teacher_trajectories.py \
@@ -95,11 +98,8 @@ CUDA_VISIBLE_DEVICES=1 python scripts/prepare_teacher_trajectories.py \
   --batch-size 64
 ```
 
-Expected files:
-- `$TRAJ_ROOT/train/manifest.yaml`
-- `$TRAJ_ROOT/val/manifest.yaml`
-- `$TRAJ_ROOT/train/train_00000.pt`
-- `$TRAJ_ROOT/val/val_00000.pt`
+Use the offline cache only when online teacher sampling is too slow for the
+current server session.
 
 If teacher loading fails with:
 
@@ -150,12 +150,23 @@ CUDA_VISIBLE_DEVICES=1 python scripts/prepare_teacher_trajectories.py \
 ## 5. Map-branch training command
 
 ```bash
-source scripts/experiments/activate_fm_cifar10.sh map_branch v2
+source scripts/experiments/activate_fm_cifar10.sh map_branch v3
 CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py --config $FM_CONFIG --run-root $RUN_ROOT
 ```
 
+If the online teacher is not already cached under `/cache/huggingface`, allow
+one mirrored online fetch:
+
+```bash
+source scripts/experiments/activate_fm_cifar10.sh map_branch v3
+CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
+  --config $FM_CONFIG \
+  --run-root $RUN_ROOT \
+  --set teacher.local_files_only=false
+```
+
 Current target mode:
-- `target.builder=trajectory_shard`
+- `target.builder=teacher_sampler`
 
 Current semantics:
 - preserve `dgfm` time semantics
@@ -170,20 +181,24 @@ Pair sampling policy on retained teacher grid:
 - `high_noise_t_weight = 0.75`
 - `high_noise_t_fraction = 0.35`
 
-This mirrors the CTM intuition:
-- sample a state on a strong teacher trajectory
-- choose a later teacher state
-- match the explicit map to that teacher transition
+CTM-aligned additions in the current branch:
+- online teacher target construction
+- CTM-style preconditioning on the explicit map UNet
+- perceptual loss on direct map matching
+- endpoint few-step teacher loss on rollout from the same teacher `x_0`
+
+Preconditioning is treated here as a training/sampling stabilization tip:
+- normalize noisy inputs before they enter the map UNet
+- keep a skip/output scaling around the current state
+- make the few-step map updates numerically easier to learn
+- do not treat it as a separate architecture line in the experiment narrative
 
 Current A100-oriented throughput settings:
-- `train.batch_size = 256`
+- `train.batch_size = 128`
 - `train.num_workers = 8`
 - `train.persistent_workers = true`
 - `train.prefetch_factor = 4`
 - `runtime.cudnn_benchmark = true`
-
-These changes are intended to improve throughput while keeping the training
-objective and model architecture unchanged.
 
 ## 6. Resume command
 
@@ -261,8 +276,6 @@ Training:
 - `$CKPT_DIR/last.pt`
 - `$LOG_ROOT/train.jsonl`
 - `$LOG_ROOT/config_resolved.yaml`
-- `$TRAJ_ROOT/train/manifest.yaml`
-- `$TRAJ_ROOT/val/manifest.yaml`
 - `/temp/Zhengwei/dgfm_runs/<FM_EXP>/checkpoints/best.pt`
 - `/temp/Zhengwei/dgfm_runs/<FM_EXP>/checkpoints/last.pt`
 - `/temp/Zhengwei/dgfm_runs/<FM_EXP>/logs/train.jsonl`
@@ -277,31 +290,17 @@ Sampling:
 - `$SAMPLE_ROOT/steps16/grid.png`
 - `$SAMPLE_ROOT/multistep_panel/multistep_panel.png`
 
-## 11. Current teacher trajectory implementation
+## 11. Current target implementation
 
-Implemented in:
-- `src/dgfm/teachers/diffusers_ddpm.py`
-- `src/dgfm/datasets/trajectory.py`
+Primary implementation:
 - `src/dgfm/targets/builder.py`
+- `src/dgfm/teachers/diffusers_ddpm.py`
+
+Optional offline cache path:
+- `src/dgfm/datasets/trajectory.py`
 - `scripts/prepare_teacher_trajectories.py`
 
-The current branch trains from cached teacher trajectories. Online
-`teacher_sampler` remains a future extension.
-
-## 12. Future online teacher sampler mode
-
-Not implemented in the first map-branch patch.
-
-Planned insertion point:
-- `src/dgfm/targets/builder.py`
-- future mode:
-  - `target.builder=teacher_sampler`
-
-Expected future role:
-- use a high-NFE teacher rollout to build `x_s_target`
-- compare explicit map learning against sampler-distilled targets
-
-## 13. Future time-warp integration
+## 12. Future time-warp integration
 
 The current map branch is designed so time-warp attaches in two places:
 

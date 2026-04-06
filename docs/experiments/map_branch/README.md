@@ -6,7 +6,7 @@ This directory is the complete documentation context for the current
 ## Version
 
 - active experiment version:
-  - `v2`
+  - `v3`
 - experiment family:
   - `fm_cifar10_map_branch`
 
@@ -15,7 +15,7 @@ This directory is the complete documentation context for the current
 1. [A100_PIPELINE.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/A100_PIPELINE.md)
    - operational entrypoint
    - environment setup
-   - CIFAR-10 and teacher trajectory preparation
+   - CIFAR-10 and online teacher target setup
    - train / resume / eval / sample / panel
 
 2. [ENVIRONMENT.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/ENVIRONMENT.md)
@@ -42,13 +42,19 @@ This directory is the complete documentation context for the current
 - preserve current `dgfm` time semantics:
   - `0 <= t < s <= 1`
 - current target builder:
-  - `trajectory_shard`
+  - `teacher_sampler`
 - teacher backend:
   - `diffusers_ddpm`
 - retained teacher trajectory:
   - `33` anchor states
 - teacher internal rollout:
   - `128` DDIM steps
+- current loss stack:
+  - direct map loss
+  - perceptual loss
+  - endpoint few-step teacher loss
+- current training/sampling tip:
+  - CTM-style preconditioning enabled
 - training-time archive mirror:
   - `/temp/Zhengwei/dgfm_runs/<FM_EXP>`
 
@@ -64,9 +70,9 @@ This directory is the complete documentation context for the current
   - [src/dgfm/targets/builder.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dgfm/targets/builder.py)
 - teacher rollout:
   - [src/dgfm/teachers/diffusers_ddpm.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dgfm/teachers/diffusers_ddpm.py)
-- trajectory dataset:
+- optional offline trajectory dataset:
   - [src/dgfm/datasets/trajectory.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dgfm/datasets/trajectory.py)
-- trajectory preparation:
+- optional offline trajectory preparation:
   - [scripts/prepare_teacher_trajectories.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/scripts/prepare_teacher_trajectories.py)
 - map rollout:
   - [src/dgfm/samplers/map_sampler.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dgfm/samplers/map_sampler.py)

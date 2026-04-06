@@ -19,10 +19,14 @@ def test_resolve_run_roots() -> None:
 
 
 def test_load_experiment_config_expands_bash_style_default_env(monkeypatch) -> None:
+    monkeypatch.delenv("HF_ENDPOINT", raising=False)
     monkeypatch.delenv("TRAJ_ROOT", raising=False)
     cfg = load_experiment_config("configs/experiment/fm_cifar10_map_branch.yaml")
-    assert cfg["target"]["shard_root"] == "/cache/Zhengwei/dgfm_teacher_traj/cifar10_ddpm128_p33"
+    assert cfg["target"]["builder"] == "teacher_sampler"
+    assert cfg["teacher"]["name_or_path"] == "google/ddpm-cifar10-32"
 
+    fallback_cfg = load_experiment_config("configs/target/teacher_trajectory.yaml")
+    assert fallback_cfg["target"]["shard_root"] == "/cache/Zhengwei/dgfm_teacher_traj/cifar10_ddpm128_p33"
     monkeypatch.setenv("TRAJ_ROOT", "/custom/traj")
-    cfg = load_experiment_config("configs/experiment/fm_cifar10_map_branch.yaml")
-    assert cfg["target"]["shard_root"] == "/custom/traj"
+    fallback_cfg = load_experiment_config("configs/target/teacher_trajectory.yaml")
+    assert fallback_cfg["target"]["shard_root"] == "/custom/traj"

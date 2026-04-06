@@ -1,0 +1,14 @@
+target:
+  builder: teacher_sampler
+  loss_type: mse
+  huber_delta: 0.1
+  teacher_sampler_sub_batch: 64
+  pair_short_max: 4
+  pair_mid_max: 12
+  pair_long_max: 32
+  pair_short_weight: 0.55
+  pair_mid_weight: 0.30
+  pair_long_weight: 0.15
+  pair_endpoint_weight: 0.35
+  high_noise_t_weight: 0.75
+  high_noise_t_fraction: 0.35

@@ -4,6 +4,9 @@ from dataclasses import dataclass
 
 import torch
 
+from dgfm.targets.pair_sampling import sample_pair_indices
+from dgfm.teachers import build_teacher
+
 
 @dataclass(slots=True)
 class TargetBatch:
@@ -88,9 +91,75 @@ class TrajectoryShardTargetBuilder:
             x_s_target=x_s,
             t=t,
             s=s,
-            x_0=x_t,
-            x_1=x_s,
+            x_0=batch["x_0"].to(device),
+            x_1=batch["x_1"].to(device),
         )
+
+
+class TeacherSamplerTargetBuilder:
+    loader_mode = "images"
+    needs_path = False
+
+    def __init__(self, config: dict) -> None:
+        self.config = config
+        self.target_cfg = config.get("target", {})
+        self.teacher_cfg = config.get("teacher", {})
+        self.teacher = build_teacher(config)
+        retain_num_points = int(self.teacher_cfg.get("retain_num_points", 33))
+        self.u_grid = torch.linspace(0.0, 1.0, steps=retain_num_points, dtype=torch.float32)
+
+    def _batch_size_from_batch(self, batch) -> int:
+        if isinstance(batch, (tuple, list)):
+            return int(batch[0].shape[0])
+        if isinstance(batch, dict):
+            for value in batch.values():
+                if isinstance(value, torch.Tensor):
+                    return int(value.shape[0])
+        raise TypeError("Unsupported batch type for teacher_sampler target builder")
+
+    def _sample_online_teacher_pairs(self, batch_size: int, device: torch.device) -> TargetBatch:
+        self.teacher.prepare(device)
+        sub_batch = int(self.target_cfg.get("teacher_sampler_sub_batch", 0) or 0)
+        if sub_batch <= 0:
+            sub_batch = batch_size
+        all_x_t = []
+        all_x_s = []
+        all_t = []
+        all_s = []
+        all_x_0 = []
+        all_x_1 = []
+        for start in range(0, batch_size, sub_batch):
+            chunk = min(sub_batch, batch_size - start)
+            x_0 = self.teacher.sample_x0(batch_size=chunk, device=device)
+            teacher_batch = self.teacher.sample_trajectory_from_x0(x_0=x_0, u_grid=self.u_grid, device=device)
+            t_grid = teacher_batch.t_grid.to(device=device, dtype=torch.float32)
+            x_grid = teacher_batch.x_grid.to(device=device, dtype=torch.float32)
+            t_indices, s_indices = sample_pair_indices(
+                num_points=t_grid.shape[0],
+                target_cfg=self.target_cfg,
+                batch_size=chunk,
+                device=device,
+            )
+            batch_indices = torch.arange(chunk, device=device)
+            all_x_t.append(x_grid[batch_indices, t_indices])
+            all_x_s.append(x_grid[batch_indices, s_indices])
+            all_t.append(t_grid[t_indices])
+            all_s.append(t_grid[s_indices])
+            all_x_0.append(x_grid[:, 0])
+            all_x_1.append(x_grid[:, -1])
+        return TargetBatch(
+            x_t=torch.cat(all_x_t, dim=0),
+            x_s_target=torch.cat(all_x_s, dim=0),
+            t=torch.cat(all_t, dim=0),
+            s=torch.cat(all_s, dim=0),
+            x_0=torch.cat(all_x_0, dim=0),
+            x_1=torch.cat(all_x_1, dim=0),
+        )
+
+    def build_from_batch(self, batch, *, device: torch.device, path=None) -> TargetBatch:
+        del path
+        batch_size = self._batch_size_from_batch(batch)
+        return self._sample_online_teacher_pairs(batch_size=batch_size, device=device)
 
 
 def build_target_builder(config: dict):
@@ -101,5 +170,5 @@ def build_target_builder(config: dict):
     if mode == "trajectory_shard":
         return TrajectoryShardTargetBuilder(config)
     if mode == "teacher_sampler":
-        raise NotImplementedError("teacher_sampler target builder hook exists but is not implemented in the first map branch.")
+        return TeacherSamplerTargetBuilder(config)
     raise ValueError(f"Unsupported target builder mode: {mode}")

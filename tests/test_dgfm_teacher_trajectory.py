@@ -29,6 +29,7 @@ def _trajectory_config(tmp_path: Path) -> dict:
         "runtime": {"device": "cpu", "amp": False},
         "train": {"objective": "explicit_map", "batch_size": 1, "num_workers": 0},
         "dataset": {"channels": 3, "image_size": 32, "name": "cifar10", "data_root": str(tmp_path)},
+        "loss": {"pixel_weight": 1.0, "perceptual_weight": 0.0, "endpoint_weight": 0.0},
         "target": {
             "builder": "trajectory_shard",
             "shard_root": str(shard_root),
@@ -55,4 +56,4 @@ def test_trajectory_shard_target_builder_returns_ordered_pair(tmp_path: Path) ->
     target = builder.build_from_batch(batch, device=torch.device("cpu"), path=None)
     assert target.x_t.shape == target.x_s_target.shape == (1, 3, 32, 32)
     assert torch.all(target.s > target.t)
-
+    assert target.x_0.shape == target.x_1.shape == (1, 3, 32, 32)

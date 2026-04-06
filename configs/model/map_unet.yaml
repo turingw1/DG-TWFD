@@ -20,3 +20,9 @@ model:
   prediction_type: residual
   residual_scale_by_delta: true
   residual_tanh_scale: 1.0
+  use_preconditioning: true
+  sigma_data: 0.5
+  sigma_min: 1.0e-3
+  time_embed_mode: log_noise
+  inner_parametrization: edm
+  outer_parametrization: euler

@@ -3,7 +3,6 @@ from __future__ import annotations
 import torch
 
 
-@torch.no_grad()
 def rollout_with_map(
     model: torch.nn.Module,
     x_init: torch.Tensor,
