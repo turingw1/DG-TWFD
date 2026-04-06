@@ -66,6 +66,20 @@ Current `map_branch v3` uses **online `teacher_sampler` targets** by default.
 Offline teacher trajectories remain available as a fallback path, but they are
 no longer the primary training mode.
 
+Quick diagnostic variant:
+- `map_branch_quick`
+- teacher internal steps:
+  - `32`
+- retained teacher anchors:
+  - `18`
+- lighter endpoint supervision:
+  - lower weight
+  - lower frequency
+  - smaller endpoint batch
+- intended use:
+  - quickly verify whether CTM-aligned changes produce a useful FID trend
+  - not intended as the final reported run
+
 Teacher rollout policy:
 - backend:
   - `diffusers_ddpm`
@@ -164,6 +178,18 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
   --run-root $RUN_ROOT \
   --set teacher.local_files_only=false
 ```
+
+Quick diagnostic run:
+
+```bash
+source scripts/experiments/activate_fm_cifar10.sh map_branch_quick v1
+CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py --config $FM_CONFIG --run-root $RUN_ROOT
+```
+
+Recommended use:
+- run `map_branch_quick v1` first
+- check whether `train_pixel_loss / train_perceptual_loss / train_endpoint_loss` move in the expected direction
+- then decide whether to spend time on the full `map_branch v3`
 
 Current target mode:
 - `target.builder=teacher_sampler`

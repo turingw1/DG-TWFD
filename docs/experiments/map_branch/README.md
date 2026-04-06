@@ -7,6 +7,8 @@ This directory is the complete documentation context for the current
 
 - active experiment version:
   - `v3`
+- quick diagnostic version:
+  - `map_branch_quick v1`
 - experiment family:
   - `fm_cifar10_map_branch`
 
@@ -55,6 +57,8 @@ This directory is the complete documentation context for the current
   - endpoint few-step teacher loss
 - current training/sampling tip:
   - CTM-style preconditioning enabled
+- quick verification path:
+  - `configs/experiment/fm_cifar10_map_branch_quick.yaml`
 - training-time archive mirror:
   - `/temp/Zhengwei/dgfm_runs/<FM_EXP>`
 
@@ -62,6 +66,7 @@ This directory is the complete documentation context for the current
 
 - experiment config:
   - [configs/experiment/fm_cifar10_map_branch.yaml](/home/gzwlinux/vscode/gitProject/DG-TWFD/configs/experiment/fm_cifar10_map_branch.yaml)
+  - [configs/experiment/fm_cifar10_map_branch_quick.yaml](/home/gzwlinux/vscode/gitProject/DG-TWFD/configs/experiment/fm_cifar10_map_branch_quick.yaml)
 - trainer:
   - [src/dgfm/trainers/map.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dgfm/trainers/map.py)
 - model:

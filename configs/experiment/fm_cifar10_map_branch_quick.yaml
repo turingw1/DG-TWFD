@@ -1,0 +1,22 @@
+base: configs/experiment/fm_cifar10_map_branch.yaml
+
+experiment:
+  name: fm_cifar10_map_branch_quick
+
+teacher:
+  num_inference_steps: 32
+  retain_num_points: 18
+
+target:
+  teacher_sampler_sub_batch: 128
+  pair_long_max: 17
+
+loss:
+  endpoint_weight: 0.15
+  endpoint_every: 16
+  endpoint_batch_size: 16
+  endpoint_steps: [8]
+  endpoint_step_weights: [1.0]
+
+train:
+  epochs: 30

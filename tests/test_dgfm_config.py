@@ -30,3 +30,11 @@ def test_load_experiment_config_expands_bash_style_default_env(monkeypatch) -> N
     monkeypatch.setenv("TRAJ_ROOT", "/custom/traj")
     fallback_cfg = load_experiment_config("configs/target/teacher_trajectory.yaml")
     assert fallback_cfg["target"]["shard_root"] == "/custom/traj"
+
+
+def test_load_quick_map_branch_config_overrides_teacher_runtime() -> None:
+    cfg = load_experiment_config("configs/experiment/fm_cifar10_map_branch_quick.yaml")
+    assert cfg["teacher"]["num_inference_steps"] == 32
+    assert cfg["teacher"]["retain_num_points"] == 18
+    assert cfg["loss"]["endpoint_every"] == 16
+    assert cfg["train"]["epochs"] == 30
