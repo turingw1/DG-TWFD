@@ -16,7 +16,7 @@ Then use:
 cd ~/workspace/Zhengwei/DG-TWFD
 git checkout map_branch_ctm_explicit_map
 git pull --ff-only
-conda activate dgfm_map
+conda activate /cache/$USER/conda_envs/dgfm_map
 ```
 
 ## 2. Activate experiment

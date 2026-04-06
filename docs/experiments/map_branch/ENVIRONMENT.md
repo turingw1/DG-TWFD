@@ -37,7 +37,20 @@ Use the branch-local setup script:
 
 ```bash
 bash scripts/experiments/create_map_branch_env.sh dgfm_map
-conda activate dgfm_map
+conda activate /cache/$USER/conda_envs/dgfm_map
+```
+
+By default, the script creates the environment under:
+
+```bash
+/cache/$USER/conda_envs/<env_name>
+```
+
+If you want a different writable cache root:
+
+```bash
+bash scripts/experiments/create_map_branch_env.sh dgfm_map /cache/custom_user/conda_envs
+conda activate /cache/custom_user/conda_envs/dgfm_map
 ```
 
 If your server has a different CUDA/PyTorch compatibility requirement, edit the
@@ -46,8 +59,9 @@ Torch install line in that script first.
 ## Manual creation commands
 
 ```bash
-conda create -n dgfm_map python=3.10 -y
-conda activate dgfm_map
+mkdir -p /cache/$USER/conda_envs
+conda create -p /cache/$USER/conda_envs/dgfm_map python=3.10 -y
+conda activate /cache/$USER/conda_envs/dgfm_map
 
 python -m pip install --upgrade pip setuptools wheel
 python -m pip install \

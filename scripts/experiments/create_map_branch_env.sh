@@ -3,13 +3,18 @@
 set -euo pipefail
 
 ENV_NAME="${1:-dgfm_map}"
+ENV_ROOT="${2:-/cache/${USER}/conda_envs}"
+ENV_PREFIX="${ENV_ROOT}/${ENV_NAME}"
 
-echo "Creating conda environment: ${ENV_NAME}"
+echo "Creating conda environment:"
+echo "  name:   ${ENV_NAME}"
+echo "  prefix: ${ENV_PREFIX}"
 
-conda create -n "${ENV_NAME}" python=3.10 -y
+mkdir -p "${ENV_ROOT}"
+conda create -p "${ENV_PREFIX}" python=3.10 -y
 
 eval "$(conda shell.bash hook)"
-conda activate "${ENV_NAME}"
+conda activate "${ENV_PREFIX}"
 
 python -m pip install --upgrade pip setuptools wheel
 
@@ -30,7 +35,8 @@ python -m pip install \
 python -m pip install -e .
 
 echo
-echo "Environment ready: ${ENV_NAME}"
+echo "Environment ready:"
+echo "  prefix: ${ENV_PREFIX}"
 echo "Next:"
-echo "  conda activate ${ENV_NAME}"
+echo "  conda activate ${ENV_PREFIX}"
 echo "  pytest tests/test_dgfm_map_branch.py tests/test_dgfm_velocity_model.py tests/test_dgfm_config.py tests/test_dgfm_overrides.py -q"
