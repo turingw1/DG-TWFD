@@ -88,6 +88,9 @@ def build_image_dataloaders(config: dict) -> dict[str, DataLoader]:
         "num_workers": num_workers,
         "pin_memory": bool(train_cfg.get("pin_memory", True)),
     }
+    if num_workers > 0:
+        common["persistent_workers"] = bool(train_cfg.get("persistent_workers", True))
+        common["prefetch_factor"] = int(train_cfg.get("prefetch_factor", 4))
     return {
         "train": DataLoader(train_set, shuffle=True, drop_last=True, **common),
         "val": DataLoader(val_set, shuffle=False, drop_last=False, **common),

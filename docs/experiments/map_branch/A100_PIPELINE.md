@@ -71,6 +71,16 @@ Current semantics:
 - sample `0 <= t < s <= 1`
 - train `M_theta(x_t, t, s) -> x_s`
 
+Current A100-oriented throughput settings:
+- `train.batch_size = 256`
+- `train.num_workers = 8`
+- `train.persistent_workers = true`
+- `train.prefetch_factor = 4`
+- `runtime.cudnn_benchmark = true`
+
+These changes are intended to improve throughput while keeping the training
+objective and model architecture unchanged.
+
 ## 5. Resume command
 
 ```bash

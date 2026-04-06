@@ -4,6 +4,8 @@ import argparse
 from pathlib import Path
 import sys
 
+import torch
+
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:
@@ -25,6 +27,8 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     config = load_experiment_config(args.config, overrides=args.set)
+    if bool(config.get("runtime", {}).get("cudnn_benchmark", False)) and torch.cuda.is_available():
+        torch.backends.cudnn.benchmark = True
     roots = resolve_run_roots(args.run_root)
     trainer = build_trainer(config=config, roots=roots)
     trainer.run(resume=args.resume)
