@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import yaml
 
 from dgfm.config import RunRoots
-from dgfm.datasets import build_image_dataloaders
+from dgfm.datasets import build_map_training_dataloaders
 from dgfm.models import ModelEMA, build_map_model
 from dgfm.paths import build_path, ensure_flow_matching_on_path
 from dgfm.targets import build_target_builder
@@ -79,12 +79,10 @@ class MapTrainer:
         use_amp = bool(self.config.get("runtime", {}).get("amp", True))
         ctx = torch.enable_grad if train else torch.no_grad
         with ctx():
-            for batch_idx, (images, _labels) in enumerate(loader):
+            for batch_idx, batch in enumerate(loader):
                 if batch_limit > 0 and batch_idx >= batch_limit:
                     break
-                images = images.to(device) * 2.0 - 1.0
-                noise = torch.randn_like(images)
-                target_batch = target_builder.build(x_0=noise, x_1=images, path=path)
+                target_batch = target_builder.build_from_batch(batch, device=device, path=path)
                 with _autocast_context(device, use_amp):
                     pred = model(target_batch.x_t, target_batch.t, target_batch.s, extra={})
                     loss = _compute_map_loss(pred, target_batch.x_s_target, target_cfg)
@@ -110,11 +108,13 @@ class MapTrainer:
 
     def run(self, resume: str | None = None) -> None:
         self.prepare()
-        ensure_flow_matching_on_path()
         device = _device_from_config(self.config)
-        dataloaders = build_image_dataloaders(self.config)
-        path = build_path(self.config)
         target_builder = build_target_builder(self.config)
+        dataloaders = build_map_training_dataloaders(self.config)
+        path = None
+        if bool(getattr(target_builder, "needs_path", False)):
+            ensure_flow_matching_on_path()
+            path = build_path(self.config)
         model = build_map_model(self.config).to(device)
         ema = ModelEMA(model, decay=float(self.config["train"].get("ema_decay", 0.9999)))
         optimizer = torch.optim.AdamW(

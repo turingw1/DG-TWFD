@@ -9,8 +9,10 @@ of the current `dgfm` framework.
 - active research target:
   - explicit map learning
   - `M_theta(x_t, t, s) -> x_s`
-- current first-stage target mode:
-  - analytic path targets under current `dgfm` time semantics
+- current target mode:
+  - teacher trajectory shards generated from a `diffusers` DDPM teacher
+- current time semantics:
+  - `0 <= t < s <= 1`
 
 ## Use this documentation set
 

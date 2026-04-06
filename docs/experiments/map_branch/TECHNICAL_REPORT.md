@@ -36,8 +36,9 @@ Both branches share:
 ## Current first-stage map algorithm
 
 - keep current `dgfm` time semantics
+- use teacher-generated trajectory shards
 - sample `0 <= t < s <= 1`
-- build `x_t` and `x_s_target` from the current path analytically
+- train on `(x_t, t, s, x_s_teacher)` pairs
 - train direct map supervision with pixel MSE / Huber
 - evaluate at `1/2/4/8/16` steps via iterative rollout
 
@@ -52,6 +53,7 @@ This design is the correct bridge between:
 
 Reason:
 - explicit map learning is the right substrate for map composition and teacher map targets,
+- teacher trajectory targets move the branch substantially closer to CTM-style rollout supervision,
 - but preserving `dgfm` time semantics avoids a premature rewrite into CTM’s full sigma-space stack.
 
 ## Next attachment points

@@ -47,6 +47,9 @@ class AnalyticPathTargetBuilder:
         t = torch.minimum(t, s - min_gap)
         return t, s
 
+    loader_mode = "images"
+    needs_path = True
+
     def build(self, x_0: torch.Tensor, x_1: torch.Tensor, path) -> TargetBatch:
         t, s = self.sample_times(batch_size=x_0.shape[0], device=x_0.device)
         path_sample_t = path.sample(x_0=x_0, x_1=x_1, t=t)
@@ -60,6 +63,35 @@ class AnalyticPathTargetBuilder:
             x_1=x_1,
         )
 
+    def build_from_batch(self, batch, *, device: torch.device, path) -> TargetBatch:
+        images, _labels = batch
+        x_1 = images.to(device) * 2.0 - 1.0
+        x_0 = torch.randn_like(x_1)
+        return self.build(x_0=x_0, x_1=x_1, path=path)
+
+
+class TrajectoryShardTargetBuilder:
+    loader_mode = "trajectory_shard"
+    needs_path = False
+
+    def __init__(self, config: dict) -> None:
+        self.config = config
+
+    def build_from_batch(self, batch, *, device: torch.device, path=None) -> TargetBatch:
+        del path
+        x_t = batch["x_t"].to(device)
+        x_s = batch["x_s"].to(device)
+        t = batch["t"].to(device)
+        s = batch["s"].to(device)
+        return TargetBatch(
+            x_t=x_t,
+            x_s_target=x_s,
+            t=t,
+            s=s,
+            x_0=x_t,
+            x_1=x_s,
+        )
+
 
 def build_target_builder(config: dict):
     target_cfg = config.get("target", {})
@@ -67,7 +99,7 @@ def build_target_builder(config: dict):
     if mode == "analytic_path":
         return AnalyticPathTargetBuilder(config)
     if mode == "trajectory_shard":
-        raise NotImplementedError("trajectory_shard target builder hook exists but is not implemented in the first map branch.")
+        return TrajectoryShardTargetBuilder(config)
     if mode == "teacher_sampler":
         raise NotImplementedError("teacher_sampler target builder hook exists but is not implemented in the first map branch.")
     raise ValueError(f"Unsupported target builder mode: {mode}")

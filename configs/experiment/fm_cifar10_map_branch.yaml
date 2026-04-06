@@ -4,8 +4,8 @@ includes:
   - model/map_unet
   - path/condot
   - scheduler/condot
-  - target/analytic_path
-  - teacher/none
+  - target/teacher_trajectory
+  - teacher/sampler
   - eval/map_branch
 
 experiment:

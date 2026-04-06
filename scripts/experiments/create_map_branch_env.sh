@@ -28,6 +28,10 @@ python -m pip install \
   numpy==2.2.3 \
   scipy==1.15.3 \
   torch-fidelity==0.4.0 \
+  'diffusers>=0.30' \
+  'transformers>=4.40' \
+  'accelerate>=0.30' \
+  'safetensors>=0.4' \
   matplotlib \
   pillow \
   pytest
@@ -39,4 +43,4 @@ echo "Environment ready:"
 echo "  prefix: ${ENV_PREFIX}"
 echo "Next:"
 echo "  conda activate ${ENV_PREFIX}"
-echo "  pytest tests/test_dgfm_map_branch.py tests/test_dgfm_velocity_model.py tests/test_dgfm_config.py tests/test_dgfm_overrides.py -q"
+echo "  pytest tests/test_dgfm_map_branch.py tests/test_dgfm_teacher_trajectory.py tests/test_dgfm_velocity_model.py tests/test_dgfm_config.py tests/test_dgfm_overrides.py -q"

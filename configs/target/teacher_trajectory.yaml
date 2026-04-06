@@ -1,0 +1,17 @@
+target:
+  builder: trajectory_shard
+  shard_root: ${TRAJ_ROOT:-/cache/Zhengwei/dgfm_teacher_traj/cifar10_ddpm128_p33}
+  trajectory_file_glob: "*.pt"
+  cache_limit: 2
+  loss_type: mse
+  huber_delta: 0.1
+  pair_short_max: 4
+  pair_mid_max: 12
+  pair_long_max: 32
+  pair_short_weight: 0.55
+  pair_mid_weight: 0.30
+  pair_long_weight: 0.15
+  pair_endpoint_weight: 0.35
+  high_noise_t_weight: 0.75
+  high_noise_t_fraction: 0.35
+

@@ -6,6 +6,8 @@ import torch
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, transforms
 
+from .trajectory import build_trajectory_dataloaders
+
 
 def _require_path(path: Path, message: str) -> None:
     if not path.exists():
@@ -96,3 +98,10 @@ def build_image_dataloaders(config: dict) -> dict[str, DataLoader]:
         "val": DataLoader(val_set, shuffle=False, drop_last=False, **common),
         "test": DataLoader(test_set, shuffle=False, drop_last=False, **common),
     }
+
+
+def build_map_training_dataloaders(config: dict) -> dict[str, DataLoader]:
+    target_mode = str(config.get("target", {}).get("builder", "analytic_path"))
+    if target_mode == "trajectory_shard":
+        return build_trajectory_dataloaders(config)
+    return build_image_dataloaders(config)

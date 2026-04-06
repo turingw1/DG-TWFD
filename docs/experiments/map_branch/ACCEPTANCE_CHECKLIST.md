@@ -6,6 +6,8 @@
 - baseline FM still trains with `configs/experiment/fm_cifar10_baseline.yaml`
 - map branch is selectable by config:
   - `train.objective = explicit_map`
+- map branch target source is config-driven:
+  - `target.builder = trajectory_shard`
 - train / eval / sample entrypoints remain shared
 - checkpoints, logs, samples, metrics stay under run-root / eval-root
 
@@ -28,12 +30,17 @@
 
 ### Pass criteria
 - map branch trains end-to-end on CIFAR-10
+- teacher trajectories can be prepared under `target.shard_root`
 - map branch checkpoint loads successfully
 - map branch samples at `1/2/4/8/16`
 - map branch runs FID evaluation
 - map branch dumps fixed-seed sample grids
 
 ### Commands
+- trajectory preparation:
+  ```bash
+  CUDA_VISIBLE_DEVICES=1 python scripts/prepare_teacher_trajectories.py --config configs/experiment/fm_cifar10_map_branch.yaml --output-root <TRAJ_ROOT> --batch-size 64
+  ```
 - eval:
   ```bash
   CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py --config configs/experiment/fm_cifar10_map_branch.yaml --checkpoint <CKPT> --eval-root <EVAL_ROOT> --steps 1 2 4 8 16 --fid-samples 5000 --fid-batch-size 128
@@ -48,6 +55,8 @@
   ```
 
 ### Required outputs
+- `<TRAJ_ROOT>/train/manifest.yaml`
+- `<TRAJ_ROOT>/val/manifest.yaml`
 - `<EVAL_ROOT>/reports/summary.csv`
 - `<EVAL_ROOT>/reports/best.json`
 - `<EVAL_ROOT>/steps16/fixed_seed_grid.png`

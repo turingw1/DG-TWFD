@@ -14,8 +14,12 @@ The current working local environment used for this branch is:
 - scipy `1.15.3`
 - PyYAML `6.0.3`
 - torch-fidelity `0.4.0`
+- diffusers `>=0.30`
+- transformers `>=4.40`
+- accelerate `>=0.30`
+- safetensors `>=0.4`
 
-For the current `map_branch v1` experiment, the minimum practical package set is:
+For the current `map_branch v2` experiment, the minimum practical package set is:
 
 - `python=3.10`
 - `torch==2.10.0`
@@ -24,12 +28,13 @@ For the current `map_branch v1` experiment, the minimum practical package set is
 - `numpy==2.2.3`
 - `scipy==1.15.3`
 - `torch-fidelity==0.4.0`
+- `diffusers>=0.30`
+- `transformers>=4.40`
+- `accelerate>=0.30`
+- `safetensors>=0.4`
 - `matplotlib`
 - `pillow`
 - `pytest`
-
-Optional teacher-related packages are not required for `map_branch v1` because
-the first-stage target builder is `analytic_path`.
 
 ## Recommended creation method
 
@@ -72,6 +77,10 @@ python -m pip install \
   numpy==2.2.3 \
   scipy==1.15.3 \
   torch-fidelity==0.4.0 \
+  'diffusers>=0.30' \
+  'transformers>=4.40' \
+  'accelerate>=0.30' \
+  'safetensors>=0.4' \
   matplotlib \
   pillow \
   pytest
@@ -97,5 +106,5 @@ PY
 Then run the branch smoke tests:
 
 ```bash
-pytest tests/test_dgfm_map_branch.py tests/test_dgfm_velocity_model.py tests/test_dgfm_config.py tests/test_dgfm_overrides.py -q
+pytest tests/test_dgfm_map_branch.py tests/test_dgfm_teacher_trajectory.py tests/test_dgfm_velocity_model.py tests/test_dgfm_config.py tests/test_dgfm_overrides.py -q
 ```

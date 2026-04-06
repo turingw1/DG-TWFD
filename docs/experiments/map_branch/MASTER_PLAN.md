@@ -56,9 +56,13 @@
 - `src/dgfm/samplers/map_sampler.py`
 - `src/dgfm/evaluators/map_eval.py`
 - `configs/model/map_unet.yaml`
-- `configs/target/analytic_path.yaml`
+- `configs/target/teacher_trajectory.yaml`
 - `configs/eval/map_branch.yaml`
 - `configs/experiment/fm_cifar10_map_branch.yaml`
+- `src/dgfm/teachers/diffusers_ddpm.py`
+- `src/dgfm/teachers/factory.py`
+- `src/dgfm/datasets/trajectory.py`
+- `scripts/prepare_teacher_trajectories.py`
 
 ### Modify
 - `scripts/run_train.py`
@@ -81,21 +85,18 @@
 
 ## Data flow of the new map branch
 
-1. Load image batch `x_1`.
-2. Sample Gaussian noise `x_0`.
-3. Sample times with current `dgfm` semantics: `0 <= t < s <= 1`.
-4. Build `x_t` from the current path abstraction.
-5. Build `x_s_target`:
-   - current implementation: analytic path target.
-   - future modes: trajectory shard / teacher sampler.
-6. Forward explicit map model:
+1. Run an offline teacher rollout from Gaussian noise.
+2. Retain a compact teacher trajectory on `0 <= u <= 1`.
+3. Save shards under `target.shard_root`.
+4. Sample training tuples `(x_t, t, s, x_s_teacher)` from those shards.
+5. Forward explicit map model:
    - `x_s_hat = M_theta(x_t, t, s)`.
-7. Compute direct supervised map loss:
+6. Compute direct supervised map loss:
    - current implementation: pixel MSE / Huber.
-8. Update model + EMA.
-9. Evaluate by iterative rollout over a fixed time grid:
+7. Update model + EMA.
+8. Evaluate by iterative rollout over a fixed time grid:
    - `x_{k+1} = M_theta(x_k, t_k, t_{k+1})`
-10. Report FID / NFE / fixed-seed grids / multistep panel.
+9. Report FID / NFE / fixed-seed grids / multistep panel.
 
 ## Future extensibility
 
@@ -104,7 +105,10 @@
 - later attach at map training time-pair sampling
 
 ### Teacher switching
-- attach through `TargetBuilder`
+- current implemented mode:
+  - `trajectory_shard`
+- next mode:
+  - `teacher_sampler`
 - keep `MapTrainer` unchanged
 
 ### Semigroup defect

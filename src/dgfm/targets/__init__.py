@@ -1,3 +1,3 @@
-from .builder import AnalyticPathTargetBuilder, TargetBatch, build_target_builder
+from .builder import AnalyticPathTargetBuilder, TargetBatch, TrajectoryShardTargetBuilder, build_target_builder
 
-__all__ = ["TargetBatch", "AnalyticPathTargetBuilder", "build_target_builder"]
+__all__ = ["TargetBatch", "AnalyticPathTargetBuilder", "TrajectoryShardTargetBuilder", "build_target_builder"]
