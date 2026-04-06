@@ -70,6 +70,49 @@ def _resolve_include(path_like: str) -> Path:
     return include_path
 
 
+def _resolve_config_path(path_like: str | Path, *, base_dir: Path | None = None) -> Path:
+    candidate = Path(path_like)
+    if candidate.is_absolute():
+        return candidate
+    if base_dir is not None:
+        local = (base_dir / candidate).resolve()
+        if local.exists():
+            return local
+    rooted = (ROOT / candidate).resolve()
+    if rooted.exists():
+        return rooted
+    if "configs" not in candidate.parts:
+        return _resolve_include(str(candidate)).resolve()
+    return rooted
+
+
+def _load_config_tree(path: Path, seen: set[Path] | None = None) -> dict[str, Any]:
+    resolved_path = path.resolve()
+    active = set() if seen is None else set(seen)
+    if resolved_path in active:
+        raise ValueError(f"Config include cycle detected at: {resolved_path}")
+    active.add(resolved_path)
+
+    loaded = _read_yaml(resolved_path)
+    base_path = loaded.pop("base", None)
+    includes = loaded.pop("includes", [])
+
+    merged: dict[str, Any] = {}
+    if base_path:
+        merged = _merge_dicts(
+            merged,
+            _load_config_tree(_resolve_config_path(base_path, base_dir=resolved_path.parent), active),
+        )
+
+    for include in includes:
+        merged = _merge_dicts(
+            merged,
+            _load_config_tree(_resolve_config_path(include, base_dir=resolved_path.parent), active),
+        )
+
+    return _merge_dicts(merged, loaded)
+
+
 def _parse_override_value(raw_value: str) -> Any:
     lowered = raw_value.lower()
     if lowered in {"true", "false"}:
@@ -98,22 +141,8 @@ def _apply_overrides(config_dict: dict[str, Any], overrides: list[str]) -> dict[
 
 
 def load_experiment_config(config_path: str | Path, overrides: list[str] | None = None) -> dict[str, Any]:
-    path = Path(config_path)
-    if not path.is_absolute():
-        path = ROOT / path
-    loaded = _read_yaml(path)
-
-    base_path = loaded.pop("base", None)
-    includes = loaded.pop("includes", [])
-
-    merged: dict[str, Any] = {}
-    if base_path:
-        merged = _merge_dicts(merged, _read_yaml(ROOT / base_path))
-
-    for include in includes:
-        merged = _merge_dicts(merged, _read_yaml(_resolve_include(include)))
-
-    merged = _merge_dicts(merged, loaded)
+    path = _resolve_config_path(config_path)
+    merged = _load_config_tree(path)
     if overrides:
         merged = _apply_overrides(merged, overrides)
     return _expand_env_vars(merged)

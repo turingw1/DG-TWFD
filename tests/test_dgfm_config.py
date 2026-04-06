@@ -34,6 +34,8 @@ def test_load_experiment_config_expands_bash_style_default_env(monkeypatch) -> N
 
 def test_load_quick_map_branch_config_overrides_teacher_runtime() -> None:
     cfg = load_experiment_config("configs/experiment/fm_cifar10_map_branch_quick.yaml")
+    assert cfg["dataset"]["name"] == "cifar10"
+    assert cfg["model"]["family"] == "official_map_unet"
     assert cfg["teacher"]["num_inference_steps"] == 32
     assert cfg["teacher"]["retain_num_points"] == 18
     assert cfg["loss"]["endpoint_every"] == 16
