@@ -2,11 +2,21 @@
 
 ## 1. Environment
 
+If the server does not already have a usable conda environment, create one
+first:
+
+```bash
+cd ~/workspace/Zhengwei/DG-TWFD
+bash scripts/experiments/create_map_branch_env.sh dgfm_map
+```
+
+Then use:
+
 ```bash
 cd ~/workspace/Zhengwei/DG-TWFD
 git checkout map_branch_ctm_explicit_map
 git pull --ff-only
-conda activate consistency
+conda activate dgfm_map
 ```
 
 ## 2. Activate experiment

@@ -18,15 +18,20 @@ This directory is the complete documentation context for the current
    - dataset check
    - train / resume / eval / sample / panel
 
-2. [MASTER_PLAN.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/MASTER_PLAN.md)
+2. [ENVIRONMENT.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/ENVIRONMENT.md)
+   - conda environment creation
+   - package versions
+   - validation commands
+
+3. [MASTER_PLAN.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/MASTER_PLAN.md)
    - branch architecture
    - migration boundary from CTM to `dgfm`
    - module responsibilities
 
-3. [ACCEPTANCE_CHECKLIST.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/ACCEPTANCE_CHECKLIST.md)
+4. [ACCEPTANCE_CHECKLIST.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/ACCEPTANCE_CHECKLIST.md)
    - architecture, functional, numerical, research-readiness checks
 
-4. [TECHNICAL_REPORT.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/TECHNICAL_REPORT.md)
+5. [TECHNICAL_REPORT.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/TECHNICAL_REPORT.md)
    - condensed technical rationale for the branch design
 
 ## Current branch scope
