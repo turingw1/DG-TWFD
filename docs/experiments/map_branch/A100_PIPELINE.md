@@ -21,19 +21,21 @@ conda activate /cache/$USER/conda_envs/dgfm_map
 
 ## 2. Activate experiment
 
-First register the new run id in
+Before entering the pipeline, first update
 [EXPERIMENT_LOG.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/EXPERIMENT_LOG.md).
 
+Then activate the selected experiment once:
+
 ```bash
-source scripts/experiments/activate_fm_cifar10.sh map_branch e001
+source scripts/experiments/activate_fm_cifar10.sh <EXP_VARIANT> <EXP_TAG>
 ```
 
-This sets:
-- `EXP_VARIANT=map_branch`
-- `EXP_TAG=e001`
-- `EXP_NAME=fm_cifar10_map_branch_e001`
-- `EXP_SOURCE=configs/experiment/fm_cifar10_map_branch.yaml`
-- `FM_CONFIG=configs/experiment/fm_cifar10_map_branch.yaml`
+This sets stable environment variables for all later commands in this document:
+- `EXP_VARIANT=<selected variant>`
+- `EXP_TAG=<selected tag>`
+- `EXP_NAME=<resolved experiment name>`
+- `EXP_SOURCE=<resolved config path>`
+- `FM_CONFIG=<resolved config path>`
 - `RUN_ROOT=/cache/Zhengwei/dgfm_runs/$FM_EXP`
 - `CKPT_DIR=$RUN_ROOT/checkpoints`
 - `SAMPLE_ROOT=$RUN_ROOT/samples`
@@ -47,8 +49,9 @@ This sets:
 
 Recommended policy:
 - keep this pipeline document stable
-- switch runs by changing only `EXP_TAG`
-- write the run summary and comments in `EXPERIMENT_LOG.md`
+- switch runs by updating `EXPERIMENT_LOG.md`
+- re-run the activation script with the selected `EXP_VARIANT` and `EXP_TAG`
+- after activation, use the fixed commands below without editing this file
 
 Training will mirror:
 - `logs/config_resolved.yaml`
@@ -178,7 +181,6 @@ CUDA_VISIBLE_DEVICES=1 python scripts/prepare_teacher_trajectories.py \
 ## 5. Map-branch training command
 
 ```bash
-source scripts/experiments/activate_fm_cifar10.sh map_branch e001
 CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py --config $FM_CONFIG --run-root $RUN_ROOT
 ```
 
@@ -186,7 +188,6 @@ If the online teacher is not already cached under `/cache/huggingface`, allow
 one mirrored online fetch:
 
 ```bash
-source scripts/experiments/activate_fm_cifar10.sh map_branch e001
 CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
   --config $FM_CONFIG \
   --run-root $RUN_ROOT \
@@ -196,14 +197,14 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
 Quick diagnostic run:
 
 ```bash
-source scripts/experiments/activate_fm_cifar10.sh map_branch_quick diag01
 CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py --config $FM_CONFIG --run-root $RUN_ROOT
 ```
 
 Recommended use:
-- run `map_branch_quick diag01` first
+- first activate the quick experiment from `EXPERIMENT_LOG.md`
+- run the same training command shown above
 - check whether `train_pixel_loss / train_perceptual_loss / train_endpoint_loss` move in the expected direction
-- then decide whether to spend time on the full `map_branch e001`
+- then activate the full experiment and rerun the same command
 
 Current target mode:
 - `target.builder=teacher_sampler`

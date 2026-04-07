@@ -8,6 +8,7 @@ Rules:
 - record every new run here with a stable experiment id and source name
 - switch runs through environment variables exported by
   [activate_fm_cifar10.sh](/home/gzwlinux/vscode/gitProject/DG-TWFD/scripts/experiments/activate_fm_cifar10.sh)
+- before using the pipeline, select one row here and run its activation command
 - keep one row per experiment id
 - add short comments under the table when an experiment needs extra context
 
@@ -24,10 +25,17 @@ Rules:
 
 ## Active experiment table
 
-| EXP_TAG | EXP_VARIANT | FM_CONFIG | FM_EXP / EXP_NAME | Purpose | Status |
-| --- | --- | --- | --- | --- | --- |
-| e001 | map_branch | `configs/experiment/fm_cifar10_map_branch.yaml` | `fm_cifar10_map_branch_e001` | CTM-like discrete sampler baseline | planned |
-| diag01 | map_branch_quick | `configs/experiment/fm_cifar10_map_branch_quick.yaml` | `fm_cifar10_map_branch_quick_diag01` | quick diagnostic before full run | planned |
+| EXP_TAG | EXP_VARIANT | FM_CONFIG | FM_EXP / EXP_NAME | Activate | Purpose | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| e001 | map_branch | `configs/experiment/fm_cifar10_map_branch.yaml` | `fm_cifar10_map_branch_e001` | `source scripts/experiments/activate_fm_cifar10.sh map_branch e001` | CTM-like discrete sampler baseline | planned |
+| diag01 | map_branch_quick | `configs/experiment/fm_cifar10_map_branch_quick.yaml` | `fm_cifar10_map_branch_quick_diag01` | `source scripts/experiments/activate_fm_cifar10.sh map_branch_quick diag01` | quick diagnostic before full run | planned |
+
+## Pipeline usage contract
+
+1. Add or update the target row in this file.
+2. Run the row's `Activate` command once.
+3. Enter [A100_PIPELINE.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/A100_PIPELINE.md).
+4. Use the fixed pipeline commands directly with the exported `$FM_CONFIG`, `$RUN_ROOT`, `$CKPT_DIR`, `$METRIC_ROOT`, and `$SAMPLE_ROOT`.
 
 ## Notes
 
