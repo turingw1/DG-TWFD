@@ -35,10 +35,16 @@ This directory is the complete documentation context for the current
    - migration boundary from CTM to `dgfm`
    - module responsibilities
 
-5. [ACCEPTANCE_CHECKLIST.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/ACCEPTANCE_CHECKLIST.md)
+5. [TIMEWARP_CTM_FINALIZATION_PLAN.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/TIMEWARP_CTM_FINALIZATION_PLAN.md)
+   - finalization roadmap for time-warp and CTM-style targets
+   - task ordering
+   - interface boundaries
+   - acceptance criteria for the next major code update
+
+6. [ACCEPTANCE_CHECKLIST.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/ACCEPTANCE_CHECKLIST.md)
    - architecture, functional, numerical, research-readiness checks
 
-6. [TECHNICAL_REPORT.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/TECHNICAL_REPORT.md)
+7. [TECHNICAL_REPORT.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/TECHNICAL_REPORT.md)
    - condensed technical rationale for the branch design
 
 ## Current branch scope
