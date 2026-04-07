@@ -29,6 +29,7 @@ Rules:
 | --- | --- | --- | --- | --- | --- | --- |
 | e001 | map_branch | `configs/experiment/fm_cifar10_map_branch.yaml` | `fm_cifar10_map_branch_e001` | `source scripts/experiments/activate_fm_cifar10.sh map_branch e001` | CTM-like discrete sampler baseline | planned |
 | diag01 | map_branch_quick | `configs/experiment/fm_cifar10_map_branch_quick.yaml` | `fm_cifar10_map_branch_quick_diag01` | `source scripts/experiments/activate_fm_cifar10.sh map_branch_quick diag01` | quick diagnostic before full run | planned |
+| tw001 | map_branch_timewarp_probe | `configs/experiment/fm_cifar10_map_branch_timewarp_probe.yaml` | `fm_cifar10_map_branch_timewarp_probe_tw001` | `source scripts/experiments/activate_fm_cifar10.sh map_branch_timewarp_probe tw001` | quick defect-driven timewarp smoke test | planned |
 
 ## Pipeline usage contract
 
@@ -53,3 +54,17 @@ Rules:
 
 - intended to validate direction only
 - quick config keeps reduced teacher steps and lighter endpoint supervision
+
+### tw001
+
+- intended as the first direct validation that learned timewarp can change the
+  effective time grid during training
+- based on the quick map-branch config to keep turnaround short
+- enables:
+  - `scheduler.timewarp.enabled=true`
+  - `scheduler.timewarp.type=learnable_monotone`
+  - `loss.timewarp_weight=1.0`
+- expected validation points:
+  - `train.jsonl` should show non-uniform `timewarp_time_grid`
+  - `train_timewarp_defect_loss` should trend down
+  - eval `metrics.json` should export the learned `time_grid`

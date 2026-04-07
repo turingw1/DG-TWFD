@@ -30,6 +30,11 @@ Then activate the selected experiment once:
 source scripts/experiments/activate_fm_cifar10.sh <EXP_VARIANT> <EXP_TAG>
 ```
 
+For the dedicated timewarp smoke test, use the row recorded in
+[EXPERIMENT_LOG.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/EXPERIMENT_LOG.md).
+That variant already enables the learnable timewarp config, so no extra
+`--set scheduler.timewarp.enabled=true` override is needed in the pipeline.
+
 This sets stable environment variables for all later commands in this document:
 - `EXP_VARIANT=<selected variant>`
 - `EXP_TAG=<selected tag>`

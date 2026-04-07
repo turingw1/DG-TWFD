@@ -42,3 +42,12 @@ def test_load_quick_map_branch_config_overrides_teacher_runtime() -> None:
     assert cfg["target"]["num_heun_step"] == 8
     assert cfg["loss"]["endpoint_every"] == 16
     assert cfg["train"]["epochs"] == 30
+
+
+def test_load_timewarp_probe_config_enables_learnable_warp() -> None:
+    cfg = load_experiment_config("configs/experiment/fm_cifar10_map_branch_timewarp_probe.yaml")
+    assert cfg["experiment"]["name"] == "fm_cifar10_map_branch_timewarp_probe"
+    assert cfg["scheduler"]["timewarp"]["enabled"] is True
+    assert cfg["scheduler"]["timewarp"]["type"] == "learnable_monotone"
+    assert cfg["loss"]["timewarp_weight"] == 1.0
+    assert cfg["train"]["epochs"] == 30
