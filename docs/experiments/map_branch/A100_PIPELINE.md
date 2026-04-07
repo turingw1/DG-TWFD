@@ -21,22 +21,34 @@ conda activate /cache/$USER/conda_envs/dgfm_map
 
 ## 2. Activate experiment
 
+First register the new run id in
+[EXPERIMENT_LOG.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/EXPERIMENT_LOG.md).
+
 ```bash
-source scripts/experiments/activate_fm_cifar10.sh map_branch v3
+source scripts/experiments/activate_fm_cifar10.sh map_branch e001
 ```
 
 This sets:
+- `EXP_VARIANT=map_branch`
+- `EXP_TAG=e001`
+- `EXP_NAME=fm_cifar10_map_branch_e001`
+- `EXP_SOURCE=configs/experiment/fm_cifar10_map_branch.yaml`
 - `FM_CONFIG=configs/experiment/fm_cifar10_map_branch.yaml`
-- `RUN_ROOT=/cache/Zhengwei/dgfm_runs/fm_cifar10_map_branch_v3`
+- `RUN_ROOT=/cache/Zhengwei/dgfm_runs/$FM_EXP`
 - `CKPT_DIR=$RUN_ROOT/checkpoints`
 - `SAMPLE_ROOT=$RUN_ROOT/samples`
 - `LOG_ROOT=$RUN_ROOT/logs`
-- `METRIC_ROOT=/cache/Zhengwei/dgfm_eval/fm_cifar10_map_branch_v3`
+- `METRIC_ROOT=/cache/Zhengwei/dgfm_eval/$FM_EXP`
 - `TRAJ_ROOT=/cache/Zhengwei/dgfm_teacher_traj/cifar10_ddpm128_p33`
 - `HF_HOME=/cache/huggingface`
 - `HF_HUB_CACHE=/cache/huggingface/hub`
 - `HF_ENDPOINT=https://hf-mirror.com`
-- `DGFM_ARCHIVE_ROOT=/temp/Zhengwei/dgfm_runs/fm_cifar10_map_branch_v3`
+- `DGFM_ARCHIVE_ROOT=/temp/Zhengwei/dgfm_runs/$FM_EXP`
+
+Recommended policy:
+- keep this pipeline document stable
+- switch runs by changing only `EXP_TAG`
+- write the run summary and comments in `EXPERIMENT_LOG.md`
 
 Training will mirror:
 - `logs/config_resolved.yaml`
@@ -62,7 +74,7 @@ python scripts/build_dataset.py --dataset cifar10 --data-root $DATA_ROOT/cifar10
 
 ## 4. Teacher target mode
 
-Current `map_branch v3` uses **online `teacher_sampler` targets** by default.
+Current `map_branch` uses **online `teacher_sampler` targets** by default.
 Offline teacher trajectories remain available as a fallback path, but they are
 no longer the primary training mode.
 
@@ -166,7 +178,7 @@ CUDA_VISIBLE_DEVICES=1 python scripts/prepare_teacher_trajectories.py \
 ## 5. Map-branch training command
 
 ```bash
-source scripts/experiments/activate_fm_cifar10.sh map_branch v3
+source scripts/experiments/activate_fm_cifar10.sh map_branch e001
 CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py --config $FM_CONFIG --run-root $RUN_ROOT
 ```
 
@@ -174,7 +186,7 @@ If the online teacher is not already cached under `/cache/huggingface`, allow
 one mirrored online fetch:
 
 ```bash
-source scripts/experiments/activate_fm_cifar10.sh map_branch v3
+source scripts/experiments/activate_fm_cifar10.sh map_branch e001
 CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
   --config $FM_CONFIG \
   --run-root $RUN_ROOT \
@@ -184,14 +196,14 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
 Quick diagnostic run:
 
 ```bash
-source scripts/experiments/activate_fm_cifar10.sh map_branch_quick v1
+source scripts/experiments/activate_fm_cifar10.sh map_branch_quick diag01
 CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py --config $FM_CONFIG --run-root $RUN_ROOT
 ```
 
 Recommended use:
-- run `map_branch_quick v1` first
+- run `map_branch_quick diag01` first
 - check whether `train_pixel_loss / train_perceptual_loss / train_endpoint_loss` move in the expected direction
-- then decide whether to spend time on the full `map_branch v3`
+- then decide whether to spend time on the full `map_branch e001`
 
 Current target mode:
 - `target.builder=teacher_sampler`

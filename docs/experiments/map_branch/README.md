@@ -3,12 +3,12 @@
 This directory is the complete documentation context for the current
 `map_branch_ctm_explicit_map` git branch.
 
-## Version
+## Experiment tracking
 
-- active experiment version:
-  - `v3`
-- quick diagnostic version:
-  - `map_branch_quick v1`
+- use one stable pipeline document:
+  - [A100_PIPELINE.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/A100_PIPELINE.md)
+- record every run here:
+  - [EXPERIMENT_LOG.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/EXPERIMENT_LOG.md)
 - experiment family:
   - `fm_cifar10_map_branch`
 
@@ -20,20 +20,25 @@ This directory is the complete documentation context for the current
    - CIFAR-10 and online teacher target setup
    - train / resume / eval / sample / panel
 
-2. [ENVIRONMENT.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/ENVIRONMENT.md)
+2. [EXPERIMENT_LOG.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/EXPERIMENT_LOG.md)
+   - experiment ids
+   - source variant names
+   - run naming and short annotations
+
+3. [ENVIRONMENT.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/ENVIRONMENT.md)
    - conda environment creation
    - package versions
    - validation commands
 
-3. [MASTER_PLAN.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/MASTER_PLAN.md)
+4. [MASTER_PLAN.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/MASTER_PLAN.md)
    - branch architecture
    - migration boundary from CTM to `dgfm`
    - module responsibilities
 
-4. [ACCEPTANCE_CHECKLIST.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/ACCEPTANCE_CHECKLIST.md)
+5. [ACCEPTANCE_CHECKLIST.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/ACCEPTANCE_CHECKLIST.md)
    - architecture, functional, numerical, research-readiness checks
 
-5. [TECHNICAL_REPORT.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/TECHNICAL_REPORT.md)
+6. [TECHNICAL_REPORT.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/TECHNICAL_REPORT.md)
    - condensed technical rationale for the branch design
 
 ## Current branch scope
