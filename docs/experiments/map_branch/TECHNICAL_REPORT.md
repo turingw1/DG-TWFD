@@ -36,10 +36,12 @@ Both branches share:
 ## Current first-stage map algorithm
 
 - keep current `dgfm` time semantics
-- use teacher-generated trajectory shards
-- sample `0 <= t < s <= 1`
+- use online teacher rollouts by default
+- retain a fixed CTM-like discrete scale grid
+- sample `0 <= t < s <= 1` through discrete index sampling
 - train on `(x_t, t, s, x_s_teacher)` pairs
 - train direct map supervision with pixel MSE / Huber
+- keep endpoint rollout loss as an auxiliary interface
 - evaluate at `1/2/4/8/16` steps via iterative rollout
 
 ## Why this is the correct bridge

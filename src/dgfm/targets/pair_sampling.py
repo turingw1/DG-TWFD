@@ -23,7 +23,12 @@ def _sample_jump_delta(max_delta: int, target_cfg: dict, device: torch.device) -
     return int(torch.randint(low, high + 1, (1,), device=device).item())
 
 
-def sample_pair_indices(num_points: int, target_cfg: dict, batch_size: int, device: torch.device) -> tuple[torch.Tensor, torch.Tensor]:
+def _sample_pair_indices_legacy(
+    num_points: int,
+    target_cfg: dict,
+    batch_size: int,
+    device: torch.device,
+) -> tuple[torch.Tensor, torch.Tensor]:
     if num_points < 2:
         raise ValueError(f"num_points must be at least 2, got {num_points}")
     endpoint_prob = float(target_cfg.get("pair_endpoint_weight", 0.35))
@@ -56,3 +61,85 @@ def sample_pair_indices(num_points: int, target_cfg: dict, batch_size: int, devi
         t_indices[idx] = t_index
         s_indices[idx] = s_index
     return t_indices, s_indices
+
+
+def _sample_num_heun_steps(batch_size: int, num_points: int, target_cfg: dict, device: torch.device) -> torch.Tensor:
+    max_delta = num_points - 1
+    max_heun_step = int(target_cfg.get("num_heun_step", max_delta))
+    max_heun_step = max(1, min(max_heun_step, max_delta))
+    random_heun = bool(target_cfg.get("num_heun_step_random", True))
+    if not random_heun:
+        return torch.full((batch_size,), max_heun_step, dtype=torch.long, device=device)
+
+    strategy = str(target_cfg.get("heun_step_strategy", "weighted"))
+    if strategy == "uniform":
+        return torch.randint(1, max_heun_step + 1, (batch_size,), dtype=torch.long, device=device)
+    if strategy == "weighted":
+        multiplier = float(target_cfg.get("heun_step_multiplier", 1.0))
+        weights = torch.arange(1, max_heun_step + 1, dtype=torch.float32, device=device) ** multiplier
+        probs = weights / weights.sum()
+        return torch.multinomial(probs, num_samples=batch_size, replacement=True).to(torch.long) + 1
+    raise ValueError(f"Unsupported heun_step_strategy: {strategy}")
+
+
+def _sample_pair_indices_ctm_discrete(
+    num_points: int,
+    target_cfg: dict,
+    batch_size: int,
+    device: torch.device,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    if num_points < 2:
+        raise ValueError(f"num_points must be at least 2, got {num_points}")
+    num_heun_steps = _sample_num_heun_steps(
+        batch_size=batch_size,
+        num_points=num_points,
+        target_cfg=target_cfg,
+        device=device,
+    )
+    max_start = num_points - num_heun_steps
+    t_indices = torch.floor(torch.rand(batch_size, device=device) * max_start.to(torch.float32)).to(torch.long)
+
+    sample_s_strategy = str(target_cfg.get("sample_s_strategy", "uniform"))
+    lower = t_indices + num_heun_steps
+    if sample_s_strategy == "smallest":
+        s_indices = torch.full((batch_size,), num_points - 1, dtype=torch.long, device=device)
+        return t_indices, s_indices
+    if sample_s_strategy == "uniform":
+        span = num_points - lower
+        offsets = torch.floor(torch.rand(batch_size, device=device) * span.to(torch.float32)).to(torch.long)
+        s_indices = lower + offsets
+        return t_indices, s_indices
+    raise ValueError(f"Unsupported sample_s_strategy: {sample_s_strategy}")
+
+
+def sample_target_pair_indices(
+    num_points: int,
+    target_cfg: dict,
+    batch_size: int,
+    device: torch.device,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    sampling_mode = str(target_cfg.get("sampling_mode", "ctm_discrete"))
+    if sampling_mode == "ctm_discrete":
+        return _sample_pair_indices_ctm_discrete(
+            num_points=num_points,
+            target_cfg=target_cfg,
+            batch_size=batch_size,
+            device=device,
+        )
+    if sampling_mode == "heuristic_pairs":
+        return _sample_pair_indices_legacy(
+            num_points=num_points,
+            target_cfg=target_cfg,
+            batch_size=batch_size,
+            device=device,
+        )
+    raise ValueError(f"Unsupported target sampling_mode: {sampling_mode}")
+
+
+def sample_pair_indices(num_points: int, target_cfg: dict, batch_size: int, device: torch.device) -> tuple[torch.Tensor, torch.Tensor]:
+    return sample_target_pair_indices(
+        num_points=num_points,
+        target_cfg=target_cfg,
+        batch_size=batch_size,
+        device=device,
+    )

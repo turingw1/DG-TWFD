@@ -47,8 +47,11 @@ This directory is the complete documentation context for the current
   - `teacher_sampler`
 - teacher backend:
   - `diffusers_ddpm`
-- retained teacher trajectory:
-  - `33` anchor states
+- current target sampler:
+  - `sampling_mode=ctm_discrete`
+  - `start_scales=33`
+  - `num_heun_step=17`
+  - `sample_s_strategy=uniform`
 - teacher internal rollout:
   - `128` DDIM steps
 - current loss stack:

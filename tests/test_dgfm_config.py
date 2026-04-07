@@ -37,6 +37,8 @@ def test_load_quick_map_branch_config_overrides_teacher_runtime() -> None:
     assert cfg["dataset"]["name"] == "cifar10"
     assert cfg["model"]["family"] == "official_map_unet"
     assert cfg["teacher"]["num_inference_steps"] == 32
-    assert cfg["teacher"]["retain_num_points"] == 18
+    assert cfg["target"]["sampling_mode"] == "ctm_discrete"
+    assert cfg["target"]["start_scales"] == 18
+    assert cfg["target"]["num_heun_step"] == 8
     assert cfg["loss"]["endpoint_every"] == 16
     assert cfg["train"]["epochs"] == 30

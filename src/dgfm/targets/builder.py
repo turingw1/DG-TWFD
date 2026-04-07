@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import torch
 
-from dgfm.targets.pair_sampling import sample_pair_indices
+from dgfm.targets.pair_sampling import sample_target_pair_indices
 from dgfm.teachers import build_teacher
 
 
@@ -105,8 +105,8 @@ class TeacherSamplerTargetBuilder:
         self.target_cfg = config.get("target", {})
         self.teacher_cfg = config.get("teacher", {})
         self.teacher = build_teacher(config)
-        retain_num_points = int(self.teacher_cfg.get("retain_num_points", 33))
-        self.u_grid = torch.linspace(0.0, 1.0, steps=retain_num_points, dtype=torch.float32)
+        start_scales = int(self.target_cfg.get("start_scales", self.teacher_cfg.get("retain_num_points", 33)))
+        self.u_grid = torch.linspace(0.0, 1.0, steps=start_scales, dtype=torch.float32)
 
     def _batch_size_from_batch(self, batch) -> int:
         if isinstance(batch, (tuple, list)):
@@ -134,7 +134,7 @@ class TeacherSamplerTargetBuilder:
             teacher_batch = self.teacher.sample_trajectory_from_x0(x_0=x_0, u_grid=self.u_grid, device=device)
             t_grid = teacher_batch.t_grid.to(device=device, dtype=torch.float32)
             x_grid = teacher_batch.x_grid.to(device=device, dtype=torch.float32)
-            t_indices, s_indices = sample_pair_indices(
+            t_indices, s_indices = sample_target_pair_indices(
                 num_points=t_grid.shape[0],
                 target_cfg=self.target_cfg,
                 batch_size=chunk,

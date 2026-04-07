@@ -85,10 +85,10 @@
 
 ## Data flow of the new map branch
 
-1. Run an offline teacher rollout from Gaussian noise.
-2. Retain a compact teacher trajectory on `0 <= u <= 1`.
-3. Save shards under `target.shard_root`.
-4. Sample training tuples `(x_t, t, s, x_s_teacher)` from those shards.
+1. Sample teacher noise states `x_0`.
+2. Run an online teacher rollout on a fixed discrete `u-grid`.
+3. Sample CTM-like discrete indices for `t` and `s`.
+4. Build training tuples `(x_t, t, s, x_s_teacher)` directly from the retained teacher grid.
 5. Forward explicit map model:
    - `x_s_hat = M_theta(x_t, t, s)`.
 6. Compute direct supervised map loss:
@@ -105,10 +105,9 @@
 - later attach at map training time-pair sampling
 
 ### Teacher switching
-- current implemented mode:
-  - `trajectory_shard`
-- next mode:
+- current implemented modes:
   - `teacher_sampler`
+  - `trajectory_shard`
 - keep `MapTrainer` unchanged
 
 ### Semigroup defect

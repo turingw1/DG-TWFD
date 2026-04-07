@@ -5,11 +5,12 @@ experiment:
 
 teacher:
   num_inference_steps: 32
-  retain_num_points: 18
 
 target:
+  start_scales: 18
   teacher_sampler_sub_batch: 128
-  pair_long_max: 17
+  num_heun_step: 8
+  heun_step_strategy: uniform
 
 loss:
   endpoint_weight: 0.15

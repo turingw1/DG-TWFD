@@ -10,7 +10,8 @@ of the current `dgfm` framework.
   - explicit map learning
   - `M_theta(x_t, t, s) -> x_s`
 - current target mode:
-  - teacher trajectory shards generated from a `diffusers` DDPM teacher
+  - online `teacher_sampler`
+  - CTM-like discrete scale sampling on teacher rollouts
 - current time semantics:
   - `0 <= t < s <= 1`
 

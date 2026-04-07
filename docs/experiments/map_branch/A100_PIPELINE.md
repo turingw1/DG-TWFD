@@ -70,7 +70,7 @@ Quick diagnostic variant:
 - `map_branch_quick`
 - teacher internal steps:
   - `32`
-- retained teacher anchors:
+- target start scales:
   - `18`
 - lighter endpoint supervision:
   - lower weight
@@ -89,7 +89,7 @@ Teacher rollout policy:
   - `ddim`
 - internal teacher steps:
   - `128`
-- retained trajectory anchors:
+- target discrete scales:
   - `33`
 - retained time semantics:
   - ascending `u-grid`
@@ -99,8 +99,10 @@ Teacher rollout policy:
 Primary online target path:
 - sample teacher noise state `x_0`
 - rollout teacher with `128` internal DDIM steps
-- retain `33` anchor states on ascending `u-grid`
-- sample `(t, s)` from the retained anchors with the same short/mid/long/endpoint policy used by the branch
+- retain `33` CTM-like discrete scales on ascending `u-grid`
+- sample a discrete start index `t_idx`
+- sample `num_heun_step`
+- sample `s_idx` from the valid suffix with `sample_s_strategy=uniform`
 - supervise the explicit map on `M_theta(x_t, t, s) -> x_s_teacher`
 
 Optional offline cache path:
@@ -199,19 +201,25 @@ Current semantics:
 - sample `0 <= t < s <= 1`
 - train `M_theta(x_t, t, s) -> x_s_teacher`
 
-Pair sampling policy on retained teacher grid:
-- `pair_short_max = 4`
-- `pair_mid_max = 12`
-- `pair_long_max = 32`
-- `pair_endpoint_weight = 0.35`
-- `high_noise_t_weight = 0.75`
-- `high_noise_t_fraction = 0.35`
+Current CTM-like discrete target policy:
+- `target.sampling_mode = ctm_discrete`
+- `target.start_scales = 33`
+- `target.num_heun_step = 17`
+- `target.num_heun_step_random = true`
+- `target.heun_step_strategy = weighted`
+- `target.sample_s_strategy = uniform`
 
 CTM-aligned additions in the current branch:
 - online teacher target construction
+- CTM-like discrete time-pair sampling
 - CTM-style preconditioning on the explicit map UNet
 - perceptual loss on direct map matching
 - endpoint few-step teacher loss on rollout from the same teacher `x_0`
+
+Endpoint loss status:
+- kept as an auxiliary interface
+- not treated as the primary CTM-faithfulness mechanism
+- safe to ablate independently in later experiments
 
 Preconditioning is treated here as a training/sampling stabilization tip:
 - normalize noisy inputs before they enter the map UNet
