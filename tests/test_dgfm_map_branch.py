@@ -89,6 +89,11 @@ class _ToyMap(torch.nn.Module):
         return x_t + (s - t).view(-1, 1, 1, 1)
 
 
+class _ToyMapUsesS(torch.nn.Module):
+    def forward(self, x_t, t, s, extra=None):
+        return x_t + s.view(-1, 1, 1, 1)
+
+
 def test_sample_from_model_dispatches_to_map_rollout() -> None:
     cfg = _map_config()
     x_init = torch.zeros(2, 3, 4, 4)
@@ -97,6 +102,14 @@ def test_sample_from_model_dispatches_to_map_rollout() -> None:
     assert torch.allclose(out, torch.ones_like(x_init), atol=1e-6)
     assert objective_mode(cfg) == "explicit_map"
     assert solver_nfe(step_count=4, mode="explicit_map") == 4
+
+
+def test_sample_from_model_uses_config_timewarp_when_enabled() -> None:
+    cfg = _map_config()
+    cfg["scheduler"] = {"timewarp": {"enabled": True, "type": "data_dense_power@2.0"}}
+    x_init = torch.zeros(1, 1, 1, 1)
+    out = sample_from_model(config=cfg, model=_ToyMapUsesS(), x_init=x_init, step_count=2, method="map_rollout")
+    assert torch.allclose(out, torch.full_like(x_init, 1.75), atol=1e-6)
 
 
 def test_map_rollout_remains_differentiable() -> None:

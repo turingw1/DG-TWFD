@@ -5,6 +5,7 @@ from pathlib import Path
 import torch
 
 from dgfm.models import build_map_model, build_velocity_model
+from dgfm.schedulers import build_config_time_grid
 from dgfm.samplers import rollout_with_map
 
 
@@ -100,6 +101,13 @@ def sample_from_model(
     method: str = "midpoint",
     time_grid: torch.Tensor | None = None,
 ) -> torch.Tensor:
+    if time_grid is None:
+        time_grid = build_config_time_grid(
+            config=config,
+            step_count=step_count,
+            device=x_init.device,
+            dtype=x_init.dtype,
+        )
     mode = objective_mode(config)
     if mode == "explicit_map":
         return rollout_with_map(model=model, x_init=x_init, step_count=step_count, time_grid=time_grid)

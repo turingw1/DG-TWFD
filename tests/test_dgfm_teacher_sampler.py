@@ -64,3 +64,11 @@ def test_ctm_discrete_pair_sampler_supports_smallest_s_strategy() -> None:
     )
     assert torch.all(s_indices == 8)
     assert torch.all(t_indices <= 5)
+
+
+def test_teacher_sampler_builder_can_use_warped_time_grid() -> None:
+    cfg = _teacher_sampler_config()
+    cfg["scheduler"] = {"timewarp": {"enabled": True, "type": "data_dense_power@2.0"}}
+    builder = build_target_builder(cfg)
+    uniform = torch.linspace(0.0, 1.0, steps=9)
+    assert not torch.allclose(builder.u_grid, uniform)

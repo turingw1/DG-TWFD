@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 import torch
 
+from dgfm.schedulers import build_config_time_grid
 from dgfm.targets.pair_sampling import sample_target_pair_indices
 from dgfm.teachers import build_teacher
 
@@ -106,7 +107,12 @@ class TeacherSamplerTargetBuilder:
         self.teacher_cfg = config.get("teacher", {})
         self.teacher = build_teacher(config)
         start_scales = int(self.target_cfg.get("start_scales", self.teacher_cfg.get("retain_num_points", 33)))
-        self.u_grid = torch.linspace(0.0, 1.0, steps=start_scales, dtype=torch.float32)
+        self.u_grid = build_config_time_grid(
+            config=self.config,
+            step_count=start_scales - 1,
+            device=torch.device("cpu"),
+            dtype=torch.float32,
+        )
 
     def _batch_size_from_batch(self, batch) -> int:
         if isinstance(batch, (tuple, list)):

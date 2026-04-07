@@ -15,6 +15,7 @@ from dgfm.losses import build_perceptual_metric
 from dgfm.models import ModelEMA, build_map_model
 from dgfm.paths import build_path, ensure_flow_matching_on_path
 from dgfm.samplers import rollout_with_map
+from dgfm.schedulers import build_config_time_grid
 from dgfm.targets import build_target_builder
 from dgfm.utils import build_experiment_archive
 
@@ -168,6 +169,12 @@ class MapTrainer:
                                 model=model,
                                 x_init=target_batch.x_0.index_select(0, subset),
                                 step_count=endpoint_step,
+                                time_grid=build_config_time_grid(
+                                    config=self.config,
+                                    step_count=endpoint_step,
+                                    device=device,
+                                    dtype=target_batch.x_0.dtype,
+                                ),
                             )
                             endpoint_losses = _compute_prediction_losses(
                                 student_endpoint,
