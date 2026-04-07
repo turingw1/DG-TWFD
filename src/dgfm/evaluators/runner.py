@@ -64,13 +64,14 @@ class EvaluationRunner:
         image_size = int(self.config["dataset"]["image_size"])
         generator = torch.Generator(device=device).manual_seed(fixed_seed)
         noise = torch.randn(fixed_grid_size, channels, image_size, image_size, generator=generator, device=device)
-        samples = sample_from_model(
-            config=self.config,
-            model=model,
-            x_init=noise,
-            step_count=step_count,
-            method=solver_method,
-        )
+        with torch.no_grad():
+            samples = sample_from_model(
+                config=self.config,
+                model=model,
+                x_init=noise,
+                step_count=step_count,
+                method=solver_method,
+            )
         samples = to_unit_interval(samples)
         torch.save(samples.detach().cpu(), step_dir / "fixed_seed_samples.pt")
         save_image(samples, step_dir / "fixed_seed_grid.png", nrow=nrow)
