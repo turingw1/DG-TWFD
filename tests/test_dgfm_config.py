@@ -51,3 +51,14 @@ def test_load_timewarp_probe_config_enables_learnable_warp() -> None:
     assert cfg["scheduler"]["timewarp"]["type"] == "learnable_monotone"
     assert cfg["loss"]["timewarp_weight"] == 1.0
     assert cfg["train"]["epochs"] == 30
+
+
+def test_load_timewarp_smoke_config_reduces_runtime_scale() -> None:
+    cfg = load_experiment_config("configs/experiment/fm_cifar10_map_branch_timewarp_smoke.yaml")
+    assert cfg["experiment"]["name"] == "fm_cifar10_map_branch_timewarp_smoke"
+    assert cfg["scheduler"]["timewarp"]["enabled"] is True
+    assert cfg["teacher"]["num_inference_steps"] == 16
+    assert cfg["target"]["start_scales"] == 12
+    assert cfg["train"]["batch_size"] == 32
+    assert cfg["train"]["max_train_batches"] == 128
+    assert cfg["eval"]["num_fid_samples"] == 1000

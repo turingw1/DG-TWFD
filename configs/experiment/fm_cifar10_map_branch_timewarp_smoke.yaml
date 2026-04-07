@@ -1,0 +1,39 @@
+base: configs/experiment/fm_cifar10_map_branch_timewarp_probe.yaml
+
+experiment:
+  name: fm_cifar10_map_branch_timewarp_smoke
+
+teacher:
+  num_inference_steps: 16
+
+target:
+  start_scales: 12
+  teacher_sampler_sub_batch: 32
+  num_heun_step: 4
+  num_heun_step_random: false
+  heun_step_strategy: uniform
+
+loss:
+  endpoint_weight: 0.1
+  endpoint_every: 32
+  endpoint_batch_size: 8
+  endpoint_steps: [4]
+  endpoint_step_weights: [1.0]
+  timewarp_batch_size: 8
+  timewarp_balance_weight: 0.05
+
+train:
+  batch_size: 32
+  num_workers: 4
+  persistent_workers: true
+  prefetch_factor: 2
+  epochs: 8
+  max_train_batches: 128
+  max_val_batches: 16
+
+eval:
+  step_counts: [1, 2, 4, 8]
+  num_fid_samples: 1000
+  fid_batch_size: 64
+  sample_batch_size: 16
+  fixed_grid_batch_size: 8

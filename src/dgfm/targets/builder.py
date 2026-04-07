@@ -53,6 +53,7 @@ class AnalyticPathTargetBuilder:
 
     loader_mode = "images"
     needs_path = True
+    uses_dataset_images = True
 
     def build(self, x_0: torch.Tensor, x_1: torch.Tensor, path) -> TargetBatch:
         t, s = self.sample_times(batch_size=x_0.shape[0], device=x_0.device)
@@ -77,6 +78,7 @@ class AnalyticPathTargetBuilder:
 class TrajectoryShardTargetBuilder:
     loader_mode = "trajectory_shard"
     needs_path = False
+    uses_dataset_images = True
 
     def __init__(self, config: dict) -> None:
         self.config = config
@@ -100,6 +102,7 @@ class TrajectoryShardTargetBuilder:
 class TeacherSamplerTargetBuilder:
     loader_mode = "images"
     needs_path = False
+    uses_dataset_images = False
 
     def __init__(self, config: dict) -> None:
         self.config = config

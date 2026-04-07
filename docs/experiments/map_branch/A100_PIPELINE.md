@@ -35,6 +35,11 @@ For the dedicated timewarp smoke test, use the row recorded in
 That variant already enables the learnable timewarp config, so no extra
 `--set scheduler.timewarp.enabled=true` override is needed in the pipeline.
 
+Recommended order when diagnosing map-branch viability:
+- first use the smaller `map_branch_timewarp_smoke` row from the experiment log
+- inspect the richer diagnostics in `logs/train.jsonl`
+- only then move to `map_branch_timewarp_probe` or larger variants
+
 This sets stable environment variables for all later commands in this document:
 - `EXP_VARIANT=<selected variant>`
 - `EXP_TAG=<selected tag>`
@@ -124,6 +129,13 @@ Primary online target path:
 - sample `num_heun_step`
 - sample `s_idx` from the valid suffix with `sample_s_strategy=uniform`
 - supervise the explicit map on `M_theta(x_t, t, s) -> x_s_teacher`
+
+Important interpretation note:
+- current `teacher_sampler` uses the dataloader batch only for batch sizing
+- it does not condition target construction on the CIFAR image content itself
+- therefore current `train_loss / val_loss` should be read as teacher-target
+  consistency metrics, not as standard dataset-conditioned generalization
+  metrics
 
 Optional offline cache path:
 

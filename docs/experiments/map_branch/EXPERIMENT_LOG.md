@@ -30,6 +30,7 @@ Rules:
 | e001 | map_branch | `configs/experiment/fm_cifar10_map_branch.yaml` | `fm_cifar10_map_branch_e001` | `source scripts/experiments/activate_fm_cifar10.sh map_branch e001` | CTM-like discrete sampler baseline | planned |
 | diag01 | map_branch_quick | `configs/experiment/fm_cifar10_map_branch_quick.yaml` | `fm_cifar10_map_branch_quick_diag01` | `source scripts/experiments/activate_fm_cifar10.sh map_branch_quick diag01` | quick diagnostic before full run | planned |
 | tw001 | map_branch_timewarp_probe | `configs/experiment/fm_cifar10_map_branch_timewarp_probe.yaml` | `fm_cifar10_map_branch_timewarp_probe_tw001` | `source scripts/experiments/activate_fm_cifar10.sh map_branch_timewarp_probe tw001` | quick defect-driven timewarp smoke test | planned |
+| tws01 | map_branch_timewarp_smoke | `configs/experiment/fm_cifar10_map_branch_timewarp_smoke.yaml` | `fm_cifar10_map_branch_timewarp_smoke_tws01` | `source scripts/experiments/activate_fm_cifar10.sh map_branch_timewarp_smoke tws01` | minimal viability run for timewarp + map diagnostics | planned |
 
 ## Pipeline usage contract
 
@@ -68,3 +69,18 @@ Rules:
   - `train.jsonl` should show non-uniform `timewarp_time_grid`
   - `train_timewarp_defect_loss` should trend down
   - eval `metrics.json` should export the learned `time_grid`
+
+### tws01
+
+- intended for fast failure detection before spending A100 time on larger runs
+- compared with `tw001`, this variant further reduces:
+  - teacher internal steps
+  - retained scales
+  - batch size
+  - epoch count
+  - train/val batch caps
+  - eval sample count
+- recommended first pass:
+  - train with pipeline default command
+  - inspect `logs/train.jsonl`
+  - only if the diagnostics look sane, move to `tw001` or a larger run

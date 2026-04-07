@@ -99,7 +99,8 @@ class BaselineTrainer:
                 count += 1
         return total / max(1, count)
 
-    def run(self, resume: str | None = None) -> None:
+    def run(self, resume: str | None = None, verbose: bool = False) -> None:
+        del verbose
         self.prepare()
         ensure_flow_matching_on_path()
         device = _device_from_config(self.config)

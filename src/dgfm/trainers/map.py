@@ -155,6 +155,50 @@ def _compute_timewarp_defect_loss(
     return total, stats
 
 
+def _tensor_abs_mean(x: torch.Tensor) -> float:
+    return float(x.detach().abs().mean().item())
+
+
+def _tensor_std(x: torch.Tensor) -> float:
+    return float(x.detach().std(unbiased=False).item())
+
+
+def _mean_cosine_similarity(a: torch.Tensor, b: torch.Tensor) -> float:
+    a_flat = a.detach().flatten(1)
+    b_flat = b.detach().flatten(1)
+    cosine = F.cosine_similarity(a_flat, b_flat, dim=1, eps=1.0e-8)
+    return float(cosine.mean().item())
+
+
+def _compute_batch_diagnostics(
+    *,
+    pred: torch.Tensor,
+    target: torch.Tensor,
+    x_t: torch.Tensor,
+    x_1: torch.Tensor | None,
+) -> dict[str, float]:
+    pred_update = pred - x_t
+    target_update = target - x_t
+    pred_update_abs = _tensor_abs_mean(pred_update)
+    target_update_abs = _tensor_abs_mean(target_update)
+    diagnostics = {
+        "x_t_abs_mean": _tensor_abs_mean(x_t),
+        "x_t_std": _tensor_std(x_t),
+        "pred_abs_mean": _tensor_abs_mean(pred),
+        "pred_std": _tensor_std(pred),
+        "target_abs_mean": _tensor_abs_mean(target),
+        "target_std": _tensor_std(target),
+        "pred_update_abs_mean": pred_update_abs,
+        "target_update_abs_mean": target_update_abs,
+        "update_ratio": pred_update_abs / max(target_update_abs, 1.0e-8),
+        "update_cosine": _mean_cosine_similarity(pred_update, target_update),
+    }
+    if x_1 is not None:
+        diagnostics["clean_abs_mean"] = _tensor_abs_mean(x_1)
+        diagnostics["clean_std"] = _tensor_std(x_1)
+    return diagnostics
+
+
 @dataclass(slots=True)
 class MapTrainer:
     config: dict
@@ -200,6 +244,14 @@ class MapTrainer:
         total_t = 0.0
         total_s = 0.0
         total_delta = 0.0
+        total_target_build_sec = 0.0
+        total_forward_sec = 0.0
+        total_endpoint_sec = 0.0
+        total_timewarp_sec = 0.0
+        total_samples = 0.0
+        total_batches = 0.0
+        total_timewarp_updates = 0.0
+        total_diag: dict[str, float] = {}
         count = 0
         train_cfg = self.config.get("train", {})
         target_cfg = self.config.get("target", {})
@@ -217,7 +269,13 @@ class MapTrainer:
             for batch_idx, batch in enumerate(loader):
                 if batch_limit > 0 and batch_idx >= batch_limit:
                     break
+                target_t0 = time.perf_counter()
                 target_batch = target_builder.build_from_batch(batch, device=device, path=path)
+                total_target_build_sec += time.perf_counter() - target_t0
+                batch_size = float(target_batch.x_t.shape[0])
+                total_samples += batch_size
+                total_batches += 1.0
+                forward_t0 = time.perf_counter()
                 with _autocast_context(device, use_amp):
                     pred = model(target_batch.x_t, target_batch.t, target_batch.s, extra={})
                     pred_losses = _compute_prediction_losses(
@@ -236,6 +294,7 @@ class MapTrainer:
                     endpoint_enabled = weights["endpoint"] > 0.0 and target_batch.x_0 is not None and target_batch.x_1 is not None
                     endpoint_interval = max(1, int(loss_cfg.get("endpoint_every", 8)))
                     if endpoint_enabled and (not train or global_step % endpoint_interval == 0):
+                        endpoint_t0 = time.perf_counter()
                         endpoint_step = _sample_endpoint_step(loss_cfg)
                         endpoint_batch_size = min(int(loss_cfg.get("endpoint_batch_size", 32)), target_batch.x_0.shape[0])
                         if endpoint_batch_size > 0:
@@ -266,6 +325,8 @@ class MapTrainer:
                             endpoint_pixel = endpoint_losses["pixel"]
                             endpoint_perceptual = endpoint_losses["perceptual"]
                             loss = loss + weights["endpoint"] * endpoint_total
+                        total_endpoint_sec += time.perf_counter() - endpoint_t0
+                total_forward_sec += time.perf_counter() - forward_t0
                 if train:
                     optimizer.zero_grad(set_to_none=True)
                     scaler.scale(loss).backward()
@@ -275,6 +336,7 @@ class MapTrainer:
                         ema.update(model)
                     if timewarp_enabled and global_step % timewarp_update_every == 0:
                         assert timewarp_optimizer is not None
+                        timewarp_t0 = time.perf_counter()
                         timewarp_optimizer.zero_grad(set_to_none=True)
                         with _frozen_module_params(model):
                             with _autocast_context(device, use_amp):
@@ -289,6 +351,8 @@ class MapTrainer:
                         scaler.step(timewarp_optimizer)
                         scaler.update()
                         last_timewarp_stats = timewarp_stats
+                        total_timewarp_sec += time.perf_counter() - timewarp_t0
+                        total_timewarp_updates += 1.0
                     elif timewarp_enabled and last_timewarp_stats is None:
                         _, timewarp_stats = _compute_timewarp_defect_loss(
                             model=model,
@@ -298,6 +362,25 @@ class MapTrainer:
                             device=device,
                         )
                         last_timewarp_stats = timewarp_stats
+                elif timewarp_enabled:
+                    timewarp_t0 = time.perf_counter()
+                    _, timewarp_stats = _compute_timewarp_defect_loss(
+                        model=model,
+                        timewarp=timewarp,
+                        x_0=target_batch.x_0,
+                        config=self.config,
+                        device=device,
+                    )
+                    last_timewarp_stats = timewarp_stats
+                    total_timewarp_sec += time.perf_counter() - timewarp_t0
+                batch_diag = _compute_batch_diagnostics(
+                    pred=pred,
+                    target=target_batch.x_s_target,
+                    x_t=target_batch.x_t,
+                    x_1=target_batch.x_1,
+                )
+                for key, value in batch_diag.items():
+                    total_diag[key] = total_diag.get(key, 0.0) + float(value)
                 total_loss += float(loss.detach().item())
                 total_pixel += float(pred_losses["pixel"].detach().item())
                 total_perceptual += float(pred_losses["perceptual"].detach().item())
@@ -330,8 +413,16 @@ class MapTrainer:
             "t_mean": total_t / denom,
             "s_mean": total_s / denom,
             "delta_mean": total_delta / denom,
+            "samples_seen": total_samples,
+            "batches_seen": total_batches,
+            "target_build_sec": total_target_build_sec,
+            "forward_sec": total_forward_sec,
+            "endpoint_sec": total_endpoint_sec,
+            "timewarp_sec": total_timewarp_sec,
+            "timewarp_updates": total_timewarp_updates,
             "global_step_end": float(global_step),
         }
+        payload.update({key: value / denom for key, value in total_diag.items()})
         if timewarp is not None:
             time_grid = build_runtime_time_grid(
                 config=self.config,
@@ -345,7 +436,7 @@ class MapTrainer:
                 payload["timewarp_interval_defects"] = list(last_timewarp_stats["interval_defects"])
         return payload
 
-    def run(self, resume: str | None = None) -> None:
+    def run(self, resume: str | None = None, verbose: bool = False) -> None:
         self.prepare()
         device = _device_from_config(self.config)
         target_builder = build_target_builder(self.config)
@@ -400,6 +491,7 @@ class MapTrainer:
         epochs = int(self.config["train"].get("epochs", 1))
         history_path = self.roots.log_dir / "train.jsonl"
         target_mode = str(self.config.get("target", {}).get("builder", "analytic_path"))
+        target_uses_dataset_images = bool(getattr(target_builder, "uses_dataset_images", True))
         for epoch in range(start_epoch, epochs):
             t0 = time.time()
             train_stats = self._run_epoch(
@@ -461,13 +553,54 @@ class MapTrainer:
                 "train_t_mean": train_stats["t_mean"],
                 "train_s_mean": train_stats["s_mean"],
                 "train_delta_mean": train_stats["delta_mean"],
+                "train_samples_seen": train_stats["samples_seen"],
+                "train_batches_seen": train_stats["batches_seen"],
+                "train_target_build_sec": train_stats["target_build_sec"],
+                "train_forward_sec": train_stats["forward_sec"],
+                "train_endpoint_sec": train_stats["endpoint_sec"],
+                "train_timewarp_sec": train_stats["timewarp_sec"],
+                "train_timewarp_updates": train_stats["timewarp_updates"],
+                "train_x_t_abs_mean": train_stats["x_t_abs_mean"],
+                "train_x_t_std": train_stats["x_t_std"],
+                "train_pred_abs_mean": train_stats["pred_abs_mean"],
+                "train_pred_std": train_stats["pred_std"],
+                "train_target_abs_mean": train_stats["target_abs_mean"],
+                "train_target_std": train_stats["target_std"],
+                "train_pred_update_abs_mean": train_stats["pred_update_abs_mean"],
+                "train_target_update_abs_mean": train_stats["target_update_abs_mean"],
+                "train_update_ratio": train_stats["update_ratio"],
+                "train_update_cosine": train_stats["update_cosine"],
                 "val_t_mean": val_stats["t_mean"],
                 "val_s_mean": val_stats["s_mean"],
                 "val_delta_mean": val_stats["delta_mean"],
+                "val_samples_seen": val_stats["samples_seen"],
+                "val_batches_seen": val_stats["batches_seen"],
+                "val_target_build_sec": val_stats["target_build_sec"],
+                "val_forward_sec": val_stats["forward_sec"],
+                "val_endpoint_sec": val_stats["endpoint_sec"],
+                "val_timewarp_sec": val_stats["timewarp_sec"],
+                "val_timewarp_updates": val_stats["timewarp_updates"],
+                "val_x_t_abs_mean": val_stats["x_t_abs_mean"],
+                "val_x_t_std": val_stats["x_t_std"],
+                "val_pred_abs_mean": val_stats["pred_abs_mean"],
+                "val_pred_std": val_stats["pred_std"],
+                "val_target_abs_mean": val_stats["target_abs_mean"],
+                "val_target_std": val_stats["target_std"],
+                "val_pred_update_abs_mean": val_stats["pred_update_abs_mean"],
+                "val_target_update_abs_mean": val_stats["target_update_abs_mean"],
+                "val_update_ratio": val_stats["update_ratio"],
+                "val_update_cosine": val_stats["update_cosine"],
                 "target_builder": target_mode,
+                "target_uses_dataset_images": target_uses_dataset_images,
                 "global_step": global_step,
                 "elapsed_sec": elapsed,
             }
+            if "clean_abs_mean" in train_stats:
+                payload["train_clean_abs_mean"] = train_stats["clean_abs_mean"]
+                payload["train_clean_std"] = train_stats["clean_std"]
+            if "clean_abs_mean" in val_stats:
+                payload["val_clean_abs_mean"] = val_stats["clean_abs_mean"]
+                payload["val_clean_std"] = val_stats["clean_std"]
             if "timewarp_time_grid" in train_stats:
                 payload["timewarp_time_grid"] = train_stats["timewarp_time_grid"]
                 payload["timewarp_delta_min"] = train_stats["timewarp_delta_min"]
@@ -500,16 +633,41 @@ class MapTrainer:
                 ckpt["best_val"] = best_val
                 torch.save(ckpt, self.roots.checkpoint_dir / "best.pt")
                 self.archive.save_checkpoint("best.pt", ckpt)
+            train_samples_per_sec = train_stats["samples_seen"] / max(elapsed, 1.0e-8)
             print(
                 f"epoch={epoch + 1}/{epochs} train_loss={train_stats['loss']:.6f} "
                 f"val_loss={val_stats['loss']:.6f} pixel={train_stats['pixel_loss']:.6f} "
                 f"perc={train_stats['perceptual_loss']:.6f} endpoint={train_stats['endpoint_loss']:.6f} "
                 f"timewarp={train_stats['timewarp_defect_loss']:.6f} "
                 f"target={target_mode} "
+                f"dataset_images={'yes' if target_uses_dataset_images else 'no'} "
                 f"t_mean={train_stats['t_mean']:.4f} s_mean={train_stats['s_mean']:.4f} "
                 f"delta_mean={train_stats['delta_mean']:.4f} endpoint_step={train_stats['endpoint_step']:.2f} "
                 f"timewarp_delta_min={train_stats.get('timewarp_delta_min', 0.0):.4f} "
                 f"timewarp_delta_max={train_stats.get('timewarp_delta_max', 0.0):.4f} "
-                f"elapsed_sec={elapsed:.2f}",
+                f"samples_per_sec={train_samples_per_sec:.2f} elapsed_sec={elapsed:.2f}",
                 flush=True,
             )
+            if verbose:
+                verbose_payload = {
+                    "epoch": epoch,
+                    "train_pred_update_abs_mean": train_stats["pred_update_abs_mean"],
+                    "train_target_update_abs_mean": train_stats["target_update_abs_mean"],
+                    "train_update_ratio": train_stats["update_ratio"],
+                    "train_update_cosine": train_stats["update_cosine"],
+                    "val_pred_update_abs_mean": val_stats["pred_update_abs_mean"],
+                    "val_target_update_abs_mean": val_stats["target_update_abs_mean"],
+                    "val_update_ratio": val_stats["update_ratio"],
+                    "val_update_cosine": val_stats["update_cosine"],
+                    "train_target_build_sec": train_stats["target_build_sec"],
+                    "train_forward_sec": train_stats["forward_sec"],
+                    "train_endpoint_sec": train_stats["endpoint_sec"],
+                    "train_timewarp_sec": train_stats["timewarp_sec"],
+                    "train_timewarp_updates": train_stats["timewarp_updates"],
+                    "val_timewarp_loss": val_stats["timewarp_loss"],
+                    "target_uses_dataset_images": target_uses_dataset_images,
+                }
+                if "timewarp_time_grid" in payload:
+                    verbose_payload["timewarp_time_grid"] = payload["timewarp_time_grid"]
+                    verbose_payload["timewarp_interval_defects"] = payload.get("timewarp_interval_defects", [])
+                print(json.dumps(verbose_payload, sort_keys=True), flush=True)

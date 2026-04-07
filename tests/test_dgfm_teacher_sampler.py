@@ -33,6 +33,7 @@ def _teacher_sampler_config() -> dict:
 def test_teacher_sampler_target_builder_returns_teacher_pairs() -> None:
     cfg = _teacher_sampler_config()
     builder = build_target_builder(cfg)
+    assert builder.uses_dataset_images is False
     batch = (torch.zeros(2, 3, 32, 32), torch.zeros(2, dtype=torch.long))
     target = builder.build_from_batch(batch, device=torch.device("cpu"), path=None)
     assert target.x_t.shape == target.x_s_target.shape == (2, 3, 32, 32)
