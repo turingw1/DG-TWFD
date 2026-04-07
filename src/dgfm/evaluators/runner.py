@@ -11,7 +11,14 @@ import torch
 from torchvision.utils import save_image
 
 from dgfm.datasets import build_image_dataloaders
-from .common import device_from_config, load_model_from_checkpoint, objective_mode, sample_from_model, solver_nfe, to_unit_interval
+from .common import (
+    device_from_config,
+    load_model_from_checkpoint,
+    objective_mode,
+    sample_from_model_batched,
+    solver_nfe,
+    to_unit_interval,
+)
 from .fid import InceptionFeatureExtractor, compute_dataset_stats, compute_generator_stats, frechet_distance, load_stats, save_stats
 
 
@@ -55,7 +62,25 @@ class EvaluationRunner:
     def _fid_sample_mode(self, fid_samples: int) -> str:
         return "full" if fid_samples >= 50000 else "approximate"
 
-    def _save_fixed_grid(self, model, device: torch.device, step_count: int, step_dir: Path, solver_method: str) -> dict:
+    def _sample_batch_size(self, fid_batch_size: int) -> int:
+        eval_cfg = self._eval_cfg()
+        configured = int(eval_cfg.get("sample_batch_size", 0) or 0)
+        return configured if configured > 0 else fid_batch_size
+
+    def _fixed_grid_batch_size(self, sample_batch_size: int) -> int:
+        eval_cfg = self._eval_cfg()
+        configured = int(eval_cfg.get("fixed_grid_batch_size", 0) or 0)
+        return configured if configured > 0 else sample_batch_size
+
+    def _save_fixed_grid(
+        self,
+        model,
+        device: torch.device,
+        step_count: int,
+        step_dir: Path,
+        solver_method: str,
+        sample_batch_size: int,
+    ) -> dict:
         eval_cfg = self._eval_cfg()
         fixed_seed = int(eval_cfg.get("fixed_seed", 42))
         fixed_grid_size = int(eval_cfg.get("fixed_grid_size", 64))
@@ -64,16 +89,17 @@ class EvaluationRunner:
         image_size = int(self.config["dataset"]["image_size"])
         generator = torch.Generator(device=device).manual_seed(fixed_seed)
         noise = torch.randn(fixed_grid_size, channels, image_size, image_size, generator=generator, device=device)
-        with torch.no_grad():
-            samples = sample_from_model(
-                config=self.config,
-                model=model,
-                x_init=noise,
-                step_count=step_count,
-                method=solver_method,
-            )
+        samples = sample_from_model_batched(
+            config=self.config,
+            model=model,
+            x_init=noise,
+            step_count=step_count,
+            method=solver_method,
+            max_batch_size=self._fixed_grid_batch_size(sample_batch_size),
+            move_to_cpu=True,
+        )
         samples = to_unit_interval(samples)
-        torch.save(samples.detach().cpu(), step_dir / "fixed_seed_samples.pt")
+        torch.save(samples, step_dir / "fixed_seed_samples.pt")
         save_image(samples, step_dir / "fixed_seed_grid.png", nrow=nrow)
         dump_count = int(eval_cfg.get("dump_image_count", 64))
         image_dir = step_dir / "fixed_seed_images"
@@ -98,6 +124,7 @@ class EvaluationRunner:
         eval_cfg = self._eval_cfg()
         fid_samples = int(eval_cfg.get("num_fid_samples", 50000))
         fid_batch_size = int(eval_cfg.get("fid_batch_size", 256))
+        sample_batch_size = self._sample_batch_size(fid_batch_size)
         fid_protocol = str(eval_cfg.get("fid_protocol", "torch_fidelity_inceptionv3_2048"))
         solver_method = str(eval_cfg.get("solver_method", "midpoint"))
         mode = objective_mode(self.config)
@@ -115,19 +142,20 @@ class EvaluationRunner:
             def sample_fn(batch_size: int) -> torch.Tensor:
                 noise = torch.randn(batch_size, channels, image_size, image_size, device=device)
                 with torch.no_grad():
-                    samples = sample_from_model(
+                    samples = sample_from_model_batched(
                         config=self.config,
                         model=model,
                         x_init=noise,
                         step_count=step_count,
                         method=solver_method,
+                        max_batch_size=sample_batch_size,
                     )
                 return to_unit_interval(samples)
 
             fake_stats = compute_generator_stats(
                 sample_fn=sample_fn,
                 feature_extractor=feature_extractor,
-                batch_size=fid_batch_size,
+                batch_size=sample_batch_size,
                 total_samples=fid_samples,
                 device=device,
             )
@@ -138,6 +166,7 @@ class EvaluationRunner:
                 step_count=step_count,
                 step_dir=step_dir,
                 solver_method=solver_method,
+                sample_batch_size=sample_batch_size,
             )
             elapsed = time.time() - t0
             save_stats(step_dir / "generated_stats.npz", fake_stats)
@@ -151,6 +180,7 @@ class EvaluationRunner:
                 "num_fid_samples": fid_samples,
                 "fid_sample_mode": self._fid_sample_mode(fid_samples),
                 "fid_batch_size": fid_batch_size,
+                "sample_batch_size": sample_batch_size,
                 "reference_count": reference_count,
                 "reference_stats": str(cache_path),
                 "checkpoint": str(self.checkpoint),

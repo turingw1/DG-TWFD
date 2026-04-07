@@ -1,6 +1,6 @@
 import torch
 
-from dgfm.evaluators.common import objective_mode, sample_from_model, solver_nfe
+from dgfm.evaluators.common import objective_mode, sample_from_model, sample_from_model_batched, solver_nfe
 from dgfm.models import build_map_model
 from dgfm.paths import build_path
 from dgfm.targets import build_target_builder
@@ -105,3 +105,21 @@ def test_map_rollout_remains_differentiable() -> None:
     out = sample_from_model(config=_map_config(), model=model, x_init=x_init, step_count=2, method="map_rollout")
     out.sum().backward()
     assert x_init.grad is not None
+
+
+def test_sample_from_model_batched_matches_full_rollout() -> None:
+    cfg = _map_config()
+    x_init = torch.zeros(5, 1, 2, 2)
+    model = _ToyMap()
+    full = sample_from_model(config=cfg, model=model, x_init=x_init, step_count=4, method="map_rollout")
+    chunked = sample_from_model_batched(
+        config=cfg,
+        model=model,
+        x_init=x_init,
+        step_count=4,
+        method="map_rollout",
+        max_batch_size=2,
+        move_to_cpu=True,
+    )
+    assert chunked.device.type == "cpu"
+    assert torch.allclose(full.cpu(), chunked, atol=1e-6)

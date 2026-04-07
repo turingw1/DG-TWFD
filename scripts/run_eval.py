@@ -23,6 +23,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--steps", nargs="+", type=int, default=[1, 2, 4, 8, 16], help="Few-step evaluation list")
     parser.add_argument("--fid-samples", type=int, default=None, help="Override eval.num_fid_samples")
     parser.add_argument("--fid-batch-size", type=int, default=None, help="Override eval.fid_batch_size")
+    parser.add_argument("--sample-batch-size", type=int, default=None, help="Override eval.sample_batch_size")
     parser.add_argument("--set", action="append", default=[], help="Config override in key=value form")
     return parser.parse_args()
 
@@ -35,6 +36,8 @@ def main() -> None:
         overrides.append(f"eval.num_fid_samples={args.fid_samples}")
     if args.fid_batch_size is not None:
         overrides.append(f"eval.fid_batch_size={args.fid_batch_size}")
+    if args.sample_batch_size is not None:
+        overrides.append(f"eval.sample_batch_size={args.sample_batch_size}")
     config = load_experiment_config(args.config, overrides=overrides)
     runner = build_evaluator(
         config=config,

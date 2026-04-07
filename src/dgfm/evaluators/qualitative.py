@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 from torchvision.utils import save_image
 
-from .common import sample_from_model, to_unit_interval
+from .common import sample_from_model_batched, to_unit_interval
 
 
 def build_multistep_panel(
@@ -61,6 +61,7 @@ def save_multistep_qualitative_panel(
     fixed_seed: int = 42,
     solver_method: str = "heun2",
     include_noise: bool = True,
+    sample_batch_size: int = 0,
     device: torch.device,
 ) -> dict[str, str | int | list[int]]:
     output_dir = Path(output_dir)
@@ -78,14 +79,16 @@ def save_multistep_qualitative_panel(
 
     samples_by_step: dict[int, torch.Tensor] = {}
     for step_count in step_counts:
-        samples = sample_from_model(
+        samples = sample_from_model_batched(
             config=config,
             model=model,
             x_init=noise.clone(),
             step_count=step_count,
             method=solver_method,
+            max_batch_size=sample_batch_size,
+            move_to_cpu=True,
         )
-        samples_by_step[step_count] = to_unit_interval(samples).detach().cpu()
+        samples_by_step[step_count] = to_unit_interval(samples)
 
     panel = build_multistep_panel(
         noise=noise.detach().cpu(),

@@ -266,7 +266,8 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
   --eval-root $METRIC_ROOT/smoke \
   --steps 1 2 4 8 16 \
   --fid-samples 5000 \
-  --fid-batch-size 128
+  --fid-batch-size 128 \
+  --sample-batch-size 32
 ```
 
 Formal evaluation:
@@ -279,6 +280,11 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
   --steps 1 2 4 8 16
 ```
 
+Current evaluation memory guards:
+- `eval.sample_batch_size = 64`
+- `eval.fixed_grid_batch_size = 16`
+- use `--sample-batch-size` to shrink per-forward rollout further if `16`-step eval still pressures memory
+
 ## 8. Qualitative sampling command
 
 ```bash
@@ -288,6 +294,7 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_sample.py \
   --output-dir $SAMPLE_ROOT/steps16 \
   --steps 16 \
   --num-samples 64 \
+  --sample-batch-size 16 \
   --fixed-seed 42
 ```
 

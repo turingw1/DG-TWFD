@@ -15,7 +15,13 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from dgfm.config import load_experiment_config
-from dgfm.evaluators.common import device_from_config, load_model_from_checkpoint, objective_mode, sample_from_model, to_unit_interval
+from dgfm.evaluators.common import (
+    device_from_config,
+    load_model_from_checkpoint,
+    objective_mode,
+    sample_from_model_batched,
+    to_unit_interval,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -25,6 +31,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", required=True, help="Output sample directory")
     parser.add_argument("--steps", type=int, default=16, help="Sampling step count")
     parser.add_argument("--num-samples", type=int, default=64, help="Number of samples")
+    parser.add_argument("--sample-batch-size", type=int, default=0, help="Maximum per-forward sampling batch size")
     parser.add_argument("--fixed-seed", type=int, default=42, help="Fixed seed for qualitative generation")
     parser.add_argument("--set", action="append", default=[], help="Config override in key=value form")
     return parser.parse_args()
@@ -46,9 +53,19 @@ def main() -> None:
         int(config["dataset"]["image_size"]),
         device=device,
     )
-    samples = sample_from_model(config=config, model=model, x_init=noise, step_count=args.steps)
+    sample_batch_size = int(args.sample_batch_size)
+    if sample_batch_size <= 0:
+        sample_batch_size = int(config.get("eval", {}).get("sample_batch_size", 0) or 0)
+    samples = sample_from_model_batched(
+        config=config,
+        model=model,
+        x_init=noise,
+        step_count=args.steps,
+        max_batch_size=sample_batch_size,
+        move_to_cpu=True,
+    )
     samples = to_unit_interval(samples)
-    torch.save(samples.detach().cpu(), output_dir / "samples.pt")
+    torch.save(samples, output_dir / "samples.pt")
     save_image(samples, output_dir / "grid.png", nrow=max(1, int(args.num_samples**0.5)))
     image_dir = output_dir / "images"
     image_dir.mkdir(parents=True, exist_ok=True)

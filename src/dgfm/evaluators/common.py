@@ -107,5 +107,44 @@ def sample_from_model(
 
 
 @torch.no_grad()
+def sample_from_model_batched(
+    config: dict,
+    model: torch.nn.Module,
+    x_init: torch.Tensor,
+    step_count: int,
+    *,
+    method: str = "midpoint",
+    time_grid: torch.Tensor | None = None,
+    max_batch_size: int = 0,
+    move_to_cpu: bool = False,
+) -> torch.Tensor:
+    batch_size = int(x_init.shape[0])
+    if max_batch_size <= 0 or batch_size <= max_batch_size:
+        out = sample_from_model(
+            config=config,
+            model=model,
+            x_init=x_init,
+            step_count=step_count,
+            method=method,
+            time_grid=time_grid,
+        )
+        return out.detach().cpu() if move_to_cpu else out
+
+    outputs: list[torch.Tensor] = []
+    for start in range(0, batch_size, max_batch_size):
+        stop = min(batch_size, start + max_batch_size)
+        out = sample_from_model(
+            config=config,
+            model=model,
+            x_init=x_init[start:stop],
+            step_count=step_count,
+            method=method,
+            time_grid=time_grid,
+        )
+        outputs.append(out.detach().cpu() if move_to_cpu else out)
+    return torch.cat(outputs, dim=0)
+
+
+@torch.no_grad()
 def to_unit_interval(images: torch.Tensor) -> torch.Tensor:
     return torch.clamp(images * 0.5 + 0.5, 0.0, 1.0)
