@@ -1,8 +1,15 @@
 import torch
 
-from dgfm.evaluators.common import objective_mode, sample_from_model, sample_from_model_batched, solver_nfe
+from dgfm.evaluators.common import (
+    load_timewarp_from_checkpoint,
+    objective_mode,
+    sample_from_model,
+    sample_from_model_batched,
+    solver_nfe,
+)
 from dgfm.models import build_map_model
 from dgfm.paths import build_path
+from dgfm.schedulers import TimeWarpMonotone
 from dgfm.targets import build_target_builder
 
 
@@ -136,3 +143,17 @@ def test_sample_from_model_batched_matches_full_rollout() -> None:
     )
     assert chunked.device.type == "cpu"
     assert torch.allclose(full.cpu(), chunked, atol=1e-6)
+
+
+def test_load_timewarp_from_checkpoint_restores_learned_state(tmp_path) -> None:
+    cfg = _map_config()
+    cfg["scheduler"] = {"timewarp": {"enabled": True, "type": "learnable_monotone", "num_bins": 8}}
+    checkpoint = tmp_path / "ckpt.pt"
+    timewarp = TimeWarpMonotone(num_bins=8, init_bias=0.0)
+    timewarp.logits.data.copy_(torch.linspace(-2.0, 2.0, steps=8))
+    torch.save({"timewarp": timewarp.state_dict()}, checkpoint)
+    restored = load_timewarp_from_checkpoint(cfg, checkpoint, device=torch.device("cpu"))
+    assert restored is not None
+    linear = torch.linspace(0.0, 1.0, steps=5)
+    warped = restored(linear)
+    assert not torch.allclose(warped, linear)

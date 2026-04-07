@@ -9,3 +9,9 @@ loss:
   endpoint_batch_size: 32
   endpoint_steps: [8, 16]
   endpoint_step_weights: [0.5, 0.5]
+  timewarp_weight: 0.0
+  timewarp_update_every: 1
+  timewarp_defect_steps: 4
+  timewarp_batch_size: 16
+  timewarp_defect_weight: 1.0
+  timewarp_balance_weight: 0.1

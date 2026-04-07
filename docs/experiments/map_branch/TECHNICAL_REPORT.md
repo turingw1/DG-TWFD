@@ -64,6 +64,25 @@ Reason:
   - `src/dgfm/targets/*`
 - time-warp:
   - `src/dgfm/schedulers/*`
-  - future `(t,s)` sampling policy
+  - current learned monotone warp with shared train/sample/eval usage
 - semigroup defect:
-  - future map-level regularizer comparing direct vs composed maps
+  - current first-stage auxiliary objective comparing direct vs composed maps
+    across warped intervals
+  - future CTM-style defect signal should be aligned with target construction,
+    not left as an isolated regularizer
+
+## Current time-warp status
+
+- the branch now supports a learnable monotone time-warp module
+- target building and few-step rollout can consume the same warped grid
+- the trainer can update warp parameters from a defect-driven auxiliary loss
+- checkpoints persist the learned warp state
+- evaluation exports the actual warped `time_grid` used at each step count
+
+This should be treated as:
+
+- a validated infrastructure layer for adaptive time allocation
+
+not as:
+
+- a completed CTM-style target-construction migration

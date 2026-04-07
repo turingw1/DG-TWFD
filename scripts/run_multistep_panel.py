@@ -13,7 +13,7 @@ if str(SRC) not in sys.path:
 
 from dgfm.config import load_experiment_config
 from dgfm.evaluators import save_multistep_qualitative_panel
-from dgfm.evaluators.common import device_from_config, load_model_from_checkpoint
+from dgfm.evaluators.common import device_from_config, load_model_from_checkpoint, load_timewarp_from_checkpoint
 
 
 def parse_args() -> argparse.Namespace:
@@ -38,6 +38,7 @@ def main() -> None:
     config = load_experiment_config(args.config, overrides=overrides)
     device = device_from_config(config)
     model = load_model_from_checkpoint(config, args.checkpoint, device=device)
+    timewarp = load_timewarp_from_checkpoint(config, args.checkpoint, device=device)
 
     result = save_multistep_qualitative_panel(
         config=config,
@@ -51,6 +52,7 @@ def main() -> None:
         solver_method=str(config.get("eval", {}).get("solver_method", "heun2")),
         include_noise=not args.no_noise_column,
         device=device,
+        timewarp=timewarp,
     )
     print("dgfm multistep qualitative panel completed")
     print(f"checkpoint: {args.checkpoint}")

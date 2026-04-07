@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import torch
 
-from dgfm.schedulers import build_config_time_grid
+from dgfm.schedulers import TimeWarpMonotone, build_runtime_time_grid
 from dgfm.targets.pair_sampling import sample_target_pair_indices
 from dgfm.teachers import build_teacher
 
@@ -107,11 +107,19 @@ class TeacherSamplerTargetBuilder:
         self.teacher_cfg = config.get("teacher", {})
         self.teacher = build_teacher(config)
         start_scales = int(self.target_cfg.get("start_scales", self.teacher_cfg.get("retain_num_points", 33)))
-        self.u_grid = build_config_time_grid(
+        self.start_scales = start_scales
+        self.timewarp: TimeWarpMonotone | None = None
+
+    def set_timewarp(self, timewarp: TimeWarpMonotone | None) -> None:
+        self.timewarp = timewarp
+
+    def current_u_grid(self, *, device: torch.device, dtype: torch.dtype) -> torch.Tensor:
+        return build_runtime_time_grid(
             config=self.config,
-            step_count=start_scales - 1,
-            device=torch.device("cpu"),
-            dtype=torch.float32,
+            step_count=self.start_scales - 1,
+            device=device,
+            dtype=dtype,
+            timewarp=self.timewarp,
         )
 
     def _batch_size_from_batch(self, batch) -> int:
@@ -137,7 +145,8 @@ class TeacherSamplerTargetBuilder:
         for start in range(0, batch_size, sub_batch):
             chunk = min(sub_batch, batch_size - start)
             x_0 = self.teacher.sample_x0(batch_size=chunk, device=device)
-            teacher_batch = self.teacher.sample_trajectory_from_x0(x_0=x_0, u_grid=self.u_grid, device=device)
+            u_grid = self.current_u_grid(device=device, dtype=torch.float32)
+            teacher_batch = self.teacher.sample_trajectory_from_x0(x_0=x_0, u_grid=u_grid, device=device)
             t_grid = teacher_batch.t_grid.to(device=device, dtype=torch.float32)
             x_grid = teacher_batch.x_grid.to(device=device, dtype=torch.float32)
             t_indices, s_indices = sample_target_pair_indices(

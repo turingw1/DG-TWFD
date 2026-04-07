@@ -69,8 +69,14 @@ This directory is the complete documentation context for the current
   - direct map loss
   - perceptual loss
   - endpoint few-step teacher loss
+  - optional defect-driven time-warp auxiliary update
 - current training/sampling tip:
   - CTM-style preconditioning enabled
+- current time-warp status:
+  - shared train/sample/eval time-warp pipeline is implemented
+  - learnable monotone warp is supported
+  - checkpoint restore for learned warp is supported
+  - default config remains disabled until an experiment explicitly enables it
 - quick verification path:
   - `configs/experiment/fm_cifar10_map_branch_quick.yaml`
 - training-time archive mirror:

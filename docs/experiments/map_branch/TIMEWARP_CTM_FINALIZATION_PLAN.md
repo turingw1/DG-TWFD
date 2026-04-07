@@ -161,6 +161,25 @@ The desired branch shape is:
 This task is the first place where time-warp becomes learnable in the training
 loop. Tasks 1 and 2 only establish the pipeline.
 
+### Current implementation status
+
+- phase A is complete:
+  - runtime warped grid construction is shared by target building, endpoint
+    rollout, evaluation, and qualitative sampling
+- phase B is now minimally implemented:
+  - `MapTrainer` can instantiate a learnable monotone warp module
+  - the warp module has its own optimizer
+  - a defect-driven auxiliary update can optimize the warp with frozen map
+    parameters
+  - checkpoints now save and restore the learned warp state
+- current defect objective is still a first-stage surrogate:
+  - direct-vs-composed map defect over warped adjacent intervals
+  - plus interval-balance regularization to avoid pathological collapse
+- this is enough to validate:
+  - whether `time_grid` changes during training
+  - whether defect decreases under warp updates
+- this is not yet the final CTM-style target-construction objective
+
 ## Task 4. Use the warped time grid during sampling
 
 ### Goal
@@ -173,6 +192,16 @@ loop. Tasks 1 and 2 only establish the pipeline.
 - the same warp semantics must be visible in both train and sample
 - evaluation reports must record the effective time grid
 - quality/speed comparison must be done against the uniform-grid baseline
+
+### Current implementation status
+
+- sampling, fixed-grid evaluation, and multistep qualitative panels now load
+  the checkpointed warp state when available
+- evaluation metrics now export the effective `time_grid` used for each
+  `step_count`
+- this makes it possible to compare:
+  - uniform baseline
+  - learned warp from a trained checkpoint
 
 ### Evaluation plan
 

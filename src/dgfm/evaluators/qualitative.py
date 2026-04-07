@@ -63,6 +63,7 @@ def save_multistep_qualitative_panel(
     include_noise: bool = True,
     sample_batch_size: int = 0,
     device: torch.device,
+    timewarp: torch.nn.Module | None = None,
 ) -> dict[str, str | int | list[int]]:
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -85,6 +86,7 @@ def save_multistep_qualitative_panel(
             x_init=noise.clone(),
             step_count=step_count,
             method=solver_method,
+            timewarp=timewarp,
             max_batch_size=sample_batch_size,
             move_to_cpu=True,
         )

@@ -199,6 +199,26 @@ def _coerce_logits(logits: Iterable[float] | None, *, num_bins: int, device: tor
     return torch.tensor(values, device=device, dtype=dtype)
 
 
+def _timewarp_cfg(config: dict) -> dict:
+    return config.get("scheduler", {}).get("timewarp", {})
+
+
+def build_timewarp_module(config: dict, *, device: torch.device, dtype: torch.dtype) -> TimeWarpMonotone | None:
+    timewarp_cfg = _timewarp_cfg(config)
+    if not bool(timewarp_cfg.get("enabled", False)):
+        return None
+    warp_type = str(timewarp_cfg.get("type", "learnable_monotone"))
+    if warp_type != "learnable_monotone":
+        return None
+    num_bins = int(timewarp_cfg.get("num_bins", 64))
+    init_bias = float(timewarp_cfg.get("init_bias", 0.0))
+    module = TimeWarpMonotone(num_bins=num_bins, init_bias=init_bias).to(device=device, dtype=dtype)
+    logits_tensor = _coerce_logits(timewarp_cfg.get("logits"), num_bins=num_bins, device=device, dtype=dtype)
+    if logits_tensor is not None:
+        module.logits.data.copy_(logits_tensor)
+    return module
+
+
 def apply_time_warp(
     t_linear: Tensor,
     *,
@@ -247,3 +267,32 @@ def build_config_time_grid(
     warped[0] = torch.tensor(0.0, device=device, dtype=dtype)
     warped[-1] = torch.tensor(1.0, device=device, dtype=dtype)
     return _validate_time_grid(warped, step_count)
+
+
+def build_runtime_time_grid(
+    config: dict,
+    step_count: int,
+    *,
+    device: torch.device,
+    dtype: torch.dtype,
+    timewarp: TimeWarpMonotone | None = None,
+) -> Tensor:
+    if timewarp is None:
+        return build_config_time_grid(config=config, step_count=step_count, device=device, dtype=dtype)
+    linear = _uniform_grid(step_count, device=device, dtype=dtype)
+    warped = timewarp(linear).to(device=device, dtype=dtype)
+    warped[0] = torch.tensor(0.0, device=device, dtype=dtype)
+    warped[-1] = torch.tensor(1.0, device=device, dtype=dtype)
+    return _validate_time_grid(warped, step_count)
+
+
+@torch.no_grad()
+def summarize_time_grid(time_grid: Tensor) -> dict[str, float | list[float]]:
+    deltas = time_grid[1:] - time_grid[:-1]
+    return {
+        "time_grid": [float(item) for item in time_grid.detach().cpu().tolist()],
+        "delta_min": float(deltas.min().item()),
+        "delta_max": float(deltas.max().item()),
+        "delta_mean": float(deltas.mean().item()),
+        "delta_std": float(deltas.std(unbiased=False).item()) if deltas.numel() > 1 else 0.0,
+    }

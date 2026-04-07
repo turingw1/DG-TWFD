@@ -14,11 +14,13 @@ from dgfm.datasets import build_image_dataloaders
 from .common import (
     device_from_config,
     load_model_from_checkpoint,
+    load_timewarp_from_checkpoint,
     objective_mode,
     sample_from_model_batched,
     solver_nfe,
     to_unit_interval,
 )
+from dgfm.schedulers import build_runtime_time_grid, summarize_time_grid
 from .fid import InceptionFeatureExtractor, compute_dataset_stats, compute_generator_stats, frechet_distance, load_stats, save_stats
 
 
@@ -75,6 +77,7 @@ class EvaluationRunner:
     def _save_fixed_grid(
         self,
         model,
+        timewarp,
         device: torch.device,
         step_count: int,
         step_dir: Path,
@@ -95,6 +98,7 @@ class EvaluationRunner:
             x_init=noise,
             step_count=step_count,
             method=solver_method,
+            timewarp=timewarp,
             max_batch_size=self._fixed_grid_batch_size(sample_batch_size),
             move_to_cpu=True,
         )
@@ -118,6 +122,7 @@ class EvaluationRunner:
         report_dir.mkdir(parents=True, exist_ok=True)
         device = device_from_config(self.config)
         model = load_model_from_checkpoint(self.config, self.checkpoint, device=device)
+        timewarp = load_timewarp_from_checkpoint(self.config, self.checkpoint, device=device)
         feature_extractor = InceptionFeatureExtractor().to(device)
         reference_stats, cache_path = self._prepare_reference_stats(feature_extractor, device)
 
@@ -148,6 +153,7 @@ class EvaluationRunner:
                         x_init=noise,
                         step_count=step_count,
                         method=solver_method,
+                        timewarp=timewarp,
                         max_batch_size=sample_batch_size,
                     )
                 return to_unit_interval(samples)
@@ -162,6 +168,7 @@ class EvaluationRunner:
             fid = frechet_distance(reference_stats, fake_stats)
             grid_meta = self._save_fixed_grid(
                 model=model,
+                timewarp=timewarp,
                 device=device,
                 step_count=step_count,
                 step_dir=step_dir,
@@ -170,6 +177,13 @@ class EvaluationRunner:
             )
             elapsed = time.time() - t0
             save_stats(step_dir / "generated_stats.npz", fake_stats)
+            time_grid = build_runtime_time_grid(
+                config=self.config,
+                step_count=step_count,
+                device=device,
+                dtype=torch.float32,
+                timewarp=timewarp,
+            )
             record = {
                 "step_count": step_count,
                 "integration_steps": step_count,
@@ -188,6 +202,8 @@ class EvaluationRunner:
                 "objective_mode": mode,
                 "elapsed_sec": elapsed,
                 "samples_per_sec": fid_samples / max(elapsed, 1.0e-8),
+                "timewarp_enabled": timewarp is not None,
+                **summarize_time_grid(time_grid),
                 **grid_meta,
             }
             with (step_dir / "metrics.json").open("w", encoding="utf-8") as handle:

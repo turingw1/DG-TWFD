@@ -18,10 +18,12 @@ from dgfm.config import load_experiment_config
 from dgfm.evaluators.common import (
     device_from_config,
     load_model_from_checkpoint,
+    load_timewarp_from_checkpoint,
     objective_mode,
     sample_from_model_batched,
     to_unit_interval,
 )
+from dgfm.schedulers import build_runtime_time_grid, summarize_time_grid
 
 
 def parse_args() -> argparse.Namespace:
@@ -42,6 +44,7 @@ def main() -> None:
     config = load_experiment_config(args.config, overrides=args.set)
     device = device_from_config(config)
     model = load_model_from_checkpoint(config, args.checkpoint, device=device)
+    timewarp = load_timewarp_from_checkpoint(config, args.checkpoint, device=device)
 
     torch.manual_seed(args.fixed_seed)
     output_dir = Path(args.output_dir)
@@ -61,6 +64,7 @@ def main() -> None:
         model=model,
         x_init=noise,
         step_count=args.steps,
+        timewarp=timewarp,
         max_batch_size=sample_batch_size,
         move_to_cpu=True,
     )
@@ -78,6 +82,15 @@ def main() -> None:
     print(f"steps: {args.steps}")
     print(f"num_samples: {args.num_samples}")
     print(f"fixed_seed: {args.fixed_seed}")
+    time_grid = build_runtime_time_grid(
+        config=config,
+        step_count=args.steps,
+        device=device,
+        dtype=torch.float32,
+        timewarp=timewarp,
+    )
+    print(f"timewarp_enabled: {timewarp is not None}")
+    print(f"time_grid: {summarize_time_grid(time_grid)['time_grid']}")
 
 
 if __name__ == "__main__":

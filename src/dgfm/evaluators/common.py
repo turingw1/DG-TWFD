@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 
 from dgfm.models import build_map_model, build_velocity_model
-from dgfm.schedulers import build_config_time_grid
+from dgfm.schedulers import TimeWarpMonotone, build_runtime_time_grid, build_timewarp_module
 from dgfm.samplers import rollout_with_map
 
 
@@ -37,6 +37,23 @@ def load_model_from_checkpoint(config: dict, checkpoint: str | Path, device: tor
     model.load_state_dict(state_dict)
     model.eval()
     return model
+
+
+@torch.no_grad()
+def load_timewarp_from_checkpoint(
+    config: dict,
+    checkpoint: str | Path,
+    device: torch.device,
+) -> TimeWarpMonotone | None:
+    module = build_timewarp_module(config, device=device, dtype=torch.float32)
+    if module is None:
+        return None
+    ckpt = torch.load(checkpoint, map_location=device)
+    state_dict = ckpt.get("timewarp")
+    if state_dict is not None:
+        module.load_state_dict(state_dict)
+    module.eval()
+    return module
 
 
 def solver_nfe(step_count: int, method: str = "midpoint", mode: str = "velocity_fm") -> int:
@@ -71,21 +88,21 @@ def sample_with_ode(
         t0 = time_grid[idx]
         t1 = time_grid[idx + 1]
         dt = t1 - t0
-        t0_vec = torch.full((batch,), float(t0.item()), device=x.device, dtype=x.dtype)
+        t0_vec = t0.to(dtype=x.dtype).expand(batch)
         if method == "euler":
             k1 = model(x, t0_vec)
             x = x + dt * k1
             continue
         if method == "heun2":
             k1 = model(x, t0_vec)
-            t1_vec = torch.full((batch,), float(t1.item()), device=x.device, dtype=x.dtype)
+            t1_vec = t1.to(dtype=x.dtype).expand(batch)
             k2 = model(x + dt * k1, t1_vec)
             x = x + 0.5 * dt * (k1 + k2)
             continue
         if method == "midpoint":
             k1 = model(x, t0_vec)
             tmid = t0 + 0.5 * dt
-            tmid_vec = torch.full((batch,), float(tmid.item()), device=x.device, dtype=x.dtype)
+            tmid_vec = tmid.to(dtype=x.dtype).expand(batch)
             k2 = model(x + 0.5 * dt * k1, tmid_vec)
             x = x + dt * k2
             continue
@@ -100,13 +117,15 @@ def sample_from_model(
     step_count: int,
     method: str = "midpoint",
     time_grid: torch.Tensor | None = None,
+    timewarp: TimeWarpMonotone | None = None,
 ) -> torch.Tensor:
     if time_grid is None:
-        time_grid = build_config_time_grid(
+        time_grid = build_runtime_time_grid(
             config=config,
             step_count=step_count,
             device=x_init.device,
             dtype=x_init.dtype,
+            timewarp=timewarp,
         )
     mode = objective_mode(config)
     if mode == "explicit_map":
@@ -123,6 +142,7 @@ def sample_from_model_batched(
     *,
     method: str = "midpoint",
     time_grid: torch.Tensor | None = None,
+    timewarp: TimeWarpMonotone | None = None,
     max_batch_size: int = 0,
     move_to_cpu: bool = False,
 ) -> torch.Tensor:
@@ -135,6 +155,7 @@ def sample_from_model_batched(
             step_count=step_count,
             method=method,
             time_grid=time_grid,
+            timewarp=timewarp,
         )
         return out.detach().cpu() if move_to_cpu else out
 
@@ -148,6 +169,7 @@ def sample_from_model_batched(
             step_count=step_count,
             method=method,
             time_grid=time_grid,
+            timewarp=timewarp,
         )
         outputs.append(out.detach().cpu() if move_to_cpu else out)
     return torch.cat(outputs, dim=0)
