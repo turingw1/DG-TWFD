@@ -156,31 +156,62 @@ def _write_public_readme(output_root: Path) -> None:
         """
         # DGFM Map Branch Public
 
-        This repository is the stripped public release of the explicit-map
-        `dgfm` experiment system.
-
-        It keeps only the minimum files needed to run the experiments listed in:
+        This repository is the stripped public release of the explicit-map `dgfm`
+        experiment system. It keeps only the files needed to run the formal
+        experiments recorded in:
 
         - [docs/experiments/map_branch/EXPERIMENT_LOG.md](docs/experiments/map_branch/EXPERIMENT_LOG.md)
 
-        Operational entrypoint:
+        The stable operational procedure lives in:
 
         - [docs/experiments/map_branch/A100_PIPELINE.md](docs/experiments/map_branch/A100_PIPELINE.md)
 
-        Included:
+        Public scope:
 
         - committed experiment configs
-        - train / eval / sample / panel entrypoints
-        - official `.npz` metrics bridge
+        - train / eval / multi-step panel entrypoints
+        - official `.npz` sample export and metrics bridge
         - held-out defect evaluator
-        - ImageNet64 data-ingest baseline smoke path
+        - ImageNet64 preprocessing and baseline smoke path
 
-        Intentionally omitted from the public release:
+        Omitted from the public release:
 
-        - private development notes
-        - branch-internal planning documents
-        - local artifacts and checkpoints
-        - vendored CTM research snapshots not required to run the public experiments
+        - private development notes and planning docs
+        - local artifacts, checkpoints, and one-off diagnostics
+        - unused research snapshots not required by `EXPERIMENT_LOG`
+
+        ## Environment
+
+        Two installation paths are included:
+
+        1. Exact project script:
+           - [scripts/experiments/create_map_branch_env.sh](scripts/experiments/create_map_branch_env.sh)
+        2. Reviewable conda spec:
+           - [environment.yml](environment.yml)
+
+        The script is the recommended path for CUDA servers because it installs
+        the expected torch/torchvision wheels and project dependencies.
+
+        ## Main code entry points
+
+        Core runtime scripts:
+
+        - train: [scripts/run_train.py](scripts/run_train.py)
+        - eval: [scripts/run_eval.py](scripts/run_eval.py)
+        - qualitative multi-step panel: [scripts/run_multistep_panel.py](scripts/run_multistep_panel.py)
+        - official sample export: [scripts/run_export_samples_npz.py](scripts/run_export_samples_npz.py)
+        - official metrics: [scripts/run_evaluate_metrics.py](scripts/run_evaluate_metrics.py)
+        - held-out defect: [scripts/run_evaluate_defect.py](scripts/run_evaluate_defect.py)
+        - experiment activation: [scripts/experiments/activate_fm_cifar10.sh](scripts/experiments/activate_fm_cifar10.sh)
+
+        Main source modules:
+
+        - config loader: [src/dgfm/config/loader.py](src/dgfm/config/loader.py)
+        - map model: [src/dgfm/models/map.py](src/dgfm/models/map.py)
+        - map trainer: [src/dgfm/trainers/map.py](src/dgfm/trainers/map.py)
+        - target construction: [src/dgfm/targets/builder.py](src/dgfm/targets/builder.py)
+        - map sampler: [src/dgfm/samplers/map_sampler.py](src/dgfm/samplers/map_sampler.py)
+        - evaluation runner: [src/dgfm/evaluators/runner.py](src/dgfm/evaluators/runner.py)
 
         ## Quick start
 
@@ -193,6 +224,34 @@ def _write_public_readme(output_root: Path) -> None:
         """
     ).strip() + "\n"
     _write_text(output_root / "README.md", text)
+
+
+def _write_public_environment_yaml(output_root: Path) -> None:
+    text = textwrap.dedent(
+        """
+        name: dgfm_map_public
+        channels:
+          - defaults
+        dependencies:
+          - python=3.10
+          - pip
+          - pip:
+              - PyYAML==6.0.3
+              - numpy==2.2.3
+              - scipy==1.15.3
+              - torch-fidelity==0.4.0
+              - diffusers>=0.30
+              - transformers>=4.40
+              - accelerate>=0.30
+              - safetensors>=0.4
+              - piq>=0.8
+              - matplotlib
+              - pillow
+              - pytest
+              - -e .
+        """
+    ).strip() + "\n"
+    _write_text(output_root / "environment.yml", text)
 
 
 def _write_public_gitignore(output_root: Path) -> None:
@@ -338,6 +397,7 @@ def main() -> None:
         _copy_path(rel_path, output_root)
 
     _write_public_readme(output_root)
+    _write_public_environment_yaml(output_root)
     _write_public_gitignore(output_root)
     _write_public_pyproject(output_root)
     _write_minimal_dg_twfd(output_root)
