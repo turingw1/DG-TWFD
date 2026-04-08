@@ -59,6 +59,7 @@ This sets stable environment variables for all later commands in this document:
 - `HF_HUB_CACHE=/cache/huggingface/hub`
 - `HF_ENDPOINT=https://hf-mirror.com`
 - `DGFM_ARCHIVE_ROOT=/temp/Zhengwei/dgfm_runs/$FM_EXP`
+- `TORCH_HOME=/cache/$USER/torch_home`
 
 Recommended policy:
 - keep this pipeline document stable
@@ -73,6 +74,11 @@ Training will mirror:
 - `checkpoints/best.pt`
 
 into the archive root during training.
+
+Important cache note:
+- `TORCH_HOME` now defaults to a shared cache under `/cache/$USER/torch_home`
+- this avoids re-downloading LPIPS and other torch-hub assets into every run
+  directory
 
 ## 3. CIFAR-10 preparation
 
