@@ -268,6 +268,32 @@ Potential internal concepts:
 - then refine internals toward a more CTM-like implementation
 - do not attempt a full CTM stack migration in one patch
 
+### Current implementation status
+
+- phase 1 is now complete:
+  - `TargetBatch` carries:
+    - `x_t`
+    - `t`
+    - `x_t_dt`
+    - `t_dt`
+    - `s`
+    - `x_s_target`
+    - explicit `target_construction / target_source / target_stop_grad`
+- current `teacher_sampler` no longer behaves as a pure pair-only builder:
+  - it samples CTM-style triplets `(t, t_dt, s)`
+  - `x_t_dt` currently comes from the teacher bridge trajectory
+- `MapTrainer` now resolves training targets through explicit source policy:
+  - `estimate = model(x_t, t, s)`
+  - `target = stop_grad(target_model(x_t_dt, t_dt, s))` by default
+  - default target source is `ema_model`
+- this means the main loss is no longer hard-coded to plain
+  `x_s_teacher` regression
+- current limitation:
+  - `x_t_dt` still comes from teacher trajectory lookup rather than a
+    CTM-style solver rollout inside the trainer
+  - this is interface-complete but not yet CTM-faithful in the internal
+    target-generation step
+
 ## Task 6. Keep preconditioning explicitly CTM-inspired
 
 ### Goal
@@ -314,6 +340,7 @@ and not as:
 - task 5
 - acceptance:
   - target builder no longer acts as pure teacher trajectory regression
+  - trainer exposes explicit estimate / target / stop-grad semantics
 
 ## Phase 4. Stabilization cleanup
 

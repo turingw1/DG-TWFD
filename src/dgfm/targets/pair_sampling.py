@@ -112,6 +112,46 @@ def _sample_pair_indices_ctm_discrete(
     raise ValueError(f"Unsupported sample_s_strategy: {sample_s_strategy}")
 
 
+def sample_target_triplet_indices(
+    num_points: int,
+    target_cfg: dict,
+    batch_size: int,
+    device: torch.device,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    if num_points < 3:
+        raise ValueError(f"num_points must be at least 3 for CTM-style triplets, got {num_points}")
+    sampling_mode = str(target_cfg.get("sampling_mode", "ctm_discrete"))
+    if sampling_mode != "ctm_discrete":
+        t_indices, s_indices = sample_target_pair_indices(
+            num_points=num_points,
+            target_cfg=target_cfg,
+            batch_size=batch_size,
+            device=device,
+        )
+        midpoint = torch.clamp(t_indices + ((s_indices - t_indices) // 2), min=t_indices + 1, max=s_indices)
+        return t_indices, midpoint, s_indices
+    num_heun_steps = _sample_num_heun_steps(
+        batch_size=batch_size,
+        num_points=num_points,
+        target_cfg=target_cfg,
+        device=device,
+    )
+    max_start = num_points - num_heun_steps
+    t_indices = torch.floor(torch.rand(batch_size, device=device) * max_start.to(torch.float32)).to(torch.long)
+    t_dt_indices = t_indices + num_heun_steps
+
+    sample_s_strategy = str(target_cfg.get("sample_s_strategy", "uniform"))
+    if sample_s_strategy == "smallest":
+        s_indices = torch.full((batch_size,), num_points - 1, dtype=torch.long, device=device)
+        return t_indices, t_dt_indices, s_indices
+    if sample_s_strategy == "uniform":
+        span = num_points - t_dt_indices
+        offsets = torch.floor(torch.rand(batch_size, device=device) * span.to(torch.float32)).to(torch.long)
+        s_indices = t_dt_indices + offsets
+        return t_indices, t_dt_indices, s_indices
+    raise ValueError(f"Unsupported sample_s_strategy: {sample_s_strategy}")
+
+
 def sample_target_pair_indices(
     num_points: int,
     target_cfg: dict,

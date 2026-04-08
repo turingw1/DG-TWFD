@@ -1,7 +1,7 @@
 import torch
 
 from dgfm.targets import build_target_builder
-from dgfm.targets.pair_sampling import sample_target_pair_indices
+from dgfm.targets.pair_sampling import sample_target_pair_indices, sample_target_triplet_indices
 
 
 def _teacher_sampler_config() -> dict:
@@ -38,7 +38,13 @@ def test_teacher_sampler_target_builder_returns_teacher_pairs() -> None:
     target = builder.build_from_batch(batch, device=torch.device("cpu"), path=None)
     assert target.x_t.shape == target.x_s_target.shape == (2, 3, 32, 32)
     assert target.x_0.shape == target.x_1.shape == (2, 3, 32, 32)
+    assert target.x_t_dt is not None
+    assert target.t_dt is not None
+    assert target.target_construction == "ctm_consistency"
+    assert target.target_source == "ema_model"
     assert torch.all(target.s > target.t)
+    assert torch.all(target.t_dt > target.t)
+    assert torch.all(target.s >= target.t_dt)
 
 
 def test_ctm_discrete_pair_sampler_respects_fixed_num_heun_step() -> None:
@@ -65,6 +71,19 @@ def test_ctm_discrete_pair_sampler_supports_smallest_s_strategy() -> None:
     )
     assert torch.all(s_indices == 8)
     assert torch.all(t_indices <= 5)
+
+
+def test_ctm_discrete_triplet_sampler_respects_t_dt_bridge() -> None:
+    cfg = _teacher_sampler_config()
+    t_indices, t_dt_indices, s_indices = sample_target_triplet_indices(
+        num_points=9,
+        target_cfg=cfg["target"],
+        batch_size=128,
+        device=torch.device("cpu"),
+    )
+    assert torch.all(t_dt_indices > t_indices)
+    assert torch.all(s_indices >= t_dt_indices)
+    assert int((t_dt_indices - t_indices).min().item()) == 3
 
 
 def test_teacher_sampler_builder_can_use_warped_time_grid() -> None:

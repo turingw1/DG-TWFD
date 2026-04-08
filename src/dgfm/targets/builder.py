@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import torch
 
 from dgfm.schedulers import TimeWarpMonotone, build_runtime_time_grid
-from dgfm.targets.pair_sampling import sample_target_pair_indices
+from dgfm.targets.pair_sampling import sample_target_pair_indices, sample_target_triplet_indices
 from dgfm.teachers import build_teacher
 
 
@@ -17,6 +17,11 @@ class TargetBatch:
     s: torch.Tensor
     x_0: torch.Tensor
     x_1: torch.Tensor
+    x_t_dt: torch.Tensor | None = None
+    t_dt: torch.Tensor | None = None
+    target_construction: str = "trajectory_regression"
+    target_source: str = "teacher"
+    target_stop_grad: bool = True
 
 
 def _skewed_timestep_sample(num_samples: int, device: torch.device) -> torch.Tensor:
@@ -68,7 +73,8 @@ class AnalyticPathTargetBuilder:
             x_1=x_1,
         )
 
-    def build_from_batch(self, batch, *, device: torch.device, path) -> TargetBatch:
+    def build_from_batch(self, batch, *, device: torch.device, path, model=None, target_model=None) -> TargetBatch:
+        del model, target_model
         images, _labels = batch
         x_1 = images.to(device) * 2.0 - 1.0
         x_0 = torch.randn_like(x_1)
@@ -83,8 +89,8 @@ class TrajectoryShardTargetBuilder:
     def __init__(self, config: dict) -> None:
         self.config = config
 
-    def build_from_batch(self, batch, *, device: torch.device, path=None) -> TargetBatch:
-        del path
+    def build_from_batch(self, batch, *, device: torch.device, path=None, model=None, target_model=None) -> TargetBatch:
+        del path, model, target_model
         x_t = batch["x_t"].to(device)
         x_s = batch["x_s"].to(device)
         t = batch["t"].to(device)
@@ -112,6 +118,9 @@ class TeacherSamplerTargetBuilder:
         start_scales = int(self.target_cfg.get("start_scales", self.teacher_cfg.get("retain_num_points", 33)))
         self.start_scales = start_scales
         self.timewarp: TimeWarpMonotone | None = None
+        self.target_construction = str(self.target_cfg.get("target_construction", "ctm_consistency"))
+        self.target_source = str(self.target_cfg.get("target_source", "ema_model"))
+        self.target_stop_grad = bool(self.target_cfg.get("target_stop_grad", True))
 
     def set_timewarp(self, timewarp: TimeWarpMonotone | None) -> None:
         self.timewarp = timewarp
@@ -140,8 +149,10 @@ class TeacherSamplerTargetBuilder:
         if sub_batch <= 0:
             sub_batch = batch_size
         all_x_t = []
+        all_x_t_dt = []
         all_x_s = []
         all_t = []
+        all_t_dt = []
         all_s = []
         all_x_0 = []
         all_x_1 = []
@@ -152,16 +163,27 @@ class TeacherSamplerTargetBuilder:
             teacher_batch = self.teacher.sample_trajectory_from_x0(x_0=x_0, u_grid=u_grid, device=device)
             t_grid = teacher_batch.t_grid.to(device=device, dtype=torch.float32)
             x_grid = teacher_batch.x_grid.to(device=device, dtype=torch.float32)
-            t_indices, s_indices = sample_target_pair_indices(
-                num_points=t_grid.shape[0],
-                target_cfg=self.target_cfg,
-                batch_size=chunk,
-                device=device,
-            )
+            if self.target_construction == "ctm_consistency":
+                t_indices, t_dt_indices, s_indices = sample_target_triplet_indices(
+                    num_points=t_grid.shape[0],
+                    target_cfg=self.target_cfg,
+                    batch_size=chunk,
+                    device=device,
+                )
+            else:
+                t_indices, s_indices = sample_target_pair_indices(
+                    num_points=t_grid.shape[0],
+                    target_cfg=self.target_cfg,
+                    batch_size=chunk,
+                    device=device,
+                )
+                t_dt_indices = torch.clamp(t_indices + 1, max=s_indices)
             batch_indices = torch.arange(chunk, device=device)
             all_x_t.append(x_grid[batch_indices, t_indices])
+            all_x_t_dt.append(x_grid[batch_indices, t_dt_indices])
             all_x_s.append(x_grid[batch_indices, s_indices])
             all_t.append(t_grid[t_indices])
+            all_t_dt.append(t_grid[t_dt_indices])
             all_s.append(t_grid[s_indices])
             all_x_0.append(x_grid[:, 0])
             all_x_1.append(x_grid[:, -1])
@@ -169,13 +191,18 @@ class TeacherSamplerTargetBuilder:
             x_t=torch.cat(all_x_t, dim=0),
             x_s_target=torch.cat(all_x_s, dim=0),
             t=torch.cat(all_t, dim=0),
+            t_dt=torch.cat(all_t_dt, dim=0),
             s=torch.cat(all_s, dim=0),
             x_0=torch.cat(all_x_0, dim=0),
             x_1=torch.cat(all_x_1, dim=0),
+            x_t_dt=torch.cat(all_x_t_dt, dim=0),
+            target_construction=self.target_construction,
+            target_source=self.target_source,
+            target_stop_grad=self.target_stop_grad,
         )
 
-    def build_from_batch(self, batch, *, device: torch.device, path=None) -> TargetBatch:
-        del path
+    def build_from_batch(self, batch, *, device: torch.device, path=None, model=None, target_model=None) -> TargetBatch:
+        del path, model, target_model
         batch_size = self._batch_size_from_batch(batch)
         return self._sample_online_teacher_pairs(batch_size=batch_size, device=device)
 

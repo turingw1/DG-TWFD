@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass, field
 import json
 import time
@@ -199,6 +199,52 @@ def _compute_batch_diagnostics(
     return diagnostics
 
 
+def _resolve_training_target(
+    *,
+    model: nn.Module,
+    target_model: nn.Module | None,
+    target_batch,
+) -> tuple[torch.Tensor, dict[str, str | bool]]:
+    construction = str(getattr(target_batch, "target_construction", "trajectory_regression"))
+    target_source = str(getattr(target_batch, "target_source", "teacher"))
+    target_stop_grad = bool(getattr(target_batch, "target_stop_grad", True))
+    if construction != "ctm_consistency" or target_batch.x_t_dt is None or target_batch.t_dt is None:
+        target = target_batch.x_s_target
+        if target_stop_grad:
+            target = target.detach()
+        return target, {
+            "construction": "trajectory_regression",
+            "source": "teacher",
+            "stop_grad": target_stop_grad,
+        }
+
+    source_model = model
+    if target_source == "ema_model":
+        source_model = target_model if target_model is not None else model
+    elif target_source == "current_model":
+        source_model = model
+    elif target_source == "teacher":
+        target = target_batch.x_s_target
+        if target_stop_grad:
+            target = target.detach()
+        return target, {
+            "construction": construction,
+            "source": "teacher",
+            "stop_grad": target_stop_grad,
+        }
+    else:
+        raise ValueError(f"Unsupported target_source: {target_source}")
+
+    grad_ctx = torch.no_grad() if target_stop_grad else nullcontext()
+    with grad_ctx:
+        target = source_model(target_batch.x_t_dt, target_batch.t_dt, target_batch.s, extra={})
+    return target, {
+        "construction": construction,
+        "source": target_source,
+        "stop_grad": target_stop_grad,
+    }
+
+
 @dataclass(slots=True)
 class MapTrainer:
     config: dict
@@ -217,6 +263,7 @@ class MapTrainer:
     def _run_epoch(
         self,
         model: nn.Module,
+        target_model: nn.Module | None,
         ema: ModelEMA | None,
         loader,
         optimizer,
@@ -253,6 +300,9 @@ class MapTrainer:
         total_timewarp_updates = 0.0
         total_diag: dict[str, float] = {}
         count = 0
+        target_construction_name = "trajectory_regression"
+        target_source_name = "teacher"
+        target_stop_grad = True
         train_cfg = self.config.get("train", {})
         target_cfg = self.config.get("target", {})
         loss_cfg = self.config.get("loss", {})
@@ -270,7 +320,13 @@ class MapTrainer:
                 if batch_limit > 0 and batch_idx >= batch_limit:
                     break
                 target_t0 = time.perf_counter()
-                target_batch = target_builder.build_from_batch(batch, device=device, path=path)
+                target_batch = target_builder.build_from_batch(
+                    batch,
+                    device=device,
+                    path=path,
+                    model=model,
+                    target_model=target_model,
+                )
                 total_target_build_sec += time.perf_counter() - target_t0
                 batch_size = float(target_batch.x_t.shape[0])
                 total_samples += batch_size
@@ -278,9 +334,17 @@ class MapTrainer:
                 forward_t0 = time.perf_counter()
                 with _autocast_context(device, use_amp):
                     pred = model(target_batch.x_t, target_batch.t, target_batch.s, extra={})
+                    resolved_target, target_meta = _resolve_training_target(
+                        model=model,
+                        target_model=target_model,
+                        target_batch=target_batch,
+                    )
+                    target_construction_name = str(target_meta["construction"])
+                    target_source_name = str(target_meta["source"])
+                    target_stop_grad = bool(target_meta["stop_grad"])
                     pred_losses = _compute_prediction_losses(
                         pred,
-                        target_batch.x_s_target,
+                        resolved_target,
                         target_cfg=target_cfg,
                         perceptual_metric=perceptual_metric,
                         perceptual_weight=weights["perceptual"],
@@ -375,7 +439,7 @@ class MapTrainer:
                     total_timewarp_sec += time.perf_counter() - timewarp_t0
                 batch_diag = _compute_batch_diagnostics(
                     pred=pred,
-                    target=target_batch.x_s_target,
+                    target=resolved_target,
                     x_t=target_batch.x_t,
                     x_1=target_batch.x_1,
                 )
@@ -421,6 +485,9 @@ class MapTrainer:
             "timewarp_sec": total_timewarp_sec,
             "timewarp_updates": total_timewarp_updates,
             "global_step_end": float(global_step),
+            "target_construction": target_construction_name,
+            "target_source": target_source_name,
+            "target_stop_grad": target_stop_grad,
         }
         payload.update({key: value / denom for key, value in total_diag.items()})
         if timewarp is not None:
@@ -496,6 +563,7 @@ class MapTrainer:
             t0 = time.time()
             train_stats = self._run_epoch(
                 model,
+                ema.shadow if ema is not None else model,
                 ema,
                 dataloaders["train"],
                 optimizer,
@@ -513,6 +581,7 @@ class MapTrainer:
             eval_model = ema.shadow if ema is not None else model
             val_stats = self._run_epoch(
                 eval_model,
+                ema.shadow if ema is not None else eval_model,
                 None,
                 dataloaders["val"],
                 optimizer,
@@ -591,6 +660,9 @@ class MapTrainer:
                 "val_update_ratio": val_stats["update_ratio"],
                 "val_update_cosine": val_stats["update_cosine"],
                 "target_builder": target_mode,
+                "target_construction": train_stats["target_construction"],
+                "target_source": train_stats["target_source"],
+                "target_stop_grad": train_stats["target_stop_grad"],
                 "target_uses_dataset_images": target_uses_dataset_images,
                 "global_step": global_step,
                 "elapsed_sec": elapsed,
@@ -640,6 +712,8 @@ class MapTrainer:
                 f"perc={train_stats['perceptual_loss']:.6f} endpoint={train_stats['endpoint_loss']:.6f} "
                 f"timewarp={train_stats['timewarp_defect_loss']:.6f} "
                 f"target={target_mode} "
+                f"construction={train_stats['target_construction']} "
+                f"target_source={train_stats['target_source']} "
                 f"dataset_images={'yes' if target_uses_dataset_images else 'no'} "
                 f"t_mean={train_stats['t_mean']:.4f} s_mean={train_stats['s_mean']:.4f} "
                 f"delta_mean={train_stats['delta_mean']:.4f} endpoint_step={train_stats['endpoint_step']:.2f} "
@@ -665,6 +739,8 @@ class MapTrainer:
                     "train_timewarp_sec": train_stats["timewarp_sec"],
                     "train_timewarp_updates": train_stats["timewarp_updates"],
                     "val_timewarp_loss": val_stats["timewarp_loss"],
+                    "target_construction": train_stats["target_construction"],
+                    "target_source": train_stats["target_source"],
                     "target_uses_dataset_images": target_uses_dataset_images,
                 }
                 if "timewarp_time_grid" in payload:

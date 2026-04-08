@@ -1,5 +1,5 @@
 # map_branch documentation
-
+<!-- codex resume 019d666f-eadb-76e3-9f90-b12ad101f1c5 -->
 This directory is the complete documentation context for the current
 `map_branch_ctm_explicit_map` git branch.
 
@@ -63,10 +63,14 @@ This directory is the complete documentation context for the current
   - `start_scales=33`
   - `num_heun_step=17`
   - `sample_s_strategy=uniform`
+- current target construction:
+  - `target_construction=ctm_consistency`
+  - `target_source=ema_model`
+  - `target_stop_grad=true`
 - teacher internal rollout:
   - `128` DDIM steps
 - current loss stack:
-  - direct map loss
+  - CTM-style estimate/target consistency loss
   - perceptual loss
   - endpoint few-step teacher loss
   - optional defect-driven time-warp auxiliary update
@@ -77,6 +81,11 @@ This directory is the complete documentation context for the current
   - learnable monotone warp is supported
   - checkpoint restore for learned warp is supported
   - default config remains disabled until an experiment explicitly enables it
+- current CTM target status:
+  - trainer now uses explicit `estimate / target / stop-grad` semantics
+  - `teacher_sampler` now emits `t_dt` and teacher bridge states
+  - bridge state generation is still teacher-trajectory-based, not yet a
+    CTM-faithful solver rollout
 - quick verification path:
   - `configs/experiment/fm_cifar10_map_branch_quick.yaml`
 - training-time archive mirror:

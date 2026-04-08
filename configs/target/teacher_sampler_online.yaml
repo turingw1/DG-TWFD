@@ -2,6 +2,9 @@ target:
   builder: teacher_sampler
   sampling_mode: ctm_discrete
   start_scales: 33
+  target_construction: ctm_consistency
+  target_source: ema_model
+  target_stop_grad: true
   loss_type: mse
   huber_delta: 0.1
   teacher_sampler_sub_batch: 64

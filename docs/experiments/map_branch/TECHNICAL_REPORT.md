@@ -9,7 +9,7 @@ What was migrated from CTM conceptually:
 
 What was intentionally not migrated:
 - sigma-space training semantics
-- target-model stack
+- full CTM target-model stack
 - DSM branch
 - GAN branch
 - legacy distributed and evaluation system
@@ -33,16 +33,35 @@ Both branches share:
 - checkpoint format
 - evaluation and visualization entrypoints
 
-## Current first-stage map algorithm
+## Current map algorithm shape
 
 - keep current `dgfm` time semantics
 - use online teacher rollouts by default
 - retain a fixed CTM-like discrete scale grid
-- sample `0 <= t < s <= 1` through discrete index sampling
-- train on `(x_t, t, s, x_s_teacher)` pairs
-- train direct map supervision with pixel MSE / Huber
+- sample CTM-style triplets:
+  - `0 <= t < t_dt <= s <= 1`
+- build teacher bridge states:
+  - `x_t`
+  - `x_t_dt`
+  - `x_s_teacher`
+- train with explicit estimate / target semantics:
+  - `estimate = M_theta(x_t, t, s)`
+  - `target = stop_grad(M_target(x_t_dt, t_dt, s))` by default
+- use EMA shadow as the default `target_source`
+- keep teacher `x_s_teacher` available as a fallback anchor source
 - keep endpoint rollout loss as an auxiliary interface
 - evaluate at `1/2/4/8/16` steps via iterative rollout
+
+This should now be described as:
+
+- CTM-style target-construction interface
+
+not yet as:
+
+- CTM-faithful target generation
+
+because the intermediate bridge state still comes from teacher trajectory
+lookup rather than an in-loop CTM Heun rollout.
 
 ## Why this is the correct bridge
 
@@ -68,8 +87,15 @@ Reason:
 - semigroup defect:
   - current first-stage auxiliary objective comparing direct vs composed maps
     across warped intervals
-  - future CTM-style defect signal should be aligned with target construction,
-    not left as an isolated regularizer
+- future CTM-style defect signal should be aligned with target construction,
+  not left as an isolated regularizer
+- target construction:
+  - current implementation now separates:
+    - estimate source
+    - target source
+    - stop-grad policy
+  - future work should replace teacher-bridge `x_t_dt` lookup with a more
+    faithful solver-derived bridge state
 
 ## Current time-warp status
 
