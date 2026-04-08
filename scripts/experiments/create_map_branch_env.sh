@@ -3,9 +3,9 @@
 set -euo pipefail
 
 ENV_NAME="${1:-dgfm_map}"
-ENV_ROOT="${2:-/cache/${USER}/conda_envs}"
+ENV_ROOT="${2:-/cache/Zhengwei/conda_envs}"
 ENV_PREFIX="${ENV_ROOT}/${ENV_NAME}"
-WHEEL_ROOT="${WHEEL_ROOT:-/cache/${USER}/wheels}"
+WHEEL_ROOT="${WHEEL_ROOT:-/cache/Zhengwei/wheels}"
 TORCH_WHL_DIR="${TORCH_WHL_DIR:-${WHEEL_ROOT}/torch-cu128}"
 TORCH_WHL_URL="${TORCH_WHL_URL:-}"
 PIP_INDEX_URL_DEFAULT="${PIP_INDEX_URL_DEFAULT:-https://pypi.tuna.tsinghua.edu.cn/simple}"

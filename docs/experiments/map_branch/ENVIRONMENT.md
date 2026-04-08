@@ -4,13 +4,13 @@ This branch does not assume that the server already has a usable
 `consistency` environment. The recommended environment root is:
 
 ```bash
-/cache/$USER/conda_envs
+/cache/Zhengwei/conda_envs
 ```
 
 The recommended wheel cache root is:
 
 ```bash
-/cache/$USER/wheels
+/cache/Zhengwei/wheels
 ```
 
 ## 1. Reference environment
@@ -120,7 +120,7 @@ does **not** come from PyPI, HuggingFace, or GitHub. Therefore:
 
 The recommended solution is:
 
-1. download the large Torch wheels once into `/cache/$USER/wheels`
+1. download the large Torch wheels once into `/cache/Zhengwei/wheels`
 2. install from local wheel files
 3. reuse that wheel cache across future environment creation
 
@@ -133,14 +133,14 @@ git clone https://github.com/turingw1/DG-TWFD.git
 git checkout map_branch_ctm_explicit_map
 cd ~/workspace/Zhengwei/DG-TWFD
 bash scripts/experiments/create_map_branch_env.sh dgfm_map
-conda activate /cache/$USER/conda_envs/dgfm_map
+conda activate /cache/Zhengwei/conda_envs/dgfm_map
 ```
 
 By default, the script now:
 
-- creates the environment under `/cache/$USER/conda_envs/<env_name>`
+- creates the environment under `/cache/Zhengwei/conda_envs/<env_name>`
 - writes pip mirror config to the new environment
-- caches Torch wheels under `/cache/$USER/wheels/torch-cu128`
+- caches Torch wheels under `/cache/Zhengwei/wheels/torch-cu128`
 - installs Torch from local wheel files when available
 
 If your server should use a different env root:
@@ -158,8 +158,8 @@ do not repeatedly reinstall directly from the network.
 ### Option A. Pre-download once to local wheel cache
 
 ```bash
-mkdir -p /cache/$USER/wheels/torch-cu128
-cd /cache/$USER/wheels/torch-cu128
+mkdir -p /cache/Zhengwei/wheels/torch-cu128
+cd /cache/Zhengwei/wheels/torch-cu128
 
 wget -c https://download.pytorch.org/whl/cu128/torch-2.10.0%2Bcu128-cp310-cp310-manylinux_2_28_x86_64.whl
 wget -c https://download.pytorch.org/whl/cu128/torchvision-0.25.0%2Bcu128-cp310-cp310-manylinux_2_28_x86_64.whl
@@ -196,7 +196,7 @@ The script will download:
 - `torch-2.10.0+cu128-...whl`
 - `torchvision-0.25.0+cu128-...whl`
 
-into `/cache/$USER/wheels/torch-cu128` and then install locally.
+into `/cache/Zhengwei/wheels/torch-cu128` and then install locally.
 
 ### Option C. Download elsewhere, copy once, install locally
 
@@ -206,7 +206,7 @@ If the target server network is poor:
 2. copy them to:
 
 ```bash
-/cache/$USER/wheels/torch-cu128
+/cache/Zhengwei/wheels/torch-cu128
 ```
 
 3. rerun:
@@ -224,8 +224,8 @@ If you do not want to use the helper script, use the following sequence.
 ### 5.1 Prepare mirrors and caches
 
 ```bash
-mkdir -p /cache/$USER/conda_envs
-mkdir -p /cache/$USER/wheels/torch-cu128
+mkdir -p /cache/Zhengwei/conda_envs
+mkdir -p /cache/Zhengwei/wheels/torch-cu128
 
 export PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 export HF_HOME=/cache/huggingface
@@ -237,8 +237,8 @@ export DGFM_TORCH_FIDELITY_MIRROR_PREFIX=https://githubfast.com/
 ### 5.2 Create environment
 
 ```bash
-conda create -p /cache/$USER/conda_envs/dgfm_map python=3.10 -y
-conda activate /cache/$USER/conda_envs/dgfm_map
+conda create -p /cache/Zhengwei/conda_envs/dgfm_map python=3.10 -y
+conda activate /cache/Zhengwei/conda_envs/dgfm_map
 ```
 
 ### 5.3 Upgrade basic packaging tools
@@ -254,16 +254,16 @@ If local wheels already exist:
 
 ```bash
 python -m pip install \
-  /cache/$USER/wheels/torch-cu128/torch-2.10.0+cu128-*.whl \
-  /cache/$USER/wheels/torch-cu128/torchvision-0.25.0+cu128-*.whl
+  /cache/Zhengwei/wheels/torch-cu128/torch-2.10.0+cu128-*.whl \
+  /cache/Zhengwei/wheels/torch-cu128/torchvision-0.25.0+cu128-*.whl
 ```
 
 If they do not exist yet, download them first:
 
 ```bash
-wget -c -P /cache/$USER/wheels/torch-cu128 \
+wget -c -P /cache/Zhengwei/wheels/torch-cu128 \
   https://download.pytorch.org/whl/cu128/torch-2.10.0%2Bcu128-cp310-cp310-manylinux_2_28_x86_64.whl
-wget -c -P /cache/$USER/wheels/torch-cu128 \
+wget -c -P /cache/Zhengwei/wheels/torch-cu128 \
   https://download.pytorch.org/whl/cu128/torchvision-0.25.0%2Bcu128-cp310-cp310-manylinux_2_28_x86_64.whl
 ```
 
@@ -271,8 +271,8 @@ Then install locally:
 
 ```bash
 python -m pip install \
-  /cache/$USER/wheels/torch-cu128/torch-2.10.0+cu128-*.whl \
-  /cache/$USER/wheels/torch-cu128/torchvision-0.25.0+cu128-*.whl
+  /cache/Zhengwei/wheels/torch-cu128/torch-2.10.0+cu128-*.whl \
+  /cache/Zhengwei/wheels/torch-cu128/torchvision-0.25.0+cu128-*.whl
 ```
 
 ### 5.5 Install the remaining Python packages
@@ -325,7 +325,7 @@ On unstable A100 servers, use this order:
 1. set `PIP_INDEX_URL`
 2. set `HF_ENDPOINT=https://hf-mirror.com`
 3. set `DGFM_TORCH_FIDELITY_MIRROR_PREFIX=https://githubfast.com/`
-4. pre-download Torch wheels into `/cache/$USER/wheels/torch-cu128`
+4. pre-download Torch wheels into `/cache/Zhengwei/wheels/torch-cu128`
 5. run `create_map_branch_env.sh`
 
 That avoids repeatedly paying the slowest download cost.

@@ -63,7 +63,7 @@ export LOG_ROOT="${RUN_ROOT}/logs"
 export METRIC_ROOT="${EVAL_ROOT}/${FM_EXP}"
 export ARCHIVE_ROOT="${ARCHIVE_ROOT:-/temp/Zhengwei/dgfm_runs/${FM_EXP}}"
 export DGFM_ARCHIVE_ROOT="${DGFM_ARCHIVE_ROOT:-${ARCHIVE_ROOT}}"
-export TORCH_CACHE_ROOT="${TORCH_CACHE_ROOT:-/cache/$USER/torch_home}"
+export TORCH_CACHE_ROOT="${TORCH_CACHE_ROOT:-/cache/Zhengwei/torch_home}"
 export TORCH_HOME="${TORCH_HOME:-${TORCH_CACHE_ROOT}}"
 mkdir -p "${CKPT_DIR}" "${SAMPLE_ROOT}" "${LOG_ROOT}" "${METRIC_ROOT}" "${DGFM_ARCHIVE_ROOT}" 2>/dev/null || true
 mkdir -p "${TORCH_HOME}" 2>/dev/null || true
