@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import numpy as np
 import torch
+from pathlib import Path
 
 from dgfm.evaluators.common import solver_nfe
+import dgfm.evaluators.fid as fid_module
 from dgfm.evaluators.fid import GaussianStats, _resolve_inception_weights_path, frechet_distance, to_uint8
 
 
@@ -36,8 +38,21 @@ def test_explicit_inception_weights_path_env(monkeypatch) -> None:
     assert _resolve_inception_weights_path() == "/tmp/custom_inception.pth"
 
 
-def test_no_mirror_env_returns_none(monkeypatch) -> None:
+def test_default_mirror_prefix_downloads_into_torch_hub_cache(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.delenv("DGFM_TORCH_FIDELITY_WEIGHTS_PATH", raising=False)
     monkeypatch.delenv("DGFM_TORCH_FIDELITY_MIRROR_URL", raising=False)
     monkeypatch.delenv("DGFM_TORCH_FIDELITY_MIRROR_PREFIX", raising=False)
-    assert _resolve_inception_weights_path() is None
+    monkeypatch.setattr(fid_module, "get_dir", lambda: str(tmp_path))
+
+    called = {}
+
+    def _fake_download(url: str, dst: str, progress: bool = True) -> None:
+        called["url"] = url
+        called["dst"] = dst
+        Path(dst).write_bytes(b"weights")
+
+    monkeypatch.setattr(fid_module, "download_url_to_file", _fake_download)
+    resolved = _resolve_inception_weights_path()
+    assert resolved is not None
+    assert Path(resolved).is_file()
+    assert called["url"].startswith(fid_module.DEFAULT_FID_MIRROR_PREFIX)
