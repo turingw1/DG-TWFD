@@ -1,4 +1,5 @@
 from .timewarp import (
+    SplineWarp,
     TimeWarpMonotone,
     apply_time_warp,
     build_config_time_grid,
@@ -11,6 +12,7 @@ from .timewarp import (
 
 __all__ = [
     "TimeWarpMonotone",
+    "SplineWarp",
     "apply_time_warp",
     "build_config_time_grid",
     "build_runtime_time_grid",

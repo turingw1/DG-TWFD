@@ -41,6 +41,21 @@ def main() -> None:
         print(f"prepared cifar10 at {data_root}")
         return
 
+    if args.dataset == "imagenet64":
+        train_root = data_root / "train"
+        val_root = data_root / "val"
+        if train_root.is_dir():
+            print(f"imagenet64 preprocessed folder detected at {data_root}", flush=True)
+            return
+        print(f"imagenet64 not prepared at {data_root}", flush=True)
+        print(
+            "manual mode: either place preprocessed train/val folders under the data root, "
+            "or run `python scripts/prepare_imagenet64.py --source-root <raw_train_dir> --output-root "
+            f"{data_root}` after obtaining raw ILSVRC2012 data.",
+            flush=True,
+        )
+        return
+
     print(
         f"dataset scaffold prepared for {args.dataset} at {data_root}. "
         "Manual ImageNet population is still required in Phase 1.",

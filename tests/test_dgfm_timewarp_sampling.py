@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import torch
 
-from dgfm.schedulers import TimeWarpMonotone, build_config_time_grid, build_time_grid, list_timewarp_strategies
+from dgfm.schedulers import SplineWarp, TimeWarpMonotone, build_config_time_grid, build_time_grid, list_timewarp_strategies
 from dgfm.trainers.map import _compute_timewarp_defect_loss
 
 
 def test_list_timewarp_strategies_contains_phase_a_set() -> None:
     names = set(list_timewarp_strategies())
-    assert {"uniform", "source_dense_power2", "data_dense_power2", "random_dirichlet"} <= names
+    assert {"uniform", "source_dense_power2", "data_dense_power2", "random_dirichlet", "spline_mass"} <= names
 
 
 def test_uniform_grid_has_expected_shape_and_bounds() -> None:
@@ -78,6 +78,17 @@ def test_build_config_time_grid_uses_enabled_timewarp() -> None:
     assert float(grid[-1]) == 1.0
     assert torch.all(grid[1:] >= grid[:-1])
     assert not torch.allclose(grid, uniform)
+
+
+def test_spline_warp_is_monotone_and_has_positive_derivative() -> None:
+    module = SplineWarp(num_bins=8, init_bias=0.0)
+    t = torch.linspace(0.0, 1.0, steps=17)
+    warped = module(t)
+    derivative = module.derivative(t)
+    restored = module.inverse(warped)
+    assert torch.all(warped[1:] >= warped[:-1])
+    assert torch.all(derivative > 0.0)
+    assert torch.allclose(restored, t, atol=1.0e-5)
 
 
 class _NonSemigroupMap(torch.nn.Module):

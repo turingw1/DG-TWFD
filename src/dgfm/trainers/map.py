@@ -105,6 +105,7 @@ def _compute_timewarp_defect_loss(
     x_0: torch.Tensor,
     config: dict,
     device: torch.device,
+    labels: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, dict[str, float | list[float]]]:
     loss_cfg = config.get("loss", {})
     step_count = int(loss_cfg.get("timewarp_defect_steps", 4))
@@ -126,6 +127,7 @@ def _compute_timewarp_defect_loss(
         x_init=subset,
         step_count=step_count,
         time_grid=time_grid,
+        extra={"label": labels[:batch_size]} if labels is not None else None,
     )
     interval_losses: list[torch.Tensor] = []
     batch = subset.shape[0]
@@ -133,8 +135,9 @@ def _compute_timewarp_defect_loss(
         t0 = time_grid[idx].to(dtype=subset.dtype).expand(batch)
         t1 = time_grid[idx + 1].to(dtype=subset.dtype).expand(batch)
         t2 = time_grid[idx + 2].to(dtype=subset.dtype).expand(batch)
-        x_direct = model(states[:, idx], t0, t2, extra={})
-        x_composed = model(states[:, idx + 1], t1, t2, extra={})
+        extra = {"label": labels[:batch_size]} if labels is not None else {}
+        x_direct = model(states[:, idx], t0, t2, extra=extra)
+        x_composed = model(states[:, idx + 1], t1, t2, extra=extra)
         interval_losses.append(((x_direct - x_composed) ** 2).flatten(1).mean(dim=1))
     interval_loss = torch.stack(interval_losses, dim=1)
     defect_loss = interval_loss.mean()
@@ -237,7 +240,8 @@ def _resolve_training_target(
 
     grad_ctx = torch.no_grad() if target_stop_grad else nullcontext()
     with grad_ctx:
-        target = source_model(target_batch.x_t_dt, target_batch.t_dt, target_batch.s, extra={})
+        extra = {"label": target_batch.labels} if getattr(target_batch, "labels", None) is not None else {}
+        target = source_model(target_batch.x_t_dt, target_batch.t_dt, target_batch.s, extra=extra)
     return target, {
         "construction": construction,
         "source": target_source,
@@ -334,7 +338,8 @@ class MapTrainer:
                 total_batches += 1.0
                 forward_t0 = time.perf_counter()
                 with _autocast_context(device, use_amp):
-                    pred = model(target_batch.x_t, target_batch.t, target_batch.s, extra={})
+                    model_extra = {"label": target_batch.labels} if target_batch.labels is not None else {}
+                    pred = model(target_batch.x_t, target_batch.t, target_batch.s, extra=model_extra)
                     resolved_target, target_meta = _resolve_training_target(
                         model=model,
                         target_model=target_model,
@@ -378,6 +383,7 @@ class MapTrainer:
                                     device=device,
                                     dtype=target_batch.x_0.dtype,
                                 ),
+                                extra={"label": target_batch.labels.index_select(0, subset)} if target_batch.labels is not None else None,
                             )
                             endpoint_losses = _compute_prediction_losses(
                                 student_endpoint,
@@ -412,6 +418,7 @@ class MapTrainer:
                                     x_0=target_batch.x_0,
                                     config=self.config,
                                     device=device,
+                                    labels=target_batch.labels,
                                 )
                             scaler.scale(timewarp_loss).backward()
                         scaler.step(timewarp_optimizer)
@@ -426,6 +433,7 @@ class MapTrainer:
                             x_0=target_batch.x_0,
                             config=self.config,
                             device=device,
+                            labels=target_batch.labels,
                         )
                         last_timewarp_stats = timewarp_stats
                 elif timewarp_enabled:
@@ -436,6 +444,7 @@ class MapTrainer:
                         x_0=target_batch.x_0,
                         config=self.config,
                         device=device,
+                        labels=target_batch.labels,
                     )
                     last_timewarp_stats = timewarp_stats
                     total_timewarp_sec += time.perf_counter() - timewarp_t0

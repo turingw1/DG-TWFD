@@ -12,7 +12,7 @@ What was intentionally not migrated:
 - full CTM target-model stack
 - DSM branch
 - GAN branch
-- legacy distributed and evaluation system
+- legacy distributed training shell
 
 ## Resulting branch design
 
@@ -32,6 +32,15 @@ Both branches share:
 - run-root layout
 - checkpoint format
 - evaluation and visualization entrypoints
+
+The branch now also exposes two external-facing bridges:
+
+- official-style `.npz` metric evaluation:
+  - FID
+  - Inception Score
+  - Precision
+  - Recall
+- held-out semigroup defect evaluation on fixed triplets
 
 ## Current map algorithm shape
 
@@ -102,10 +111,31 @@ Reason:
 ## Current time-warp status
 
 - the branch now supports a learnable monotone time-warp module
+- the branch now supports a spline-mass monotone warp variant
 - target building and few-step rollout can consume the same warped grid
 - the trainer can update warp parameters from a defect-driven auxiliary loss
 - checkpoints persist the learned warp state
 - evaluation exports the actual warped `time_grid` used at each step count
+
+## External integration status
+
+- `imagenet64` dataset ingestion is now available for:
+  - raw ILSVRC-style train folders
+  - preprocessed folder layouts
+  - preprocessed zip archives
+- baseline class-conditional ImageNet64 smoke configs are now committed
+- official `.npz` sample export is implemented so generated samples can be
+  checked outside the in-framework FID runner
+- official `.npz` metric evaluation is implemented through `torch_fidelity`
+  wrappers, not through a full vendored CTM/OpenAI evaluator transplant
+- held-out defect evaluation is implemented as a separate checkpoint-based
+  report, independent from the training-side surrogate timewarp loss
+
+This means the current branch can now execute the previously deferred
+infrastructure experiments, while still not claiming:
+
+- a finished CTM-faithful ImageNet64 map-branch teacher backend
+- a paper-grade ImageNet64 map-branch reproduction
 
 This should be treated as:
 

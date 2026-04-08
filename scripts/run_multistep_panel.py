@@ -13,7 +13,12 @@ if str(SRC) not in sys.path:
 
 from dgfm.config import load_experiment_config
 from dgfm.evaluators import save_multistep_qualitative_panel
-from dgfm.evaluators.common import device_from_config, load_model_from_checkpoint, load_timewarp_from_checkpoint
+from dgfm.evaluators.common import (
+    device_from_config,
+    load_model_from_checkpoint,
+    load_timewarp_from_checkpoint,
+    sample_condition_labels,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -39,6 +44,7 @@ def main() -> None:
     device = device_from_config(config)
     model = load_model_from_checkpoint(config, args.checkpoint, device=device)
     timewarp = load_timewarp_from_checkpoint(config, args.checkpoint, device=device)
+    labels = sample_condition_labels(config, args.num_examples, device=device)
 
     result = save_multistep_qualitative_panel(
         config=config,
@@ -53,6 +59,7 @@ def main() -> None:
         include_noise=not args.no_noise_column,
         device=device,
         timewarp=timewarp,
+        sample_extra={"label": labels} if labels is not None else None,
     )
     print("dgfm multistep qualitative panel completed")
     print(f"checkpoint: {args.checkpoint}")
@@ -62,6 +69,8 @@ def main() -> None:
     print(f"step_counts: {result['step_counts']}")
     print(f"num_examples: {result['num_examples']}")
     print(f"fixed_seed: {result['fixed_seed']}")
+    if labels is not None:
+        print(f"sample_labels: {labels.detach().cpu().tolist()}")
 
 
 if __name__ == "__main__":

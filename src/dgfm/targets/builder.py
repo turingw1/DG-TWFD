@@ -24,6 +24,7 @@ class TargetBatch:
     target_source: str = "teacher"
     target_stop_grad: bool = True
     bridge_source: str = "teacher"
+    labels: torch.Tensor | None = None
 
 
 def _skewed_timestep_sample(num_samples: int, device: torch.device) -> torch.Tensor:
@@ -77,10 +78,12 @@ class AnalyticPathTargetBuilder:
 
     def build_from_batch(self, batch, *, device: torch.device, path, model=None, target_model=None) -> TargetBatch:
         del model, target_model
-        images, _labels = batch
+        images, labels = batch
         x_1 = images.to(device) * 2.0 - 1.0
         x_0 = torch.randn_like(x_1)
-        return self.build(x_0=x_0, x_1=x_1, path=path)
+        target_batch = self.build(x_0=x_0, x_1=x_1, path=path)
+        target_batch.labels = labels.to(device) if labels is not None else None
+        return target_batch
 
 
 class TrajectoryShardTargetBuilder:
@@ -104,6 +107,7 @@ class TrajectoryShardTargetBuilder:
             s=s,
             x_0=batch["x_0"].to(device),
             x_1=batch["x_1"].to(device),
+            labels=batch.get("labels").to(device) if batch.get("labels") is not None else None,
         )
 
 
@@ -223,6 +227,7 @@ class TeacherSamplerTargetBuilder:
         x_t: torch.Tensor,
         t: torch.Tensor,
         t_dt: torch.Tensor,
+        labels: torch.Tensor | None = None,
     ) -> torch.Tensor:
         grad_ctx = torch.no_grad() if self.bridge_stop_grad else nullcontext()
         with grad_ctx:
@@ -232,13 +237,16 @@ class TeacherSamplerTargetBuilder:
                 alpha1 = float(step_idx + 1) / float(self.bridge_steps)
                 step_t = t + (t_dt - t) * alpha0
                 step_s = t + (t_dt - t) * alpha1
-                current = source_model(current, step_t, step_s, extra={})
+                extra = {"label": labels} if labels is not None else {}
+                current = source_model(current, step_t, step_s, extra=extra)
         return current.detach() if self.bridge_stop_grad else current
 
     def build_from_batch(self, batch, *, device: torch.device, path=None, model=None, target_model=None) -> TargetBatch:
         del path
         batch_size = self._batch_size_from_batch(batch)
         target_batch = self._sample_online_teacher_pairs(batch_size=batch_size, device=device)
+        if isinstance(batch, (tuple, list)) and len(batch) > 1 and isinstance(batch[1], torch.Tensor):
+            target_batch.labels = batch[1].to(device)
         if self.target_construction != "ctm_consistency":
             return target_batch
         bridge_model = self._resolve_bridge_model(model=model, target_model=target_model)
@@ -249,6 +257,7 @@ class TeacherSamplerTargetBuilder:
             x_t=target_batch.x_t,
             t=target_batch.t,
             t_dt=target_batch.t_dt,
+            labels=target_batch.labels,
         )
         target_batch.bridge_source = self.bridge_source
         return target_batch

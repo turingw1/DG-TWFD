@@ -21,6 +21,7 @@ def rollout_with_map(
     x_init: torch.Tensor,
     step_count: int,
     time_grid: torch.Tensor | None = None,
+    extra: dict | None = None,
 ) -> torch.Tensor:
     if step_count <= 0:
         raise ValueError(f"step_count must be positive, got {step_count}")
@@ -30,7 +31,7 @@ def rollout_with_map(
     for idx in range(step_count):
         t = time_grid[idx].to(dtype=x.dtype).expand(batch)
         s = time_grid[idx + 1].to(dtype=x.dtype).expand(batch)
-        x = model(x, t, s, extra={})
+        x = model(x, t, s, extra=dict(extra or {}))
     return x
 
 
@@ -39,6 +40,7 @@ def rollout_trajectory_with_map(
     x_init: torch.Tensor,
     step_count: int,
     time_grid: torch.Tensor | None = None,
+    extra: dict | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     if step_count <= 0:
         raise ValueError(f"step_count must be positive, got {step_count}")
@@ -49,6 +51,6 @@ def rollout_trajectory_with_map(
     for idx in range(step_count):
         t = time_grid[idx].to(dtype=x.dtype).expand(batch)
         s = time_grid[idx + 1].to(dtype=x.dtype).expand(batch)
-        x = model(x, t, s, extra={})
+        x = model(x, t, s, extra=dict(extra or {}))
         states.append(x)
     return torch.stack(states, dim=1), time_grid

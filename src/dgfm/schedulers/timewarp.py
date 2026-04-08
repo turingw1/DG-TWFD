@@ -13,6 +13,7 @@ DEFAULT_STRATEGIES = (
     "source_dense_power2",
     "data_dense_power2",
     "random_dirichlet",
+    "spline_mass",
 )
 
 
@@ -89,11 +90,29 @@ class TimeWarpMonotone(nn.Module):
         restored = t0 + alpha * (t1 - t0)
         return restored.reshape_as(u)
 
+    def derivative(self, t: Tensor) -> Tensor:
+        t = t.clamp(0.0, 1.0)
+        heights = self._bin_heights().to(device=t.device, dtype=t.dtype)
+        flat_t = t.reshape(-1)
+        scaled = flat_t * self.num_bins
+        indices = torch.clamp(scaled.floor().long(), max=self.num_bins - 1)
+        derivative = heights[indices] * float(self.num_bins)
+        return derivative.reshape_as(t)
+
+    def warp_grid(self, t_grid: Tensor) -> Tensor:
+        return self.forward(t_grid)
+
     @torch.no_grad()
     def grid_cache(self) -> tuple[Tensor, Tensor]:
         t_grid = self._grid(self.logits.device, self.logits.dtype)
         u_grid = self._cdf().to(dtype=t_grid.dtype)
         return t_grid, u_grid
+
+
+class SplineWarp(TimeWarpMonotone):
+    """Minimum-viable monotone spline warp with fixed knots and learnable mass."""
+
+    pass
 
 
 def _uniform_grid(step_count: int, *, device: torch.device, dtype: torch.dtype) -> torch.Tensor:
@@ -208,11 +227,12 @@ def build_timewarp_module(config: dict, *, device: torch.device, dtype: torch.dt
     if not bool(timewarp_cfg.get("enabled", False)):
         return None
     warp_type = str(timewarp_cfg.get("type", "learnable_monotone"))
-    if warp_type != "learnable_monotone":
+    if warp_type not in {"learnable_monotone", "spline_mass"}:
         return None
     num_bins = int(timewarp_cfg.get("num_bins", 64))
     init_bias = float(timewarp_cfg.get("init_bias", 0.0))
-    module = TimeWarpMonotone(num_bins=num_bins, init_bias=init_bias).to(device=device, dtype=dtype)
+    module_cls = SplineWarp if warp_type == "spline_mass" else TimeWarpMonotone
+    module = module_cls(num_bins=num_bins, init_bias=init_bias).to(device=device, dtype=dtype)
     logits_tensor = _coerce_logits(timewarp_cfg.get("logits"), num_bins=num_bins, device=device, dtype=dtype)
     if logits_tensor is not None:
         module.logits.data.copy_(logits_tensor)
@@ -231,6 +251,12 @@ def apply_time_warp(
         return t_linear
     if warp_type == "learnable_monotone":
         module = TimeWarpMonotone(num_bins=num_bins, init_bias=init_bias).to(device=t_linear.device, dtype=t_linear.dtype)
+        logits_tensor = _coerce_logits(logits, num_bins=num_bins, device=t_linear.device, dtype=t_linear.dtype)
+        if logits_tensor is not None:
+            module.logits.data.copy_(logits_tensor)
+        return module(t_linear)
+    if warp_type == "spline_mass":
+        module = SplineWarp(num_bins=num_bins, init_bias=init_bias).to(device=t_linear.device, dtype=t_linear.dtype)
         logits_tensor = _coerce_logits(logits, num_bins=num_bins, device=t_linear.device, dtype=t_linear.dtype)
         if logits_tensor is not None:
             module.logits.data.copy_(logits_tensor)

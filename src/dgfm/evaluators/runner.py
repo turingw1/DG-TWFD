@@ -16,6 +16,7 @@ from .common import (
     load_model_from_checkpoint,
     load_timewarp_from_checkpoint,
     objective_mode,
+    sample_condition_labels,
     sample_from_model_batched,
     solver_nfe,
     to_unit_interval,
@@ -92,6 +93,7 @@ class EvaluationRunner:
         image_size = int(self.config["dataset"]["image_size"])
         generator = torch.Generator(device=device).manual_seed(fixed_seed)
         noise = torch.randn(fixed_grid_size, channels, image_size, image_size, generator=generator, device=device)
+        labels = sample_condition_labels(self.config, fixed_grid_size, device=device, generator=generator)
         samples = sample_from_model_batched(
             config=self.config,
             model=model,
@@ -101,9 +103,12 @@ class EvaluationRunner:
             timewarp=timewarp,
             max_batch_size=self._fixed_grid_batch_size(sample_batch_size),
             move_to_cpu=True,
+            extra={"label": labels} if labels is not None else None,
         )
         samples = to_unit_interval(samples)
         torch.save(samples, step_dir / "fixed_seed_samples.pt")
+        if labels is not None:
+            torch.save(labels.detach().cpu(), step_dir / "fixed_seed_labels.pt")
         save_image(samples, step_dir / "fixed_seed_grid.png", nrow=nrow)
         dump_count = int(eval_cfg.get("dump_image_count", 64))
         image_dir = step_dir / "fixed_seed_images"
@@ -114,6 +119,7 @@ class EvaluationRunner:
             "fixed_seed": fixed_seed,
             "fixed_grid_size": fixed_grid_size,
             "dump_image_count": min(dump_count, samples.shape[0]),
+            "class_cond": labels is not None,
         }
 
     def run(self, step_counts: list[int]) -> None:
@@ -146,6 +152,7 @@ class EvaluationRunner:
 
             def sample_fn(batch_size: int) -> torch.Tensor:
                 noise = torch.randn(batch_size, channels, image_size, image_size, device=device)
+                labels = sample_condition_labels(self.config, batch_size, device=device)
                 with torch.no_grad():
                     samples = sample_from_model_batched(
                         config=self.config,
@@ -155,6 +162,7 @@ class EvaluationRunner:
                         method=solver_method,
                         timewarp=timewarp,
                         max_batch_size=sample_batch_size,
+                        extra={"label": labels} if labels is not None else None,
                     )
                 return to_unit_interval(samples)
 

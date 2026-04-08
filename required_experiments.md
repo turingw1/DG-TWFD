@@ -2,89 +2,99 @@
 
 ## Scope
 
-This file is the executable experiment plan for the **current** `dgfm`
-map-branch codebase.
+This file defines the **current executable experiment surface** after the
+external-integration update driven by `plan.md`.
 
-It is intentionally narrower than the long-term paper plan. The immediate
-goal is:
+The plan is now split into two layers:
 
-- finish algorithmic iteration inside the current framework
-- use only experiments that the current code can run directly
-- avoid any experiment that depends on missing infrastructure
-- make every run reproducible from:
-  - one config file
-  - one activation command
-  - the stable
-    [A100_PIPELINE.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/A100_PIPELINE.md)
+- `Stage 1`
+  - algorithm selection inside the current CIFAR-10 map-branch system
+- `Stage 2`
+  - external-facing validation and infrastructure experiments:
+    - official-style `.npz` metrics
+    - held-out defect validation
+    - ImageNet64 data / baseline smoke
 
-## Feasibility audit against the original wish list
+Every formal run in this file must satisfy:
+
+- one committed config under `configs/experiment/`
+- one row in
+  [EXPERIMENT_LOG.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/EXPERIMENT_LOG.md)
+- activation through
+  [activate_fm_cifar10.sh](/home/gzwlinux/vscode/gitProject/DG-TWFD/scripts/experiments/activate_fm_cifar10.sh)
+- no `--set` overrides in formal runs
+
+## Capability status
 
 ### Supported now
 
-- CIFAR-10 map-branch training
-- explicit map prediction with:
-  - residual parameterization
-  - direct endpoint parameterization
+- CIFAR-10 explicit-map training and evaluation
 - CTM-style target contract with:
   - `trajectory_regression`
   - `ctm_consistency`
   - `bridge_source in {teacher, ema_model_rollout, current_model_rollout}`
-- static and learned monotone time warps
-- few-step FID evaluation from one checkpoint at multiple step counts
-- qualitative panels
-- rich train/val diagnostics in `train.jsonl`
+- static, learned, and minimum-viable spline-style monotone time warps
+- official-style sample export:
+  - `.npz` with `arr_0=[N,H,W,C] uint8`
+  - optional `labels`
+- official-style metric bridge through `torch_fidelity` on `.npz`:
+  - FID
+  - Inception Score
+  - Precision
+  - Recall
+- held-out defect evaluation from checkpoint + fixed triplets
+- ImageNet64 dataset ingestion from:
+  - raw ILSVRC-style train folders
+  - preprocessed folder
+  - preprocessed zip
+- ImageNet64 baseline smoke configs
 
-### Not supported now
+### Explicitly not claimed yet
 
-- dedicated 2D toy-mechanism package inside the `dgfm` map-branch system
-- ImageNet64 teacher and map-branch benchmark path
-- Inception Score evaluator
-- Recall evaluator
-- a standalone held-out semigroup-defect evaluation runner detached from
-  training logs
-- defect-adaptive curriculum as a first-class training module
-- spline warp family
+- CTM-faithful ImageNet64 map-branch teacher integration
+- full OpenAI/CTM teacher checkpoint execution inside `dgfm` map-branch
+- paper-grade ImageNet64 map-branch reproduction
 
-### Required modifications to the original plan
+Those remain outside the current required experiment set. The current code now
+captures:
 
-- replace the toy 2D experiment with a **CIFAR-10 smoke mechanism experiment**
-- restrict the current systematic iteration to **CIFAR-10 only**
-- replace unsupported secondary metrics with:
-  - multi-step FID
-  - average low-step FID
-  - logged composition/warp diagnostics
-- replace the unsupported standalone defect evaluator with the currently
-  available defect surrogates:
-  - `train_timewarp_defect_loss`
-  - `val_timewarp_defect_loss`
-  - `timewarp_interval_defects`
-  - `update_ratio`
-  - `update_cosine`
+- dataset path
+- teacher metadata/config defaults
+- official evaluation protocol
 
-These replacements are necessary because the point of the current phase is to
-establish a **working, reproducible algorithmic recipe** before broadening the
-benchmark surface.
+but not a finished ImageNet64 map-branch teacher backend.
 
 ## Core evaluation rules
 
-- use one checkpoint reused at:
+- algorithmic ablations reuse one checkpoint at:
   - `1 / 2 / 4 / 8 / 16 / 32 / 64 / 128 / 256`
-- compare ablations under the same:
-  - backbone
-  - teacher
-  - smoke budget or full budget
-  - evaluation command
-- do not use `--set` overrides in formal runs
-- every formal experiment must be backed by:
-  - one committed config
-  - one `EXP_LOG` row
+- official metrics runs export a single `.npz` per step count
+- official metrics must use one reference `.npz`
+- held-out defect runs must use:
+  - fixed seed
+  - fixed triplet preset or fixed dense default
+- spline warp experiments must be compared against:
+  - identity clock
+  - learned monotone warp
 
-## Primary metrics for the current phase
+## Primary metrics
+
+### Stage 1
 
 - FID at `1 / 2 / 4 / 8 / 16 / 32 / 64 / 128 / 256`
 - average low-step FID over:
   - `1 / 2 / 4 / 8 / 16`
 - train/val diagnostics from `train.jsonl`
+
+### Stage 2
+
+- official FID
+- official IS mean/std
+- official Precision
+- official Recall
+- held-out `defect_mean / defect_std / defect_median`
+- `defect_by_t_bin`
+- `defect_by_step_count`
 
 ## Required diagnostics
 
@@ -96,175 +106,177 @@ benchmark surface.
 - `val_pred_update_abs_mean`
 - `timewarp_time_grid` when warp is enabled
 - `timewarp_interval_defects` when warp is enabled
+- held-out defect report json for Stage 2 defect runs
 
-## Executable experiment chain
+## Stage 1. CIFAR-10 algorithm selection
 
-## Experiment 1. Target-construction mechanism ablation
+### Experiment 1. Target-construction mechanism ablation
 
-### Question
+Question:
+- does the CTM-style target contract help more than plain trajectory
+  regression, and which bridge source should be the default?
 
-Does the new CTM-style target contract help more than plain trajectory
-regression, and which bridge source is the right default?
-
-### Variants
-
-- `trajectory_regression`
-- `ctm_consistency + teacher bridge`
-- `ctm_consistency + ema rollout bridge`
-- `ctm_consistency + current-model rollout bridge`
-
-### Configs
-
+Configs:
 - `fm_cifar10_map_branch_s1_e1_traj_reg`
 - `fm_cifar10_map_branch_s1_e1_ctm_teacher`
 - `fm_cifar10_map_branch_s1_e1_ctm_ema`
 - `fm_cifar10_map_branch_s1_e1_ctm_current`
 
-### Acceptance
+Acceptance:
+- select one target-construction recipe at smoke scale
+- prefer the recipe whose FID improves most coherently from `1` to `16`
+  steps and does not collapse beyond `16`
 
-- identify the best target-construction recipe at smoke scale
-- prefer the recipe whose FID improves most consistently from `1` to `16`
-  steps
+### Experiment 2. Defect-probe run
 
-## Experiment 2. Defect-probe run
+Question:
+- with the selected smoke recipe, does defect-driven time warp move its
+  diagnostics in a coherent direction?
 
-### Question
-
-When time warp is enabled on top of the best smoke recipe, do defect and warp
-diagnostics move in a coherent direction?
-
-### Variant
-
-- `ctm_consistency + ema rollout bridge + learned monotone warp`
-
-### Config
-
+Config:
 - `fm_cifar10_map_branch_s1_e2_defect_probe`
 
-### Acceptance
-
-- `timewarp_time_grid` becomes non-uniform during training
+Acceptance:
+- `timewarp_time_grid` becomes non-uniform
 - defect-related diagnostics decrease or stabilize
 - this run is diagnostic-first, not quality-first
 
-## Experiment 3. Prediction target ablation
+### Experiment 3. Prediction target ablation
 
-### Question
+Question:
+- inside the explicit-map family, should the model predict residual updates or
+  direct endpoints?
 
-Inside the explicit-map family, should the model predict the target directly or
-through a residual parameterization?
-
-### Variants
-
-- `prediction_type=residual`
-- `prediction_type=direct`
-
-### Configs
-
+Configs:
 - `fm_cifar10_map_branch_s1_e3_pred_residual`
 - `fm_cifar10_map_branch_s1_e3_pred_direct`
 
-### Modification from the original plan
+Acceptance:
+- keep the parameterization with better low-step FID and more coherent
+  update-ratio / update-cosine diagnostics
 
-The original request included a velocity-style target in the same ablation.
-That is **not** a clean matched comparison inside the current framework because
-velocity FM lives in a different training objective family and backbone path.
-For the current phase, velocity FM remains a cross-family reference, not a
-same-table matched ablation.
+### Experiment 4. Auxiliary-loss reintroduction
 
-## Experiment 4. Auxiliary-loss reintroduction check
+Question:
+- after the target-construction upgrade, does endpoint auxiliary loss help or
+  hurt rollout quality?
 
-### Question
-
-After the target-construction upgrade, does reintroducing endpoint loss help or
-hurt rollout quality?
-
-### Variants
-
-- no endpoint auxiliary
-- endpoint auxiliary on
-
-### Configs
-
+Configs:
 - `fm_cifar10_map_branch_s1_e3_pred_residual`
 - `fm_cifar10_map_branch_s1_e4_aux_endpoint_on`
 
-### Acceptance
-
-- keep endpoint only if it improves low-step FID without destabilizing
+Acceptance:
+- keep endpoint auxiliary only if it improves low-step FID without harming
   longer-step rollout
 
-## Experiment 5. Warp strategy ablation
+### Experiment 5. Warp strategy ablation
 
-### Question
+Question:
+- which time geometry is actually useful in the current framework?
 
-Does the method benefit from the right time geometry, and if so, which warp
-form is actually useful in the current framework?
-
-### Variants
-
-- identity clock
-- static data-dense power warp
-- static source-dense power warp
-- learned monotone warp
-
-### Configs
-
+Configs:
 - `fm_cifar10_map_branch_s1_e5_warp_identity`
 - `fm_cifar10_map_branch_s1_e5_warp_data_dense`
 - `fm_cifar10_map_branch_s1_e5_warp_source_dense`
 - `fm_cifar10_map_branch_s1_e5_warp_learned`
+- `fm_cifar10_map_branch_s1_e5_warp_spline`
 
-### Modification from the original plan
+Acceptance:
+- compare static, learned, and spline-style clocks on the same smoke recipe
+- keep warp only if it improves low-step FID or held-out defect trends
 
-The original plan requested spline warp and teacher-style heuristic schedule.
-These are not first-class options in the current `dgfm` map-branch scheduler,
-so they are deferred.
+### Experiment 6. Budget sensitivity
 
-## Experiment 6. Budget sensitivity
+Question:
+- does the selected smoke recipe stay stable at quick and full training
+  budgets?
 
-### Question
-
-Once the best smoke recipe is selected, does it remain stable when scaled to
-the quick and full training budgets?
-
-### Variants
-
-- smoke:
-  - taken from the winning recipe in Experiments 1 to 5
-- quick budget
-- full budget
-
-### Configs
-
+Configs:
 - winning smoke config from Experiments 1 to 5
 - `fm_cifar10_map_branch_s1_e6_budget_quick`
 - `fm_cifar10_map_branch_s1_e6_budget_full`
 
-### Modification from the original plan
+Acceptance:
+- the same recipe should not invert its qualitative ranking when moved from
+  smoke to quick/full budgets
 
-The original plan requested model-size scaling and ImageNet benchmarking.
-Those require additional backbone recipes, teacher definitions, and evaluators
-that are not yet in the current map-branch system. The current executable
-budget study is therefore **training-budget-only**.
+## Stage 2. External-facing validation
 
-## Current minimum deliverables
+### Experiment 7. Official `.npz` metric bridge
 
-- one complete target-construction ablation table
-- one defect-probe run with usable diagnostics
-- one prediction-target ablation
-- one warp-strategy ablation
-- one quick/full budget follow-up on the best recipe
+Question:
+- does the selected checkpoint hold up under official-style `.npz` evaluation
+  rather than only the in-framework few-step runner?
 
-## What is deliberately deferred
+Config:
+- `fm_cifar10_map_branch_s2_official_metrics`
 
-- ImageNet64
-- Recall
-- Inception Score
-- spline warp
-- standalone held-out defect evaluator
-- curriculum as a separate training module
-- paper-ready baseline comparison table
+Required command family:
+- export `.npz` samples with
+  [run_export_samples_npz.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/scripts/run_export_samples_npz.py)
+- evaluate them with
+  [run_evaluate_metrics.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/scripts/run_evaluate_metrics.py)
 
-These are not rejected permanently. They are deferred until the current
-algorithmic path becomes stable enough that wider benchmarking is meaningful.
+Acceptance:
+- at least one selected step count must have a completed json report with:
+  - FID
+  - IS mean/std
+  - Precision
+  - Recall
+
+### Experiment 8. Held-out defect validation
+
+Question:
+- do the selected checkpoints reduce semigroup defect on held-out seeds and
+  fixed triplets, rather than only reducing the training-side surrogate?
+
+Config:
+- `fm_cifar10_map_branch_s2_defect_eval`
+
+Required command family:
+- run
+  [run_evaluate_defect.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/scripts/run_evaluate_defect.py)
+
+Acceptance:
+- produce one report json per selected checkpoint
+- compare at least:
+  - winning no-warp recipe
+  - winning learned-warp or spline-warp recipe
+
+### Experiment 9. ImageNet64 data / baseline smoke
+
+Question:
+- is the system able to ingest ImageNet64-style data and run a class-conditional
+  baseline smoke end-to-end?
+
+Config:
+- `fm_imagenet64_baseline_smoke`
+
+Required command family:
+- prepare data with
+  [prepare_imagenet64.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/scripts/prepare_imagenet64.py)
+  when needed
+- train / eval via the stable pipeline after activation
+- optionally export `.npz` samples and run official metrics if the reference
+  batch is available
+
+Acceptance:
+- dataloaders build successfully
+- train/eval run without code changes
+- class-conditional sampling path runs and writes labels
+
+## Minimum deliverables
+
+- one complete Stage 1 target-construction table
+- one complete warp-strategy table including spline warp
+- one quick/full budget follow-up
+- one official `.npz` metrics report
+- one held-out defect report
+- one ImageNet64 baseline smoke run
+
+## Current execution order
+
+1. Finish Stage 1 and lock one CIFAR-10 recipe.
+2. Run official `.npz` metrics on the selected checkpoint.
+3. Run held-out defect evaluation on the selected checkpoints.
+4. Run ImageNet64 baseline smoke to verify the external data/eval path.

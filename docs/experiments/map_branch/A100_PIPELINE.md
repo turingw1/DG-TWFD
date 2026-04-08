@@ -30,13 +30,12 @@ Then activate the selected experiment once:
 source scripts/experiments/activate_fm_cifar10.sh <EXP_VARIANT> <EXP_TAG>
 ```
 
-`<EXP_VARIANT>` can now be:
-- one of the legacy short aliases:
-  - `map_branch`
-  - `map_branch_quick`
-  - `stable`
-- or any config stem under `configs/experiment/`, for example:
+`<EXP_VARIANT>` can be:
+- any config stem under `configs/experiment/`
+- for example:
   - `fm_cifar10_map_branch_s1_e1_ctm_ema`
+  - `fm_cifar10_map_branch_s2_official_metrics`
+  - `fm_imagenet64_baseline_smoke`
 
 Current policy:
 - do not use `--set` in formal experiments
@@ -45,44 +44,27 @@ Current policy:
   [EXPERIMENT_LOG.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/EXPERIMENT_LOG.md)
   as the only experiment-entry source of truth
 
-This sets stable environment variables for all later commands in this document:
-- `EXP_VARIANT=<selected variant>`
-- `EXP_TAG=<selected tag>`
-- `EXP_NAME=<resolved experiment name>`
-- `EXP_SOURCE=<resolved config path>`
-- `FM_CONFIG=<resolved config path>`
-- `RUN_ROOT=/cache/Zhengwei/dgfm_runs/$FM_EXP`
-- `CKPT_DIR=$RUN_ROOT/checkpoints`
-- `SAMPLE_ROOT=$RUN_ROOT/samples`
-- `LOG_ROOT=$RUN_ROOT/logs`
-- `METRIC_ROOT=/cache/Zhengwei/dgfm_eval/$FM_EXP`
-- `TRAJ_ROOT=/cache/Zhengwei/dgfm_teacher_traj/cifar10_ddpm128_p33`
-- `HF_HOME=/cache/huggingface`
-- `HF_HUB_CACHE=/cache/huggingface/hub`
-- `HF_ENDPOINT=https://hf-mirror.com`
-- `DGFM_ARCHIVE_ROOT=/temp/Zhengwei/dgfm_runs/$FM_EXP`
-- `TORCH_HOME=/cache/Zhengwei/torch_home`
+This sets stable environment variables for all later commands:
+- `FM_CONFIG`
+- `RUN_ROOT`
+- `CKPT_DIR`
+- `SAMPLE_ROOT`
+- `LOG_ROOT`
+- `METRIC_ROOT`
+- `HF_HOME`
+- `HF_HUB_CACHE`
+- `HF_ENDPOINT`
+- `TORCH_HOME`
+- `REF_ROOT`
+- `OFFICIAL_REFERENCE_NPZ`
+- `IMAGENET_RAW_ROOT`
+- `IMAGENET64_PREPROCESSED`
+- `IMAGENET64_REFERENCE_NPZ`
+- `IMAGENET64_TEACHER_CKPT`
 
-Recommended policy:
-- keep this pipeline document stable
-- switch runs by updating `EXPERIMENT_LOG.md`
-- re-run the activation script with the selected `EXP_VARIANT` and `EXP_TAG`
-- after activation, use the fixed commands below without editing this file
+## 3. Dataset preparation
 
-Training will mirror:
-- `logs/config_resolved.yaml`
-- `logs/train.jsonl`
-- `checkpoints/last.pt`
-- `checkpoints/best.pt`
-
-into the archive root during training.
-
-Important cache note:
-- `TORCH_HOME` now defaults to a shared cache under `/cache/Zhengwei/torch_home`
-- this avoids re-downloading LPIPS and other torch-hub assets into every run
-  directory
-
-## 3. CIFAR-10 preparation
+### CIFAR-10
 
 Manual-first check:
 
@@ -96,219 +78,40 @@ If missing and you explicitly want download:
 python scripts/build_dataset.py --dataset cifar10 --data-root $DATA_ROOT/cifar10 --download
 ```
 
-## 4. Teacher target mode
+### ImageNet64
 
-Current `map_branch` uses **online `teacher_sampler` targets** by default.
-Offline teacher trajectories remain available as a fallback path, but they are
-no longer the primary training mode.
-
-Quick diagnostic variant:
-- `map_branch_quick`
-- teacher internal steps:
-  - `32`
-- target start scales:
-  - `18`
-- lighter endpoint supervision:
-  - lower weight
-  - lower frequency
-  - smaller endpoint batch
-- intended use:
-  - quickly verify whether CTM-aligned changes produce a useful FID trend
-  - not intended as the final reported run
-
-Teacher rollout policy:
-- backend:
-  - `diffusers_ddpm`
-- model:
-  - `google/ddpm-cifar10-32`
-- internal solver:
-  - `ddim`
-- internal teacher steps:
-  - `128`
-- target discrete scales:
-  - `33`
-- retained time semantics:
-  - ascending `u-grid`
-  - `u=0.0` means noisiest state
-  - `u=1.0` means cleanest state
-
-Primary online target path:
-- sample teacher noise state `x_0`
-- rollout teacher with `128` internal DDIM steps
-- retain `33` CTM-like discrete scales on ascending `u-grid`
-- sample a discrete start index `t_idx`
-- sample `num_heun_step`
-- sample `s_idx` from the valid suffix with `sample_s_strategy=uniform`
-- supervise the explicit map on `M_theta(x_t, t, s) -> x_s_teacher`
-
-Important interpretation note:
-- current `teacher_sampler` uses the dataloader batch only for batch sizing
-- it does not condition target construction on the CIFAR image content itself
-- therefore current `train_loss / val_loss` should be read as teacher-target
-  consistency metrics, not as standard dataset-conditioned generalization
-  metrics
-
-Optional offline cache path:
+Check whether the preprocessed folder is already present:
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/prepare_teacher_trajectories.py \
-  --config $FM_CONFIG \
-  --output-root $TRAJ_ROOT \
-  --batch-size 64
+python scripts/build_dataset.py --dataset imagenet64 --data-root $IMAGENET64_PREPROCESSED
 ```
 
-Use the offline cache only when online teacher sampling is too slow for the
-current server session.
-
-If teacher loading fails with:
-
-```text
-LocalEntryNotFoundError: Cannot find an appropriate cached snapshot folder ...
-```
-
-use one of these two fixes.
-
-Fix A: point to the shared HuggingFace cache before running the command:
+If you already have raw ILSVRC-style class folders, preprocess them into the
+ImageFolder layout used by the baseline smoke:
 
 ```bash
-export HF_HOME=/cache/huggingface
-export HF_HUB_CACHE=/cache/huggingface/hub
-export HF_ENDPOINT=https://hf-mirror.com
+python scripts/prepare_imagenet64.py \
+  --source-root $IMAGENET_RAW_ROOT/ILSVRC/Data/CLS-LOC/train \
+  --output-root $IMAGENET64_PREPROCESSED/train
 ```
 
-Fix B: allow online lookup once if the server has outbound access:
+Notes:
+- the current baseline smoke uses a preprocessed ImageFolder-style layout
+- the current map-branch ImageNet64 teacher path is still treated as external
+  metadata, not as a finished in-framework training backend
 
-```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/prepare_teacher_trajectories.py \
-  --config $FM_CONFIG \
-  --output-root $TRAJ_ROOT \
-  --batch-size 64 \
-  --set teacher.local_files_only=false
-```
+## 4. Stable command families
 
-When `teacher.local_files_only=false`, the current branch will use:
-
-```bash
-HF_ENDPOINT=https://hf-mirror.com
-```
-
-by default. Override it manually if your environment requires a different mirror
-or the official HuggingFace endpoint.
-
-If your server already has a local snapshot path, you can also bypass the repo
-lookup entirely:
-
-```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/prepare_teacher_trajectories.py \
-  --config $FM_CONFIG \
-  --output-root $TRAJ_ROOT \
-  --batch-size 64 \
-  --set teacher.name_or_path='/cache/huggingface/hub/models--google--ddpm-cifar10-32/snapshots/<snapshot_id>'
-```
-
-## 5. Map-branch training command
-
-```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py --config $FM_CONFIG --run-root $RUN_ROOT
-```
-
-If the online teacher is not already cached under `/cache/huggingface`, allow
-one mirrored online fetch:
+### Train
 
 ```bash
 CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
   --config $FM_CONFIG \
   --run-root $RUN_ROOT \
-  --set teacher.local_files_only=false
+  --verbose
 ```
 
-Quick diagnostic run:
-
-```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py --config $FM_CONFIG --run-root $RUN_ROOT
-```
-
-Recommended use:
-- first activate the quick experiment from `EXPERIMENT_LOG.md`
-- run the same training command shown above
-- check whether `train_pixel_loss / train_perceptual_loss / train_endpoint_loss` move in the expected direction
-- then activate the full experiment and rerun the same command
-
-Current target mode:
-- `target.builder=teacher_sampler`
-
-Current semantics:
-- preserve `dgfm` time semantics
-- sample `0 <= t < s <= 1`
-- train `M_theta(x_t, t, s) -> x_s_teacher`
-
-Current CTM-like discrete target policy:
-- `target.sampling_mode = ctm_discrete`
-- `target.start_scales = 33`
-- `target.num_heun_step = 17`
-- `target.num_heun_step_random = true`
-- `target.heun_step_strategy = weighted`
-- `target.sample_s_strategy = uniform`
-
-CTM-aligned additions in the current branch:
-- online teacher target construction
-- CTM-like discrete time-pair sampling
-- CTM-style preconditioning on the explicit map UNet
-- perceptual loss on direct map matching
-- endpoint few-step teacher loss on rollout from the same teacher `x_0`
-
-Endpoint loss status:
-- kept as an auxiliary interface
-- not treated as the primary CTM-faithfulness mechanism
-- safe to ablate independently in later experiments
-
-Preconditioning is treated here as a training/sampling stabilization tip:
-- normalize noisy inputs before they enter the map UNet
-- keep a skip/output scaling around the current state
-- make the few-step map updates numerically easier to learn
-- do not treat it as a separate architecture line in the experiment narrative
-
-Current A100-oriented throughput settings:
-- `train.batch_size = 128`
-- `train.num_workers = 8`
-- `train.persistent_workers = true`
-- `train.prefetch_factor = 4`
-- `runtime.cudnn_benchmark = true`
-
-## 6. Resume command
-
-```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
-  --config $FM_CONFIG \
-  --run-root $RUN_ROOT \
-  --resume $CKPT_DIR/last.pt
-```
-
-## 7. Map-branch evaluation command
-
-If FID weights download is slow on A100, set a mirror before evaluation:
-
-```bash
-export DGFM_TORCH_FIDELITY_MIRROR_PREFIX=https://githubfast.com/
-```
-
-If you already have the Inception weights locally, use:
-
-```bash
-export DGFM_TORCH_FIDELITY_WEIGHTS_PATH=/path/to/weights-inception-2015-12-05-6726825d.pth
-```
-
-Smoke evaluation:
-
-```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
-  --config $FM_CONFIG \
-  --checkpoint $CKPT_DIR/best.pt \
-  --eval-root $METRIC_ROOT/smoke \
-  --steps 1 2 4 8 16 32 64 128 256
-```
-
-Formal evaluation:
+### Eval
 
 ```bash
 CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
@@ -318,25 +121,7 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
   --steps 1 2 4 8 16 32 64 128 256
 ```
 
-Current evaluation memory guards:
-- `eval.sample_batch_size = 64`
-- `eval.fixed_grid_batch_size = 16`
-- use `--sample-batch-size` to shrink per-forward rollout further if `16`-step eval still pressures memory
-
-## 8. Qualitative sampling command
-
-```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_sample.py \
-  --config $FM_CONFIG \
-  --checkpoint $CKPT_DIR/best.pt \
-  --output-dir $SAMPLE_ROOT/steps16 \
-  --steps 16 \
-  --num-samples 64 \
-  --sample-batch-size 16 \
-  --fixed-seed 42
-```
-
-## 9. Multistep panel command
+### Multi-step panel
 
 ```bash
 CUDA_VISIBLE_DEVICES=1 python scripts/run_multistep_panel.py \
@@ -348,45 +133,67 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_multistep_panel.py \
   --fixed-seed 42
 ```
 
-## 10. Output layout
+### Official sample export
 
-Training:
-- `$CKPT_DIR/best.pt`
-- `$CKPT_DIR/last.pt`
+```bash
+CUDA_VISIBLE_DEVICES=1 python scripts/run_export_samples_npz.py \
+  --config $FM_CONFIG \
+  --checkpoint $CKPT_DIR/best.pt \
+  --out $METRIC_ROOT/official/step16_samples.npz \
+  --steps 16
+```
+
+This writes:
+- `arr_0=[N,H,W,C] uint8`
+- optional `labels`
+
+### Official metrics
+
+```bash
+CUDA_VISIBLE_DEVICES=1 python scripts/run_evaluate_metrics.py \
+  --config $FM_CONFIG \
+  --samples $METRIC_ROOT/official/step16_samples.npz \
+  --reference ${OFFICIAL_REFERENCE_NPZ:-$IMAGENET64_REFERENCE_NPZ} \
+  --out $METRIC_ROOT/official/step16_metrics.json
+```
+
+Use:
+- `OFFICIAL_REFERENCE_NPZ` for the current dataset if you have a dataset-specific
+  reference batch
+- `IMAGENET64_REFERENCE_NPZ` for ImageNet64 official-style evaluation
+
+### Held-out defect
+
+```bash
+CUDA_VISIBLE_DEVICES=1 python scripts/run_evaluate_defect.py \
+  --config $FM_CONFIG \
+  --checkpoint $CKPT_DIR/best.pt \
+  --out $METRIC_ROOT/defect/heldout.json
+```
+
+## 5. What to inspect after each run
+
+Stage 1:
 - `$LOG_ROOT/train.jsonl`
-- `$LOG_ROOT/config_resolved.yaml`
-- `/temp/Zhengwei/dgfm_runs/<FM_EXP>/checkpoints/best.pt`
-- `/temp/Zhengwei/dgfm_runs/<FM_EXP>/checkpoints/last.pt`
-- `/temp/Zhengwei/dgfm_runs/<FM_EXP>/logs/train.jsonl`
-- `/temp/Zhengwei/dgfm_runs/<FM_EXP>/logs/config_resolved.yaml`
-
-Evaluation:
-- `$METRIC_ROOT/reports/summary.csv`
-- `$METRIC_ROOT/reports/best.json`
-- `$METRIC_ROOT/steps16/fixed_seed_grid.png`
-
-Sampling:
-- `$SAMPLE_ROOT/steps16/grid.png`
+- `$METRIC_ROOT/reports/summary.json`
 - `$SAMPLE_ROOT/multistep_panel/multistep_panel.png`
 
-## 11. Current target implementation
+Stage 2:
+- `$METRIC_ROOT/official/*.json`
+- `$METRIC_ROOT/defect/*.json`
 
-Primary implementation:
-- `src/dgfm/targets/builder.py`
-- `src/dgfm/teachers/diffusers_ddpm.py`
+Key readout:
+- few-step FID trend
+- `train_update_ratio / val_update_ratio`
+- `train_update_cosine / val_update_cosine`
+- `timewarp_time_grid`
+- `timewarp_interval_defects`
+- official `fid / inception_score_mean / precision / recall`
+- held-out `defect_mean / defect_by_t_bin / defect_by_step_count`
 
-Optional offline cache path:
-- `src/dgfm/datasets/trajectory.py`
-- `scripts/prepare_teacher_trajectories.py`
+## 6. Cache notes
 
-## 12. Future time-warp integration
-
-The current map branch is designed so time-warp attaches in two places:
-
-1. sampler time grid
-- replace uniform `t_0 < ... < t_K`
-- preserve iterative map rollout
-
-2. training tuple sampling
-- replace current `(t, s)` sampling in `AnalyticPathTargetBuilder`
-- keep trainer and model interface stable
+- `TORCH_HOME` defaults to `/cache/Zhengwei/torch_home`
+- `HF_HOME` defaults to `/cache/huggingface`
+- `DGFM_ARCHIVE_ROOT` mirrors logs/checkpoints/samples into `/temp/Zhengwei/...`
+- `REF_ROOT` defaults to `/cache/Zhengwei/dgfm_refs`

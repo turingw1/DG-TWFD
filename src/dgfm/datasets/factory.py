@@ -6,6 +6,7 @@ import torch
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, transforms
 
+from .imagenet import build_imagenet64_datasets
 from .trajectory import build_trajectory_dataloaders
 
 
@@ -82,6 +83,15 @@ def build_image_dataloaders(config: dict) -> dict[str, DataLoader]:
         train_set = datasets.ImageFolder(root=train_root, transform=train_transform)
         val_set = datasets.ImageFolder(root=val_root, transform=eval_transform)
         test_set = val_set
+    elif dataset_cfg["name"] == "imagenet64":
+        train_transform, eval_transform = _build_imagefolder_transforms(image_size=image_size)
+        train_set, val_set, test_set = build_imagenet64_datasets(
+            dataset_cfg,
+            train_transform=train_transform,
+            eval_transform=eval_transform,
+            val_fraction=val_split,
+            seed=int(config["experiment"].get("seed", 42)),
+        )
     else:
         raise ValueError(f"Unsupported dataset: {dataset_cfg['name']}")
 

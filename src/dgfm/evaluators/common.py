@@ -75,6 +75,7 @@ def sample_with_ode(
     step_count: int,
     method: str = "midpoint",
     time_grid: torch.Tensor | None = None,
+    extra: dict | None = None,
 ) -> torch.Tensor:
     x = x_init
     if time_grid is None:
@@ -90,20 +91,20 @@ def sample_with_ode(
         dt = t1 - t0
         t0_vec = t0.to(dtype=x.dtype).expand(batch)
         if method == "euler":
-            k1 = model(x, t0_vec)
+            k1 = model(x, t0_vec, extra=dict(extra or {}))
             x = x + dt * k1
             continue
         if method == "heun2":
-            k1 = model(x, t0_vec)
+            k1 = model(x, t0_vec, extra=dict(extra or {}))
             t1_vec = t1.to(dtype=x.dtype).expand(batch)
-            k2 = model(x + dt * k1, t1_vec)
+            k2 = model(x + dt * k1, t1_vec, extra=dict(extra or {}))
             x = x + 0.5 * dt * (k1 + k2)
             continue
         if method == "midpoint":
-            k1 = model(x, t0_vec)
+            k1 = model(x, t0_vec, extra=dict(extra or {}))
             tmid = t0 + 0.5 * dt
             tmid_vec = tmid.to(dtype=x.dtype).expand(batch)
-            k2 = model(x + 0.5 * dt * k1, tmid_vec)
+            k2 = model(x + 0.5 * dt * k1, tmid_vec, extra=dict(extra or {}))
             x = x + dt * k2
             continue
         raise ValueError(f"Unsupported solver method: {method}")
@@ -118,6 +119,7 @@ def sample_from_model(
     method: str = "midpoint",
     time_grid: torch.Tensor | None = None,
     timewarp: TimeWarpMonotone | None = None,
+    extra: dict | None = None,
 ) -> torch.Tensor:
     if time_grid is None:
         time_grid = build_runtime_time_grid(
@@ -129,8 +131,8 @@ def sample_from_model(
         )
     mode = objective_mode(config)
     if mode == "explicit_map":
-        return rollout_with_map(model=model, x_init=x_init, step_count=step_count, time_grid=time_grid)
-    return sample_with_ode(model=model, x_init=x_init, step_count=step_count, method=method, time_grid=time_grid)
+        return rollout_with_map(model=model, x_init=x_init, step_count=step_count, time_grid=time_grid, extra=extra)
+    return sample_with_ode(model=model, x_init=x_init, step_count=step_count, method=method, time_grid=time_grid, extra=extra)
 
 
 @torch.no_grad()
@@ -145,6 +147,7 @@ def sample_from_model_batched(
     timewarp: TimeWarpMonotone | None = None,
     max_batch_size: int = 0,
     move_to_cpu: bool = False,
+    extra: dict | None = None,
 ) -> torch.Tensor:
     batch_size = int(x_init.shape[0])
     if max_batch_size <= 0 or batch_size <= max_batch_size:
@@ -156,6 +159,7 @@ def sample_from_model_batched(
             method=method,
             time_grid=time_grid,
             timewarp=timewarp,
+            extra=extra,
         )
         return out.detach().cpu() if move_to_cpu else out
 
@@ -170,9 +174,23 @@ def sample_from_model_batched(
             method=method,
             time_grid=time_grid,
             timewarp=timewarp,
+            extra={key: value[start:stop] for key, value in (extra or {}).items()},
         )
         outputs.append(out.detach().cpu() if move_to_cpu else out)
     return torch.cat(outputs, dim=0)
+
+
+def sample_condition_labels(
+    config: dict,
+    batch_size: int,
+    *,
+    device: torch.device,
+    generator: torch.Generator | None = None,
+) -> torch.Tensor | None:
+    num_classes = config.get("model", {}).get("num_classes")
+    if num_classes is None:
+        return None
+    return torch.randint(int(num_classes), (batch_size,), device=device, generator=generator)
 
 
 @torch.no_grad()

@@ -95,3 +95,21 @@ def test_load_stage1_warp_and_budget_configs() -> None:
     full = load_experiment_config("configs/experiment/fm_cifar10_map_branch_s1_e6_budget_full.yaml")
     assert full["experiment"]["name"] == "fm_cifar10_map_branch_s1_e6_budget_full"
     assert full["loss"]["timewarp_weight"] == 0.0
+
+
+def test_load_stage1_spline_and_stage2_external_configs() -> None:
+    spline = load_experiment_config("configs/experiment/fm_cifar10_map_branch_s1_e5_warp_spline.yaml")
+    assert spline["scheduler"]["timewarp"]["type"] == "spline_mass"
+    assert spline["loss"]["timewarp_weight"] == 1.0
+
+    metrics = load_experiment_config("configs/experiment/fm_cifar10_map_branch_s2_official_metrics.yaml")
+    assert metrics["eval"]["official_metrics"] == ["fid", "is", "precision", "recall"]
+    assert metrics["eval"]["official_num_samples"] == 50000
+
+    defect = load_experiment_config("configs/experiment/fm_cifar10_map_branch_s2_defect_eval.yaml")
+    assert defect["eval"]["defect_num_samples"] == 4096
+    assert defect["eval"]["defect_grid_steps"] == 16
+
+    imagenet = load_experiment_config("configs/experiment/fm_imagenet64_baseline_smoke.yaml")
+    assert imagenet["dataset"]["name"] == "imagenet64"
+    assert imagenet["model"]["num_classes"] == 1000

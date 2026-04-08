@@ -25,26 +25,30 @@ This directory is the complete documentation context for the current
    - source variant names
    - run naming and short annotations
 
-3. [ENVIRONMENT.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/ENVIRONMENT.md)
+3. [required_experiments.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/required_experiments.md)
+   - required Stage 1 algorithmic ablations
+   - required Stage 2 official-metrics / defect / ImageNet64 smoke runs
+
+4. [ENVIRONMENT.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/ENVIRONMENT.md)
    - conda environment creation
    - package versions
    - validation commands
 
-4. [MASTER_PLAN.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/MASTER_PLAN.md)
+5. [MASTER_PLAN.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/MASTER_PLAN.md)
    - branch architecture
    - migration boundary from CTM to `dgfm`
    - module responsibilities
 
-5. [TIMEWARP_CTM_FINALIZATION_PLAN.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/TIMEWARP_CTM_FINALIZATION_PLAN.md)
+6. [TIMEWARP_CTM_FINALIZATION_PLAN.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/TIMEWARP_CTM_FINALIZATION_PLAN.md)
    - finalization roadmap for time-warp and CTM-style targets
    - task ordering
    - interface boundaries
    - acceptance criteria for the next major code update
 
-6. [ACCEPTANCE_CHECKLIST.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/ACCEPTANCE_CHECKLIST.md)
+7. [ACCEPTANCE_CHECKLIST.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/ACCEPTANCE_CHECKLIST.md)
    - architecture, functional, numerical, research-readiness checks
 
-7. [TECHNICAL_REPORT.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/TECHNICAL_REPORT.md)
+8. [TECHNICAL_REPORT.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/TECHNICAL_REPORT.md)
    - condensed technical rationale for the branch design
 
 ## Current branch scope
@@ -80,8 +84,19 @@ This directory is the complete documentation context for the current
 - current time-warp status:
   - shared train/sample/eval time-warp pipeline is implemented
   - learnable monotone warp is supported
+  - spline-mass monotone warp is supported
   - checkpoint restore for learned warp is supported
   - default config remains disabled until an experiment explicitly enables it
+- current external-eval status:
+  - official-style `.npz` sample export is implemented
+  - official FID / IS / Precision / Recall bridge is implemented
+  - held-out semigroup defect evaluation is implemented
+- current data-extension status:
+  - `imagenet64` dataset ingestion supports raw-ILSVRC-style train folders,
+    preprocessed folders, and preprocessed zip archives
+  - ImageNet64 baseline smoke configs are available
+  - ImageNet64 map-branch teacher execution remains an external-integration
+    follow-up, not a claimed finished path
 - current CTM target status:
   - trainer now uses explicit `estimate / target / stop-grad` semantics
   - `teacher_sampler` now emits `t_dt` and teacher bridge states

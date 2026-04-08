@@ -72,12 +72,14 @@ class BaselineTrainer:
         batch_limit = int(train_cfg.get(batch_limit_key, 0) or 0)
         use_amp = bool(self.config.get("runtime", {}).get("amp", True))
         use_skewed_timesteps = bool(train_cfg.get("skewed_timesteps", True))
+        class_cond = self.config.get("model", {}).get("num_classes") is not None
         ctx = torch.enable_grad if train else torch.no_grad
         with ctx():
-            for batch_idx, (images, _labels) in enumerate(loader):
+            for batch_idx, (images, labels) in enumerate(loader):
                 if batch_limit > 0 and batch_idx >= batch_limit:
                     break
                 images = images.to(device)
+                labels = labels.to(device)
                 images = images * 2.0 - 1.0
                 noise = torch.randn_like(images)
                 if use_skewed_timesteps:
@@ -85,8 +87,9 @@ class BaselineTrainer:
                 else:
                     t = torch.rand(images.shape[0], device=device)
                 path_sample = path.sample(x_0=noise, x_1=images, t=t)
+                model_extra = {"label": labels} if class_cond else {}
                 with _autocast_context(device, use_amp):
-                    pred = model(path_sample.x_t, path_sample.t, extra={})
+                    pred = model(path_sample.x_t, path_sample.t, extra=model_extra)
                     loss = torch.mean((pred - path_sample.dx_t) ** 2)
                 if train:
                     optimizer.zero_grad(set_to_none=True)

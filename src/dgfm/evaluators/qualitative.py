@@ -64,6 +64,7 @@ def save_multistep_qualitative_panel(
     sample_batch_size: int = 0,
     device: torch.device,
     timewarp: torch.nn.Module | None = None,
+    sample_extra: dict | None = None,
 ) -> dict[str, str | int | list[int]]:
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -89,6 +90,7 @@ def save_multistep_qualitative_panel(
             timewarp=timewarp,
             max_batch_size=sample_batch_size,
             move_to_cpu=True,
+            extra=sample_extra,
         )
         samples_by_step[step_count] = to_unit_interval(samples)
 
@@ -110,6 +112,7 @@ def save_multistep_qualitative_panel(
         "solver_method": solver_method,
         "noise": noise.detach().cpu(),
         "samples_by_step": samples_by_step,
+        "sample_extra": {key: value.detach().cpu() for key, value in (sample_extra or {}).items()},
     }
     payload_path = output_dir / "multistep_panel.pt"
     torch.save(payload, payload_path)

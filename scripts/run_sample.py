@@ -20,6 +20,7 @@ from dgfm.evaluators.common import (
     load_model_from_checkpoint,
     load_timewarp_from_checkpoint,
     objective_mode,
+    sample_condition_labels,
     sample_from_model_batched,
     to_unit_interval,
 )
@@ -59,6 +60,8 @@ def main() -> None:
     sample_batch_size = int(args.sample_batch_size)
     if sample_batch_size <= 0:
         sample_batch_size = int(config.get("eval", {}).get("sample_batch_size", 0) or 0)
+    labels = sample_condition_labels(config, args.num_samples, device=device)
+    sample_extra = {"label": labels} if labels is not None else None
     samples = sample_from_model_batched(
         config=config,
         model=model,
@@ -67,9 +70,12 @@ def main() -> None:
         timewarp=timewarp,
         max_batch_size=sample_batch_size,
         move_to_cpu=True,
+        extra=sample_extra,
     )
     samples = to_unit_interval(samples)
     torch.save(samples, output_dir / "samples.pt")
+    if labels is not None:
+        torch.save(labels.detach().cpu(), output_dir / "labels.pt")
     save_image(samples, output_dir / "grid.png", nrow=max(1, int(args.num_samples**0.5)))
     image_dir = output_dir / "images"
     image_dir.mkdir(parents=True, exist_ok=True)
@@ -91,6 +97,8 @@ def main() -> None:
     )
     print(f"timewarp_enabled: {timewarp is not None}")
     print(f"time_grid: {summarize_time_grid(time_grid)['time_grid']}")
+    if labels is not None:
+        print(f"sample_labels: {labels.detach().cpu().tolist()}")
 
 
 if __name__ == "__main__":
