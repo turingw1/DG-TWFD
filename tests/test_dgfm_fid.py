@@ -6,7 +6,13 @@ from pathlib import Path
 
 from dgfm.evaluators.common import solver_nfe
 import dgfm.evaluators.fid as fid_module
-from dgfm.evaluators.fid import GaussianStats, _resolve_inception_weights_path, frechet_distance, to_uint8
+from dgfm.evaluators.fid import (
+    GaussianStats,
+    _resolve_inception_weights_path,
+    _resolve_mirror_prefixed_url,
+    frechet_distance,
+    to_uint8,
+)
 
 
 def test_frechet_distance_zero_for_identical_stats() -> None:
@@ -56,3 +62,10 @@ def test_default_mirror_prefix_downloads_into_torch_hub_cache(monkeypatch, tmp_p
     assert resolved is not None
     assert Path(resolved).is_file()
     assert called["url"].startswith(fid_module.DEFAULT_FID_MIRROR_PREFIX)
+    assert "https://github.com/" not in called["url"]
+
+
+def test_resolve_mirror_prefixed_url_for_github_release() -> None:
+    url = "https://github.com/toshas/torch-fidelity/releases/download/v0.2.0/weights-inception-2015-12-05-6726825d.pth"
+    mirrored = _resolve_mirror_prefixed_url("https://githubfast.com/", url)
+    assert mirrored == "https://githubfast.com/toshas/torch-fidelity/releases/download/v0.2.0/weights-inception-2015-12-05-6726825d.pth"

@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from typing import Iterable
 from urllib.error import URLError, HTTPError
+from urllib.parse import urlparse
 
 import numpy as np
 import torch
@@ -18,6 +19,14 @@ from torch_fidelity.metric_fid import KEY_METRIC_FID, fid_statistics_to_metric
 FID_FEATURE_LAYER = "2048"
 FID_WEIGHTS_FILENAME = Path(URL_INCEPTION_V3).name
 DEFAULT_FID_MIRROR_PREFIX = "https://githubfast.com/"
+
+
+def _resolve_mirror_prefixed_url(prefix: str, source_url: str) -> str:
+    parsed = urlparse(source_url)
+    if parsed.scheme in {"http", "https"} and parsed.netloc == "github.com":
+        mirrored_path = parsed.path.lstrip("/")
+        return prefix.rstrip("/") + "/" + mirrored_path
+    return prefix.rstrip("/") + "/" + source_url.lstrip("/")
 
 
 def _resolve_inception_weights_path() -> str | None:
@@ -39,7 +48,7 @@ def _resolve_inception_weights_path() -> str | None:
     if mirror_url:
         candidate_urls.append(mirror_url)
     if mirror_prefix:
-        candidate_urls.append(str(mirror_prefix) + URL_INCEPTION_V3)
+        candidate_urls.append(_resolve_mirror_prefixed_url(str(mirror_prefix), URL_INCEPTION_V3))
     candidate_urls.append(URL_INCEPTION_V3)
 
     last_error: Exception | None = None
