@@ -48,6 +48,7 @@ Both branches share:
   - `estimate = M_theta(x_t, t, s)`
   - `target = stop_grad(M_target(x_t_dt, t_dt, s))` by default
 - use EMA shadow as the default `target_source`
+- use EMA rollout as the default `bridge_source` when available
 - keep teacher `x_s_teacher` available as a fallback anchor source
 - keep endpoint rollout loss as an auxiliary interface
 - evaluate at `1/2/4/8/16` steps via iterative rollout
@@ -60,8 +61,8 @@ not yet as:
 
 - CTM-faithful target generation
 
-because the intermediate bridge state still comes from teacher trajectory
-lookup rather than an in-loop CTM Heun rollout.
+because the intermediate bridge state is now produced by a map-branch rollout
+bridge rather than a CTM-faithful Heun solver.
 
 ## Why this is the correct bridge
 
@@ -94,7 +95,8 @@ Reason:
     - estimate source
     - target source
     - stop-grad policy
-  - future work should replace teacher-bridge `x_t_dt` lookup with a more
+    - bridge source
+  - future work should replace the current map rollout bridge with a more
     faithful solver-derived bridge state
 
 ## Current time-warp status

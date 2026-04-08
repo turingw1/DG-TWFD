@@ -67,6 +67,7 @@ This directory is the complete documentation context for the current
   - `target_construction=ctm_consistency`
   - `target_source=ema_model`
   - `target_stop_grad=true`
+  - `bridge_source=ema_model_rollout`
 - teacher internal rollout:
   - `128` DDIM steps
 - current loss stack:
@@ -84,8 +85,8 @@ This directory is the complete documentation context for the current
 - current CTM target status:
   - trainer now uses explicit `estimate / target / stop-grad` semantics
   - `teacher_sampler` now emits `t_dt` and teacher bridge states
-  - bridge state generation is still teacher-trajectory-based, not yet a
-    CTM-faithful solver rollout
+  - default bridge state generation now uses EMA rollout when available
+  - bridge rollout is still map-branch-native, not yet a CTM-faithful solver
 - quick verification path:
   - `configs/experiment/fm_cifar10_map_branch_quick.yaml`
 - training-time archive mirror:

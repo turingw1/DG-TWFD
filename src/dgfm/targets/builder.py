@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
 from dataclasses import dataclass
 
 import torch
@@ -22,6 +23,7 @@ class TargetBatch:
     target_construction: str = "trajectory_regression"
     target_source: str = "teacher"
     target_stop_grad: bool = True
+    bridge_source: str = "teacher"
 
 
 def _skewed_timestep_sample(num_samples: int, device: torch.device) -> torch.Tensor:
@@ -121,6 +123,9 @@ class TeacherSamplerTargetBuilder:
         self.target_construction = str(self.target_cfg.get("target_construction", "ctm_consistency"))
         self.target_source = str(self.target_cfg.get("target_source", "ema_model"))
         self.target_stop_grad = bool(self.target_cfg.get("target_stop_grad", True))
+        self.bridge_source = str(self.target_cfg.get("bridge_source", "ema_model_rollout"))
+        self.bridge_steps = max(1, int(self.target_cfg.get("bridge_steps", 1)))
+        self.bridge_stop_grad = bool(self.target_cfg.get("bridge_stop_grad", True))
 
     def set_timewarp(self, timewarp: TimeWarpMonotone | None) -> None:
         self.timewarp = timewarp
@@ -199,12 +204,54 @@ class TeacherSamplerTargetBuilder:
             target_construction=self.target_construction,
             target_source=self.target_source,
             target_stop_grad=self.target_stop_grad,
+            bridge_source="teacher",
         )
 
+    def _resolve_bridge_model(self, *, model, target_model):
+        if self.bridge_source == "teacher":
+            return None
+        if self.bridge_source == "ema_model_rollout":
+            return target_model if target_model is not None else model
+        if self.bridge_source == "current_model_rollout":
+            return model
+        raise ValueError(f"Unsupported bridge_source: {self.bridge_source}")
+
+    def _rollout_bridge_state(
+        self,
+        *,
+        source_model,
+        x_t: torch.Tensor,
+        t: torch.Tensor,
+        t_dt: torch.Tensor,
+    ) -> torch.Tensor:
+        grad_ctx = torch.no_grad() if self.bridge_stop_grad else nullcontext()
+        with grad_ctx:
+            current = x_t
+            for step_idx in range(self.bridge_steps):
+                alpha0 = float(step_idx) / float(self.bridge_steps)
+                alpha1 = float(step_idx + 1) / float(self.bridge_steps)
+                step_t = t + (t_dt - t) * alpha0
+                step_s = t + (t_dt - t) * alpha1
+                current = source_model(current, step_t, step_s, extra={})
+        return current.detach() if self.bridge_stop_grad else current
+
     def build_from_batch(self, batch, *, device: torch.device, path=None, model=None, target_model=None) -> TargetBatch:
-        del path, model, target_model
+        del path
         batch_size = self._batch_size_from_batch(batch)
-        return self._sample_online_teacher_pairs(batch_size=batch_size, device=device)
+        target_batch = self._sample_online_teacher_pairs(batch_size=batch_size, device=device)
+        if self.target_construction != "ctm_consistency":
+            return target_batch
+        bridge_model = self._resolve_bridge_model(model=model, target_model=target_model)
+        if bridge_model is None or target_batch.x_t_dt is None or target_batch.t_dt is None:
+            return target_batch
+        target_batch.x_t_dt = self._rollout_bridge_state(
+            source_model=bridge_model,
+            x_t=target_batch.x_t,
+            t=target_batch.t,
+            t_dt=target_batch.t_dt,
+        )
+        target_batch.bridge_source = self.bridge_source
+        return target_batch
 
 
 def build_target_builder(config: dict):

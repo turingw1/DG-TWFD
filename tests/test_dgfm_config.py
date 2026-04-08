@@ -25,6 +25,7 @@ def test_load_experiment_config_expands_bash_style_default_env(monkeypatch) -> N
     assert cfg["target"]["builder"] == "teacher_sampler"
     assert cfg["target"]["target_construction"] == "ctm_consistency"
     assert cfg["target"]["target_source"] == "ema_model"
+    assert cfg["target"]["bridge_source"] == "ema_model_rollout"
     assert cfg["teacher"]["name_or_path"] == "google/ddpm-cifar10-32"
 
     fallback_cfg = load_experiment_config("configs/target/teacher_trajectory.yaml")

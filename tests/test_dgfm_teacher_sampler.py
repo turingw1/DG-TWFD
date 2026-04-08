@@ -4,6 +4,12 @@ from dgfm.targets import build_target_builder
 from dgfm.targets.pair_sampling import sample_target_pair_indices, sample_target_triplet_indices
 
 
+class _BridgeMap(torch.nn.Module):
+    def forward(self, x_t, t, s, extra=None):
+        del extra
+        return x_t + (s - t).view(-1, 1, 1, 1)
+
+
 def _teacher_sampler_config() -> dict:
     return {
         "experiment": {"seed": 42},
@@ -24,6 +30,9 @@ def _teacher_sampler_config() -> dict:
             "num_heun_step_random": False,
             "heun_step_strategy": "uniform",
             "sample_s_strategy": "uniform",
+            "bridge_source": "ema_model_rollout",
+            "bridge_steps": 1,
+            "bridge_stop_grad": True,
             "loss_type": "mse",
         },
         "loss": {"pixel_weight": 1.0, "perceptual_weight": 0.0, "endpoint_weight": 0.0},
@@ -42,6 +51,7 @@ def test_teacher_sampler_target_builder_returns_teacher_pairs() -> None:
     assert target.t_dt is not None
     assert target.target_construction == "ctm_consistency"
     assert target.target_source == "ema_model"
+    assert target.bridge_source == "teacher"
     assert torch.all(target.s > target.t)
     assert torch.all(target.t_dt > target.t)
     assert torch.all(target.s >= target.t_dt)
@@ -93,3 +103,20 @@ def test_teacher_sampler_builder_can_use_warped_time_grid() -> None:
     grid = builder.current_u_grid(device=torch.device("cpu"), dtype=torch.float32)
     uniform = torch.linspace(0.0, 1.0, steps=9)
     assert not torch.allclose(grid, uniform)
+
+
+def test_teacher_sampler_builder_can_use_model_rollout_bridge() -> None:
+    cfg = _teacher_sampler_config()
+    builder = build_target_builder(cfg)
+    batch = (torch.zeros(2, 3, 32, 32), torch.zeros(2, dtype=torch.long))
+    target = builder.build_from_batch(
+        batch,
+        device=torch.device("cpu"),
+        path=None,
+        model=_BridgeMap(),
+        target_model=_BridgeMap(),
+    )
+    assert target.bridge_source == "ema_model_rollout"
+    assert target.x_t_dt is not None
+    expected = target.x_t + (target.t_dt - target.t).view(-1, 1, 1, 1)
+    assert torch.allclose(target.x_t_dt, expected, atol=1e-6)

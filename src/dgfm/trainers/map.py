@@ -303,6 +303,7 @@ class MapTrainer:
         target_construction_name = "trajectory_regression"
         target_source_name = "teacher"
         target_stop_grad = True
+        bridge_source_name = "teacher"
         train_cfg = self.config.get("train", {})
         target_cfg = self.config.get("target", {})
         loss_cfg = self.config.get("loss", {})
@@ -342,6 +343,7 @@ class MapTrainer:
                     target_construction_name = str(target_meta["construction"])
                     target_source_name = str(target_meta["source"])
                     target_stop_grad = bool(target_meta["stop_grad"])
+                    bridge_source_name = str(getattr(target_batch, "bridge_source", "teacher"))
                     pred_losses = _compute_prediction_losses(
                         pred,
                         resolved_target,
@@ -488,6 +490,7 @@ class MapTrainer:
             "target_construction": target_construction_name,
             "target_source": target_source_name,
             "target_stop_grad": target_stop_grad,
+            "bridge_source": bridge_source_name,
         }
         payload.update({key: value / denom for key, value in total_diag.items()})
         if timewarp is not None:
@@ -663,6 +666,7 @@ class MapTrainer:
                 "target_construction": train_stats["target_construction"],
                 "target_source": train_stats["target_source"],
                 "target_stop_grad": train_stats["target_stop_grad"],
+                "bridge_source": train_stats["bridge_source"],
                 "target_uses_dataset_images": target_uses_dataset_images,
                 "global_step": global_step,
                 "elapsed_sec": elapsed,
@@ -714,6 +718,7 @@ class MapTrainer:
                 f"target={target_mode} "
                 f"construction={train_stats['target_construction']} "
                 f"target_source={train_stats['target_source']} "
+                f"bridge_source={train_stats['bridge_source']} "
                 f"dataset_images={'yes' if target_uses_dataset_images else 'no'} "
                 f"t_mean={train_stats['t_mean']:.4f} s_mean={train_stats['s_mean']:.4f} "
                 f"delta_mean={train_stats['delta_mean']:.4f} endpoint_step={train_stats['endpoint_step']:.2f} "
@@ -741,6 +746,7 @@ class MapTrainer:
                     "val_timewarp_loss": val_stats["timewarp_loss"],
                     "target_construction": train_stats["target_construction"],
                     "target_source": train_stats["target_source"],
+                    "bridge_source": train_stats["bridge_source"],
                     "target_uses_dataset_images": target_uses_dataset_images,
                 }
                 if "timewarp_time_grid" in payload:

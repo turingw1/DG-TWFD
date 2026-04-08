@@ -286,13 +286,18 @@ Potential internal concepts:
   - `estimate = model(x_t, t, s)`
   - `target = stop_grad(target_model(x_t_dt, t_dt, s))` by default
   - default target source is `ema_model`
+- bridge-state construction is also configurable:
+  - `bridge_source=teacher`
+  - `bridge_source=ema_model_rollout`
+  - `bridge_source=current_model_rollout`
+- default bridge path now uses an EMA rollout bridge when the target model is
+  available
 - this means the main loss is no longer hard-coded to plain
   `x_s_teacher` regression
 - current limitation:
-  - `x_t_dt` still comes from teacher trajectory lookup rather than a
-    CTM-style solver rollout inside the trainer
-  - this is interface-complete but not yet CTM-faithful in the internal
-    target-generation step
+  - the rollout bridge is a map-branch interpolation over `(t, t_dt)`, not a
+    CTM-faithful Heun solver
+  - teacher lookup remains available as a fallback bridge mode
 
 ## Task 6. Keep preconditioning explicitly CTM-inspired
 
