@@ -10,7 +10,7 @@ import textwrap
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_OUTPUT = Path("/tmp/dgfm-map-branch-public")
+DEFAULT_OUTPUT = ROOT / "public_repos" / "dgfm-map-branch-public"
 
 CONFIG_PATHS = [
     "configs/base.yaml",

@@ -42,3 +42,4 @@ logs/
 wandb/
 tensorboard/
 outputs/
+public_repos/
