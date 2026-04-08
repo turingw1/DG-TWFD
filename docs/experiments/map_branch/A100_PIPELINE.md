@@ -30,18 +30,20 @@ Then activate the selected experiment once:
 source scripts/experiments/activate_fm_cifar10.sh <EXP_VARIANT> <EXP_TAG>
 ```
 
-For the dedicated timewarp smoke test, use the row recorded in
-[EXPERIMENT_LOG.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/EXPERIMENT_LOG.md).
-That variant already enables the learnable timewarp config, so no extra
-`--set scheduler.timewarp.enabled=true` override is needed in the pipeline.
+`<EXP_VARIANT>` can now be:
+- one of the legacy short aliases:
+  - `map_branch`
+  - `map_branch_quick`
+  - `stable`
+- or any config stem under `configs/experiment/`, for example:
+  - `fm_cifar10_map_branch_s1_e1_ctm_ema`
 
-Recommended order when diagnosing map-branch viability:
-- first use the smaller `map_branch_timewarp_smoke` row from the experiment log
-- inspect the richer diagnostics in `logs/train.jsonl`
-- only then move to `map_branch_timewarp_probe` or larger variants
-- for diagnostic ablations such as `tws02` and `tws03`, use the exact commands
-  recorded in [EXPERIMENT_LOG.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/EXPERIMENT_LOG.md)
-  instead of assuming the plain pipeline commands are sufficient
+Current policy:
+- do not use `--set` in formal experiments
+- encode every experiment difference in a committed config file
+- treat
+  [EXPERIMENT_LOG.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/EXPERIMENT_LOG.md)
+  as the only experiment-entry source of truth
 
 This sets stable environment variables for all later commands in this document:
 - `EXP_VARIANT=<selected variant>`
@@ -303,10 +305,7 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
   --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
   --eval-root $METRIC_ROOT/smoke \
-  --steps 1 2 4 8 16 \
-  --fid-samples 5000 \
-  --fid-batch-size 128 \
-  --sample-batch-size 32
+  --steps 1 2 4 8 16 32 64 128 256
 ```
 
 Formal evaluation:
@@ -316,7 +315,7 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
   --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
   --eval-root $METRIC_ROOT \
-  --steps 1 2 4 8 16
+  --steps 1 2 4 8 16 32 64 128 256
 ```
 
 Current evaluation memory guards:
@@ -344,7 +343,7 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_multistep_panel.py \
   --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
   --output-dir $SAMPLE_ROOT/multistep_panel \
-  --steps 1 2 4 8 16 \
+  --steps 1 2 4 8 16 32 64 128 256 \
   --num-examples 8 \
   --fixed-seed 42
 ```

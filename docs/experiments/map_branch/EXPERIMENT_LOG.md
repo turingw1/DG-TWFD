@@ -1,206 +1,101 @@
 # MAP Branch Experiment Log
 
-Use this file as the single experiment ledger for the
-`map_branch_ctm_explicit_map` branch.
+This file is the single operational ledger for the current systematic
+experiment phase.
 
 Rules:
-- do not rename [A100_PIPELINE.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/A100_PIPELINE.md) for each run
-- record every new run here with a stable experiment id and source name
-- switch runs through environment variables exported by
+- every formal run must map to one committed config under `configs/experiment/`
+- activate experiments only through
   [activate_fm_cifar10.sh](/home/gzwlinux/vscode/gitProject/DG-TWFD/scripts/experiments/activate_fm_cifar10.sh)
-- before using the pipeline, select one row here and run its activation command
-- keep one row per experiment id
-- add short comments under the table when an experiment needs extra context
+- do not use `--set` in formal runs
+- use the stable
+  [A100_PIPELINE.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/A100_PIPELINE.md)
+  commands after activation
+- old ad-hoc smoke rows are retired; this table is the new source of truth
 
 ## Naming convention
 
 - `EXP_VARIANT`
-  - source config family such as `map_branch` or `map_branch_quick`
+  - exactly the config stem under `configs/experiment/`
 - `EXP_TAG`
-  - short experiment id such as `e001`, `e002`, `diag01`
-- `EXP_NAME`
-  - `${EXP_VARIANT}_${EXP_TAG}`
+  - run id such as `e101a` or `e601a`
 - `FM_EXP`
-  - same as `EXP_NAME`
+  - `${EXP_VARIANT}_${EXP_TAG}`
 
-## Active experiment table
+## Stable pipeline commands
 
-| EXP_TAG | EXP_VARIANT | FM_CONFIG | FM_EXP / EXP_NAME | Activate | Purpose | Status |
-| --- | --- | --- | --- | --- | --- | --- |
-| e001 | map_branch | `configs/experiment/fm_cifar10_map_branch.yaml` | `fm_cifar10_map_branch_e001` | `source scripts/experiments/activate_fm_cifar10.sh map_branch e001` | CTM-like discrete sampler baseline | planned |
-| diag01 | map_branch_quick | `configs/experiment/fm_cifar10_map_branch_quick.yaml` | `fm_cifar10_map_branch_quick_diag01` | `source scripts/experiments/activate_fm_cifar10.sh map_branch_quick diag01` | quick diagnostic before full run | planned |
-| tw001 | map_branch_timewarp_probe | `configs/experiment/fm_cifar10_map_branch_timewarp_probe.yaml` | `fm_cifar10_map_branch_timewarp_probe_tw001` | `source scripts/experiments/activate_fm_cifar10.sh map_branch_timewarp_probe tw001` | quick defect-driven timewarp smoke test | planned |
-| tws01 | map_branch_timewarp_smoke | `configs/experiment/fm_cifar10_map_branch_timewarp_smoke.yaml` | `fm_cifar10_map_branch_timewarp_smoke_tws01` | `source scripts/experiments/activate_fm_cifar10.sh map_branch_timewarp_smoke tws01` | minimal viability run for timewarp + map diagnostics | planned |
-| tws02 | map_branch_timewarp_smoke | `configs/experiment/fm_cifar10_map_branch_timewarp_smoke.yaml` | `fm_cifar10_map_branch_timewarp_smoke_tws02` | `source scripts/experiments/activate_fm_cifar10.sh map_branch_timewarp_smoke tws02` | smoke ablation with timewarp disabled | planned |
-| tws03 | map_branch_timewarp_smoke | `configs/experiment/fm_cifar10_map_branch_timewarp_smoke.yaml` | `fm_cifar10_map_branch_timewarp_smoke_tws03` | `source scripts/experiments/activate_fm_cifar10.sh map_branch_timewarp_smoke tws03` | smoke ablation with endpoint loss disabled | planned |
+After activation, use these commands without extra overrides.
 
-## Pipeline usage contract
+Train:
 
-1. Add or update the target row in this file.
-2. Run the row's `Activate` command once.
-3. Enter [A100_PIPELINE.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/A100_PIPELINE.md).
-4. Use the fixed pipeline commands directly with the exported `$FM_CONFIG`, `$RUN_ROOT`, `$CKPT_DIR`, `$METRIC_ROOT`, and `$SAMPLE_ROOT`.
-
-For diagnostics that intentionally deviate from the stable pipeline template,
-record the exact commands under the experiment note in this file and treat the
-note as the source of truth for that run.
-
-## Notes
-
-### e001
-
-- intended as the first full run after switching away from heuristic pair sampling
-- source target policy:
-  - `target.sampling_mode=ctm_discrete`
-  - `target.start_scales=33`
-  - `target.num_heun_step=17`
-  - `target.sample_s_strategy=uniform`
-- keep endpoint loss enabled as an auxiliary interface
-
-### diag01
-
-- intended to validate direction only
-- quick config keeps reduced teacher steps and lighter endpoint supervision
-
-### tw001
-
-- intended as the first direct validation that learned timewarp can change the
-  effective time grid during training
-- based on the quick map-branch config to keep turnaround short
-- enables:
-  - `scheduler.timewarp.enabled=true`
-  - `scheduler.timewarp.type=learnable_monotone`
-  - `loss.timewarp_weight=1.0`
-- expected validation points:
-  - `train.jsonl` should show non-uniform `timewarp_time_grid`
-  - `train_timewarp_defect_loss` should trend down
-  - eval `metrics.json` should export the learned `time_grid`
-
-### tws01
-
-- intended for fast failure detection before spending A100 time on larger runs
-- compared with `tw001`, this variant further reduces:
-  - teacher internal steps
-  - retained scales
-  - batch size
-  - epoch count
-  - train/val batch caps
-  - eval sample count
-- recommended first pass:
-  - train with pipeline default command
-  - inspect `logs/train.jsonl`
-  - only if the diagnostics look sane, move to `tw001` or a larger run
-- activation:
-  - `source scripts/experiments/activate_fm_cifar10.sh map_branch_timewarp_smoke tws01`
-- train:
 ```bash
 CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
   --config $FM_CONFIG \
   --run-root $RUN_ROOT \
   --verbose
 ```
-- eval:
+
+Eval:
+
 ```bash
 CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
   --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
   --eval-root $METRIC_ROOT \
-  --steps 1 2 4 8 16 32 64 128 256 \
-  --fid-samples 1000 \
-  --sample-batch-size 16
+  --steps 1 2 4 8 16 32 64 128 256
 ```
-- panel:
+
+Panel:
+
 ```bash
 CUDA_VISIBLE_DEVICES=1 python scripts/run_multistep_panel.py \
   --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
-  --output-dir $SAMPLE_ROOT/panel_best \
-  --steps 1 4 16 64 128 256
-```
-- expected outputs:
-  - `logs/train.jsonl`
-  - `$METRIC_ROOT/reports/summary.json`
-  - `$SAMPLE_ROOT/panel_best/multistep_panel.png`
-
-### tws02
-
-- purpose:
-  - isolate whether learned timewarp materially helps
-  - keep the same smoke backbone as `tws01`
-  - disable timewarp in both training and evaluation
-- activation:
-  - `source scripts/experiments/activate_fm_cifar10.sh map_branch_timewarp_smoke tws02`
-- train:
-```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
-  --config $FM_CONFIG \
-  --run-root $RUN_ROOT \
-  --verbose \
-  --set scheduler.timewarp.enabled=false \
-  --set loss.timewarp_weight=0.0
-```
-- eval:
-```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
-  --config $FM_CONFIG \
-  --checkpoint $CKPT_DIR/best.pt \
-  --eval-root $METRIC_ROOT \
+  --output-dir $SAMPLE_ROOT/multistep_panel \
   --steps 1 2 4 8 16 32 64 128 256 \
-  --fid-samples 1000 \
-  --sample-batch-size 16 \
-  --set scheduler.timewarp.enabled=false \
-  --set loss.timewarp_weight=0.0
+  --num-examples 8 \
+  --fixed-seed 42
 ```
-- panel:
-```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_multistep_panel.py \
-  --config $FM_CONFIG \
-  --checkpoint $CKPT_DIR/best.pt \
-  --output-dir $SAMPLE_ROOT/panel_best \
-  --steps 1 4 16 64 128 256 \
-  --set scheduler.timewarp.enabled=false \
-  --set loss.timewarp_weight=0.0
-```
-- comparison target:
-  - compare directly against `tws01`
-  - if outputs are nearly identical, timewarp is not the current bottleneck
 
-### tws03
+## Active experiment table
 
-- purpose:
-  - test whether endpoint supervision is fighting the main map objective
-  - keep learned timewarp enabled
-  - disable endpoint loss only
-- activation:
-  - `source scripts/experiments/activate_fm_cifar10.sh map_branch_timewarp_smoke tws03`
-- train:
-```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
-  --config $FM_CONFIG \
-  --run-root $RUN_ROOT \
-  --verbose \
-  --set loss.endpoint_weight=0.0
-```
-- eval:
-```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
-  --config $FM_CONFIG \
-  --checkpoint $CKPT_DIR/best.pt \
-  --eval-root $METRIC_ROOT \
-  --steps 1 2 4 8 16 32 64 128 256 \
-  --fid-samples 1000 \
-  --sample-batch-size 16 \
-  --set loss.endpoint_weight=0.0
-```
-- panel:
-```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_multistep_panel.py \
-  --config $FM_CONFIG \
-  --checkpoint $CKPT_DIR/best.pt \
-  --output-dir $SAMPLE_ROOT/panel_best \
-  --steps 1 4 16 64 128 256 \
-  --set loss.endpoint_weight=0.0
-```
-- comparison target:
-  - compare directly against `tws01`
-  - if panel/FID improve while core loss remains reasonable, endpoint loss is likely conflicting with rollout quality
+| Group | EXP_TAG | EXP_VARIANT | FM_CONFIG | Activate | Purpose | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| E1 | e101a | `fm_cifar10_map_branch_s1_e1_traj_reg` | `configs/experiment/fm_cifar10_map_branch_s1_e1_traj_reg.yaml` | `source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s1_e1_traj_reg e101a` | target-construction baseline: plain trajectory regression | planned |
+| E1 | e102a | `fm_cifar10_map_branch_s1_e1_ctm_teacher` | `configs/experiment/fm_cifar10_map_branch_s1_e1_ctm_teacher.yaml` | `source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s1_e1_ctm_teacher e102a` | CTM contract with teacher bridge | planned |
+| E1 | e103a | `fm_cifar10_map_branch_s1_e1_ctm_ema` | `configs/experiment/fm_cifar10_map_branch_s1_e1_ctm_ema.yaml` | `source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s1_e1_ctm_ema e103a` | CTM contract with EMA rollout bridge | planned |
+| E1 | e104a | `fm_cifar10_map_branch_s1_e1_ctm_current` | `configs/experiment/fm_cifar10_map_branch_s1_e1_ctm_current.yaml` | `source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s1_e1_ctm_current e104a` | CTM contract with current-model rollout bridge | planned |
+| E2 | e201a | `fm_cifar10_map_branch_s1_e2_defect_probe` | `configs/experiment/fm_cifar10_map_branch_s1_e2_defect_probe.yaml` | `source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s1_e2_defect_probe e201a` | defect-probe run with learnable timewarp diagnostics | planned |
+| E3 | e301a | `fm_cifar10_map_branch_s1_e3_pred_residual` | `configs/experiment/fm_cifar10_map_branch_s1_e3_pred_residual.yaml` | `source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s1_e3_pred_residual e301a` | prediction target ablation: residual map | planned |
+| E3 | e302a | `fm_cifar10_map_branch_s1_e3_pred_direct` | `configs/experiment/fm_cifar10_map_branch_s1_e3_pred_direct.yaml` | `source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s1_e3_pred_direct e302a` | prediction target ablation: direct endpoint map | planned |
+| E4 | e401a | `fm_cifar10_map_branch_s1_e3_pred_residual` | `configs/experiment/fm_cifar10_map_branch_s1_e3_pred_residual.yaml` | `source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s1_e3_pred_residual e401a` | auxiliary ablation baseline: endpoint off | planned |
+| E4 | e402a | `fm_cifar10_map_branch_s1_e4_aux_endpoint_on` | `configs/experiment/fm_cifar10_map_branch_s1_e4_aux_endpoint_on.yaml` | `source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s1_e4_aux_endpoint_on e402a` | auxiliary ablation: endpoint on | planned |
+| E5 | e501a | `fm_cifar10_map_branch_s1_e5_warp_identity` | `configs/experiment/fm_cifar10_map_branch_s1_e5_warp_identity.yaml` | `source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s1_e5_warp_identity e501a` | warp ablation: identity clock | planned |
+| E5 | e502a | `fm_cifar10_map_branch_s1_e5_warp_data_dense` | `configs/experiment/fm_cifar10_map_branch_s1_e5_warp_data_dense.yaml` | `source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s1_e5_warp_data_dense e502a` | warp ablation: static data-dense power warp | planned |
+| E5 | e503a | `fm_cifar10_map_branch_s1_e5_warp_source_dense` | `configs/experiment/fm_cifar10_map_branch_s1_e5_warp_source_dense.yaml` | `source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s1_e5_warp_source_dense e503a` | warp ablation: static source-dense power warp | planned |
+| E5 | e504a | `fm_cifar10_map_branch_s1_e5_warp_learned` | `configs/experiment/fm_cifar10_map_branch_s1_e5_warp_learned.yaml` | `source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s1_e5_warp_learned e504a` | warp ablation: learnable monotone warp | planned |
+| E6 | e601a | `fm_cifar10_map_branch_s1_e6_budget_quick` | `configs/experiment/fm_cifar10_map_branch_s1_e6_budget_quick.yaml` | `source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s1_e6_budget_quick e601a` | budget sensitivity: quick budget | planned |
+| E6 | e602a | `fm_cifar10_map_branch_s1_e6_budget_full` | `configs/experiment/fm_cifar10_map_branch_s1_e6_budget_full.yaml` | `source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s1_e6_budget_full e602a` | budget sensitivity: full budget | planned |
+
+## Experiment order
+
+1. Run `E1` first and pick the best target-construction recipe.
+2. Run `E2` once to check whether defect diagnostics are coherent.
+3. Run `E3` to lock prediction parameterization.
+4. Run `E4` to decide whether endpoint should stay.
+5. Run `E5` to decide whether any warp strategy is worth keeping.
+6. Use the winning recipe to interpret `E6`.
+
+## Expected reading of the outputs
+
+For every row, inspect:
+- `$LOG_ROOT/train.jsonl`
+- `$METRIC_ROOT/reports/summary.json`
+- `$SAMPLE_ROOT/multistep_panel/multistep_panel.png`
+
+Primary decision fields:
+- FID trend from `1` to `16`
+- whether improvement continues beyond `16`
+- `train_update_ratio / val_update_ratio`
+- `train_update_cosine / val_update_cosine`
+- `timewarp_time_grid` and `timewarp_interval_defects` when warp is enabled

@@ -65,3 +65,33 @@ def test_load_timewarp_smoke_config_reduces_runtime_scale() -> None:
     assert cfg["train"]["batch_size"] == 32
     assert cfg["train"]["max_train_batches"] == 128
     assert cfg["eval"]["num_fid_samples"] == 1000
+
+
+def test_load_stage1_smoke_target_configs() -> None:
+    traj = load_experiment_config("configs/experiment/fm_cifar10_map_branch_s1_e1_traj_reg.yaml")
+    assert traj["target"]["target_construction"] == "trajectory_regression"
+    assert traj["target"]["bridge_source"] == "teacher"
+    assert traj["loss"]["endpoint_weight"] == 0.0
+    assert traj["loss"]["timewarp_weight"] == 0.0
+
+    ctm = load_experiment_config("configs/experiment/fm_cifar10_map_branch_s1_e1_ctm_ema.yaml")
+    assert ctm["target"]["target_construction"] == "ctm_consistency"
+    assert ctm["target"]["target_source"] == "ema_model"
+    assert ctm["target"]["bridge_source"] == "ema_model_rollout"
+    assert ctm["train"]["epochs"] == 8
+
+
+def test_load_stage1_warp_and_budget_configs() -> None:
+    learned = load_experiment_config("configs/experiment/fm_cifar10_map_branch_s1_e5_warp_learned.yaml")
+    assert learned["scheduler"]["timewarp"]["enabled"] is True
+    assert learned["scheduler"]["timewarp"]["type"] == "learnable_monotone"
+    assert learned["loss"]["timewarp_weight"] == 1.0
+
+    quick = load_experiment_config("configs/experiment/fm_cifar10_map_branch_s1_e6_budget_quick.yaml")
+    assert quick["target"]["bridge_source"] == "ema_model_rollout"
+    assert quick["loss"]["endpoint_weight"] == 0.0
+    assert quick["eval"]["step_counts"] == [1, 2, 4, 8, 16, 32, 64, 128, 256]
+
+    full = load_experiment_config("configs/experiment/fm_cifar10_map_branch_s1_e6_budget_full.yaml")
+    assert full["experiment"]["name"] == "fm_cifar10_map_branch_s1_e6_budget_full"
+    assert full["loss"]["timewarp_weight"] == 0.0

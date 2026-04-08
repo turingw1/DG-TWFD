@@ -35,9 +35,15 @@ case "${variant}" in
     exp_prefix="fm_cifar10_stable"
     ;;
   *)
-    echo "Unknown FM variant: ${variant}" >&2
-    echo "Expected one of: baseline map_branch map_branch_quick map_branch_timewarp_probe map_branch_timewarp_smoke stable" >&2
-    return 1
+    candidate="configs/experiment/${variant}.yaml"
+    if [[ -f "${candidate}" ]]; then
+      export FM_CONFIG="${candidate}"
+      exp_prefix="${variant}"
+    else
+      echo "Unknown FM variant: ${variant}" >&2
+      echo "Expected one of: baseline map_branch map_branch_quick map_branch_timewarp_probe map_branch_timewarp_smoke stable or any config stem under configs/experiment/" >&2
+      return 1
+    fi
     ;;
 esac
 
