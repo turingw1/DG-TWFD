@@ -31,6 +31,8 @@ Rules:
 | diag01 | map_branch_quick | `configs/experiment/fm_cifar10_map_branch_quick.yaml` | `fm_cifar10_map_branch_quick_diag01` | `source scripts/experiments/activate_fm_cifar10.sh map_branch_quick diag01` | quick diagnostic before full run | planned |
 | tw001 | map_branch_timewarp_probe | `configs/experiment/fm_cifar10_map_branch_timewarp_probe.yaml` | `fm_cifar10_map_branch_timewarp_probe_tw001` | `source scripts/experiments/activate_fm_cifar10.sh map_branch_timewarp_probe tw001` | quick defect-driven timewarp smoke test | planned |
 | tws01 | map_branch_timewarp_smoke | `configs/experiment/fm_cifar10_map_branch_timewarp_smoke.yaml` | `fm_cifar10_map_branch_timewarp_smoke_tws01` | `source scripts/experiments/activate_fm_cifar10.sh map_branch_timewarp_smoke tws01` | minimal viability run for timewarp + map diagnostics | planned |
+| tws02 | map_branch_timewarp_smoke | `configs/experiment/fm_cifar10_map_branch_timewarp_smoke.yaml` | `fm_cifar10_map_branch_timewarp_smoke_tws02` | `source scripts/experiments/activate_fm_cifar10.sh map_branch_timewarp_smoke tws02` | smoke ablation with timewarp disabled | planned |
+| tws03 | map_branch_timewarp_smoke | `configs/experiment/fm_cifar10_map_branch_timewarp_smoke.yaml` | `fm_cifar10_map_branch_timewarp_smoke_tws03` | `source scripts/experiments/activate_fm_cifar10.sh map_branch_timewarp_smoke tws03` | smoke ablation with endpoint loss disabled | planned |
 
 ## Pipeline usage contract
 
@@ -38,6 +40,10 @@ Rules:
 2. Run the row's `Activate` command once.
 3. Enter [A100_PIPELINE.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/A100_PIPELINE.md).
 4. Use the fixed pipeline commands directly with the exported `$FM_CONFIG`, `$RUN_ROOT`, `$CKPT_DIR`, `$METRIC_ROOT`, and `$SAMPLE_ROOT`.
+
+For diagnostics that intentionally deviate from the stable pipeline template,
+record the exact commands under the experiment note in this file and treat the
+note as the source of truth for that run.
 
 ## Notes
 
@@ -84,3 +90,117 @@ Rules:
   - train with pipeline default command
   - inspect `logs/train.jsonl`
   - only if the diagnostics look sane, move to `tw001` or a larger run
+- activation:
+  - `source scripts/experiments/activate_fm_cifar10.sh map_branch_timewarp_smoke tws01`
+- train:
+```bash
+CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
+  --config $FM_CONFIG \
+  --run-root $RUN_ROOT \
+  --verbose
+```
+- eval:
+```bash
+CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
+  --config $FM_CONFIG \
+  --checkpoint $CKPT_DIR/best.pt \
+  --eval-root $METRIC_ROOT \
+  --steps 1 2 4 8 16 32 64 128 256 \
+  --fid-samples 1000 \
+  --sample-batch-size 16
+```
+- panel:
+```bash
+CUDA_VISIBLE_DEVICES=1 python scripts/run_multistep_panel.py \
+  --config $FM_CONFIG \
+  --checkpoint $CKPT_DIR/best.pt \
+  --output-dir $SAMPLE_ROOT/panel_best \
+  --steps 1 4 16 64 128 256
+```
+- expected outputs:
+  - `logs/train.jsonl`
+  - `$METRIC_ROOT/reports/summary.json`
+  - `$SAMPLE_ROOT/panel_best/multistep_panel.png`
+
+### tws02
+
+- purpose:
+  - isolate whether learned timewarp materially helps
+  - keep the same smoke backbone as `tws01`
+  - disable timewarp in both training and evaluation
+- activation:
+  - `source scripts/experiments/activate_fm_cifar10.sh map_branch_timewarp_smoke tws02`
+- train:
+```bash
+CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
+  --config $FM_CONFIG \
+  --run-root $RUN_ROOT \
+  --verbose \
+  --set scheduler.timewarp.enabled=false \
+  --set loss.timewarp_weight=0.0
+```
+- eval:
+```bash
+CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
+  --config $FM_CONFIG \
+  --checkpoint $CKPT_DIR/best.pt \
+  --eval-root $METRIC_ROOT \
+  --steps 1 2 4 8 16 32 64 128 256 \
+  --fid-samples 1000 \
+  --sample-batch-size 16 \
+  --set scheduler.timewarp.enabled=false \
+  --set loss.timewarp_weight=0.0
+```
+- panel:
+```bash
+CUDA_VISIBLE_DEVICES=1 python scripts/run_multistep_panel.py \
+  --config $FM_CONFIG \
+  --checkpoint $CKPT_DIR/best.pt \
+  --output-dir $SAMPLE_ROOT/panel_best \
+  --steps 1 4 16 64 128 256 \
+  --set scheduler.timewarp.enabled=false \
+  --set loss.timewarp_weight=0.0
+```
+- comparison target:
+  - compare directly against `tws01`
+  - if outputs are nearly identical, timewarp is not the current bottleneck
+
+### tws03
+
+- purpose:
+  - test whether endpoint supervision is fighting the main map objective
+  - keep learned timewarp enabled
+  - disable endpoint loss only
+- activation:
+  - `source scripts/experiments/activate_fm_cifar10.sh map_branch_timewarp_smoke tws03`
+- train:
+```bash
+CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
+  --config $FM_CONFIG \
+  --run-root $RUN_ROOT \
+  --verbose \
+  --set loss.endpoint_weight=0.0
+```
+- eval:
+```bash
+CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
+  --config $FM_CONFIG \
+  --checkpoint $CKPT_DIR/best.pt \
+  --eval-root $METRIC_ROOT \
+  --steps 1 2 4 8 16 32 64 128 256 \
+  --fid-samples 1000 \
+  --sample-batch-size 16 \
+  --set loss.endpoint_weight=0.0
+```
+- panel:
+```bash
+CUDA_VISIBLE_DEVICES=1 python scripts/run_multistep_panel.py \
+  --config $FM_CONFIG \
+  --checkpoint $CKPT_DIR/best.pt \
+  --output-dir $SAMPLE_ROOT/panel_best \
+  --steps 1 4 16 64 128 256 \
+  --set loss.endpoint_weight=0.0
+```
+- comparison target:
+  - compare directly against `tws01`
+  - if panel/FID improve while core loss remains reasonable, endpoint loss is likely conflicting with rollout quality

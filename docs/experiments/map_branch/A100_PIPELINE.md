@@ -39,6 +39,9 @@ Recommended order when diagnosing map-branch viability:
 - first use the smaller `map_branch_timewarp_smoke` row from the experiment log
 - inspect the richer diagnostics in `logs/train.jsonl`
 - only then move to `map_branch_timewarp_probe` or larger variants
+- for diagnostic ablations such as `tws02` and `tws03`, use the exact commands
+  recorded in [EXPERIMENT_LOG.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/EXPERIMENT_LOG.md)
+  instead of assuming the plain pipeline commands are sufficient
 
 This sets stable environment variables for all later commands in this document:
 - `EXP_VARIANT=<selected variant>`
