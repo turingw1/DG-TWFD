@@ -129,6 +129,8 @@ The recommended solution is:
 Use the branch-local setup script:
 
 ```bash
+git clone https://github.com/turingw1/DG-TWFD.git
+git checkout map_branch_ctm_explicit_map
 cd ~/workspace/Zhengwei/DG-TWFD
 bash scripts/experiments/create_map_branch_env.sh dgfm_map
 conda activate /cache/$USER/conda_envs/dgfm_map
