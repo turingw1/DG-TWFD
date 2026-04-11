@@ -16,6 +16,28 @@ from dgfm.paths import build_path, ensure_flow_matching_on_path
 from dgfm.utils import build_experiment_archive
 
 
+def _load_elapsed_history(history_path) -> tuple[int, float]:
+    if not history_path.exists():
+        return 0, 0.0
+    count = 0
+    total = 0.0
+    with history_path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            elapsed = payload.get("elapsed_sec")
+            if elapsed is None:
+                continue
+            total += float(elapsed)
+            count += 1
+    return count, total
+
+
 def _device_from_config(config: dict) -> torch.device:
     requested = config.get("runtime", {}).get("device", "auto")
     if requested == "auto":
@@ -133,19 +155,24 @@ class BaselineTrainer:
 
         epochs = int(self.config["train"].get("epochs", 1))
         history_path = self.roots.log_dir / "train.jsonl"
+        completed_epochs, total_elapsed_sec = _load_elapsed_history(history_path)
         for epoch in range(start_epoch, epochs):
             t0 = time.time()
             train_loss = self._run_epoch(model, ema, dataloaders["train"], optimizer, scaler, path, device, train=True)
             eval_model = ema.shadow if ema is not None else model
             val_loss = self._run_epoch(eval_model, None, dataloaders["val"], optimizer, scaler, path, device, train=False)
             elapsed = time.time() - t0
+            total_elapsed_sec += elapsed
+            completed_epochs += 1
+            avg_epoch_sec = total_elapsed_sec / max(completed_epochs, 1)
             remaining_epochs = max(epochs - (epoch + 1), 0)
-            eta_hours_remaining = remaining_epochs * elapsed / 3600.0
+            eta_hours_remaining = remaining_epochs * avg_epoch_sec / 3600.0
             payload = {
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                 "epoch": epoch,
                 "epochs_total": epochs,
                 "epochs_remaining": remaining_epochs,
+                "epoch_sec_avg": avg_epoch_sec,
                 "train_loss": train_loss,
                 "val_loss": val_loss,
                 "elapsed_sec": elapsed,
@@ -173,6 +200,7 @@ class BaselineTrainer:
             print(
                 f"epoch={epoch + 1}/{epochs} train_loss={train_loss:.6f} "
                 f"val_loss={val_loss:.6f} elapsed_sec={elapsed:.2f} "
+                f"epoch_sec_avg={avg_epoch_sec:.2f} "
                 f"eta_hours_remaining={eta_hours_remaining:.2f}",
                 flush=True,
             )

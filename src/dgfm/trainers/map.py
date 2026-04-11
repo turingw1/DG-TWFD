@@ -21,6 +21,28 @@ from dgfm.targets import build_target_builder
 from dgfm.utils import build_experiment_archive
 
 
+def _load_elapsed_history(history_path) -> tuple[int, float]:
+    if not history_path.exists():
+        return 0, 0.0
+    count = 0
+    total = 0.0
+    with history_path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            elapsed = payload.get("elapsed_sec")
+            if elapsed is None:
+                continue
+            total += float(elapsed)
+            count += 1
+    return count, total
+
+
 def _device_from_config(config: dict) -> torch.device:
     requested = config.get("runtime", {}).get("device", "auto")
     if requested == "auto":
@@ -569,6 +591,7 @@ class MapTrainer:
 
         epochs = int(self.config["train"].get("epochs", 1))
         history_path = self.roots.log_dir / "train.jsonl"
+        completed_epochs, total_elapsed_sec = _load_elapsed_history(history_path)
         target_mode = str(self.config.get("target", {}).get("builder", "analytic_path"))
         target_uses_dataset_images = bool(getattr(target_builder, "uses_dataset_images", True))
         for epoch in range(start_epoch, epochs):
@@ -608,13 +631,17 @@ class MapTrainer:
                 global_step_start=global_step,
             )
             elapsed = time.time() - t0
+            total_elapsed_sec += elapsed
+            completed_epochs += 1
+            avg_epoch_sec = total_elapsed_sec / max(completed_epochs, 1)
             remaining_epochs = max(epochs - (epoch + 1), 0)
-            eta_hours_remaining = remaining_epochs * elapsed / 3600.0
+            eta_hours_remaining = remaining_epochs * avg_epoch_sec / 3600.0
             payload = {
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                 "epoch": epoch,
                 "epochs_total": epochs,
                 "epochs_remaining": remaining_epochs,
+                "epoch_sec_avg": avg_epoch_sec,
                 "train_loss": train_stats["loss"],
                 "train_pixel_loss": train_stats["pixel_loss"],
                 "train_perceptual_loss": train_stats["perceptual_loss"],
@@ -739,6 +766,7 @@ class MapTrainer:
                 f"timewarp_delta_min={train_stats.get('timewarp_delta_min', 0.0):.4f} "
                 f"timewarp_delta_max={train_stats.get('timewarp_delta_max', 0.0):.4f} "
                 f"samples_per_sec={train_samples_per_sec:.2f} elapsed_sec={elapsed:.2f} "
+                f"epoch_sec_avg={avg_epoch_sec:.2f} "
                 f"eta_hours_remaining={eta_hours_remaining:.2f}",
                 flush=True,
             )
