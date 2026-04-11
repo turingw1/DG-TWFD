@@ -1,0 +1,26 @@
+base: configs/experiment/fm_cifar10_map_branch_s1_e6_budget_full.yaml
+
+experiment:
+  name: fm_cifar10_map_branch_s1_e6_budget_fullstack
+
+scheduler:
+  timewarp:
+    enabled: true
+    type: learnable_monotone
+    num_bins: 64
+    init_bias: 0.0
+    lr: 1.0e-3
+    weight_decay: 0.0
+
+loss:
+  endpoint_weight: 0.25
+  endpoint_every: 8
+  endpoint_batch_size: 32
+  endpoint_steps: [8, 16]
+  endpoint_step_weights: [0.5, 0.5]
+  timewarp_weight: 1.0
+  timewarp_update_every: 1
+  timewarp_defect_steps: 4
+  timewarp_batch_size: 16
+  timewarp_defect_weight: 1.0
+  timewarp_balance_weight: 0.1

@@ -115,6 +115,7 @@ python scripts/prepare_imagenet64.py \
 | E5 | e505a | `fm_cifar10_map_branch_s1_e5_warp_spline` | `configs/experiment/fm_cifar10_map_branch_s1_e5_warp_spline.yaml` | `source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s1_e5_warp_spline e505a` | warp ablation: spline-mass monotone warp | planned |
 | E6 | e601a | `fm_cifar10_map_branch_s1_e6_budget_quick` | `configs/experiment/fm_cifar10_map_branch_s1_e6_budget_quick.yaml` | `source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s1_e6_budget_quick e601a` | budget sensitivity: quick budget | planned |
 | E6 | e602a | `fm_cifar10_map_branch_s1_e6_budget_full` | `configs/experiment/fm_cifar10_map_branch_s1_e6_budget_full.yaml` | `source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s1_e6_budget_full e602a` | budget sensitivity: full budget | planned |
+| E6 | e603a | `fm_cifar10_map_branch_s1_e6_budget_fullstack` | `configs/experiment/fm_cifar10_map_branch_s1_e6_budget_fullstack.yaml` | `source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s1_e6_budget_fullstack e603a` | full-stack analysis run: CTM target + residual map + endpoint auxiliary + learnable timewarp + full budget | planned |
 
 ## Stage 2. External-facing validation
 
@@ -132,6 +133,9 @@ python scripts/prepare_imagenet64.py \
 4. Run `E4` to decide whether endpoint should stay.
 5. Run `E5` to decide whether any warp strategy, including spline, is worth keeping.
 6. Use the winning recipe to interpret `E6`.
+   If you need one architecture-complete long run for final analysis, use
+   `e603a`. If you need the cleaner best-known recipe without auxiliary
+   timewarp/endpoint, use `e602a`.
 7. Activate `E7` and reuse the selected checkpoint to produce official `.npz` metrics.
 8. Activate `E8` and reuse the selected checkpoint(s) to produce held-out defect reports.
 9. Run `E9` to verify the ImageNet64 data / baseline / official-eval bridge.
