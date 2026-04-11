@@ -82,6 +82,8 @@ Recommended:
 export HF_HOME=/cache/huggingface
 export HF_HUB_CACHE=/cache/huggingface/hub
 export HF_ENDPOINT=https://hf-mirror.com
+export HF_HUB_OFFLINE=0
+export TRANSFORMERS_OFFLINE=0
 ```
 
 This matters for:
