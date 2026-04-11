@@ -111,6 +111,28 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
   --verbose
 ```
 
+### Resume training
+
+Resume from the latest checkpoint in the same run root:
+
+```bash
+CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
+  --config $FM_CONFIG \
+  --run-root $RUN_ROOT \
+  --resume $CKPT_DIR/last.pt \
+  --verbose
+```
+
+Resume from the current best checkpoint:
+
+```bash
+CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
+  --config $FM_CONFIG \
+  --run-root $RUN_ROOT \
+  --resume $CKPT_DIR/best.pt \
+  --verbose
+```
+
 ### Eval
 
 ```bash

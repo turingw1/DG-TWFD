@@ -608,9 +608,13 @@ class MapTrainer:
                 global_step_start=global_step,
             )
             elapsed = time.time() - t0
+            remaining_epochs = max(epochs - (epoch + 1), 0)
+            eta_hours_remaining = remaining_epochs * elapsed / 3600.0
             payload = {
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                 "epoch": epoch,
+                "epochs_total": epochs,
+                "epochs_remaining": remaining_epochs,
                 "train_loss": train_stats["loss"],
                 "train_pixel_loss": train_stats["pixel_loss"],
                 "train_perceptual_loss": train_stats["perceptual_loss"],
@@ -679,6 +683,7 @@ class MapTrainer:
                 "target_uses_dataset_images": target_uses_dataset_images,
                 "global_step": global_step,
                 "elapsed_sec": elapsed,
+                "eta_hours_remaining": eta_hours_remaining,
             }
             if "clean_abs_mean" in train_stats:
                 payload["train_clean_abs_mean"] = train_stats["clean_abs_mean"]
@@ -733,7 +738,8 @@ class MapTrainer:
                 f"delta_mean={train_stats['delta_mean']:.4f} endpoint_step={train_stats['endpoint_step']:.2f} "
                 f"timewarp_delta_min={train_stats.get('timewarp_delta_min', 0.0):.4f} "
                 f"timewarp_delta_max={train_stats.get('timewarp_delta_max', 0.0):.4f} "
-                f"samples_per_sec={train_samples_per_sec:.2f} elapsed_sec={elapsed:.2f}",
+                f"samples_per_sec={train_samples_per_sec:.2f} elapsed_sec={elapsed:.2f} "
+                f"eta_hours_remaining={eta_hours_remaining:.2f}",
                 flush=True,
             )
             if verbose:

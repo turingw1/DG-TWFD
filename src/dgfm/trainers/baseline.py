@@ -139,12 +139,17 @@ class BaselineTrainer:
             eval_model = ema.shadow if ema is not None else model
             val_loss = self._run_epoch(eval_model, None, dataloaders["val"], optimizer, scaler, path, device, train=False)
             elapsed = time.time() - t0
+            remaining_epochs = max(epochs - (epoch + 1), 0)
+            eta_hours_remaining = remaining_epochs * elapsed / 3600.0
             payload = {
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                 "epoch": epoch,
+                "epochs_total": epochs,
+                "epochs_remaining": remaining_epochs,
                 "train_loss": train_loss,
                 "val_loss": val_loss,
                 "elapsed_sec": elapsed,
+                "eta_hours_remaining": eta_hours_remaining,
             }
             with history_path.open("a", encoding="utf-8") as handle:
                 handle.write(json.dumps(payload) + "\n")
@@ -167,6 +172,7 @@ class BaselineTrainer:
                 self.archive.save_checkpoint("best.pt", last_ckpt)
             print(
                 f"epoch={epoch + 1}/{epochs} train_loss={train_loss:.6f} "
-                f"val_loss={val_loss:.6f} elapsed_sec={elapsed:.2f}",
+                f"val_loss={val_loss:.6f} elapsed_sec={elapsed:.2f} "
+                f"eta_hours_remaining={eta_hours_remaining:.2f}",
                 flush=True,
             )
