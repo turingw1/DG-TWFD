@@ -1,7 +1,7 @@
 # map_branch documentation
 <!-- codex resume 019d666f-eadb-76e3-9f90-b12ad101f1c5 -->
 This directory is the complete documentation context for the current
-`map_branch_ctm_explicit_map` git branch.
+`server_single_root_workflow` git branch.
 
 ## Experiment tracking
 
@@ -104,8 +104,9 @@ This directory is the complete documentation context for the current
   - bridge rollout is still map-branch-native, not yet a CTM-faithful solver
 - quick verification path:
   - `configs/experiment/fm_cifar10_map_branch_quick.yaml`
-- training-time archive mirror:
-  - `/temp/Zhengwei/dgfm_runs/<FM_EXP>`
+- server-branch storage policy:
+  - everything stays under `/data2/yl7622/Zhengwei/DG-TWFD`
+  - no default archive mirror for logs/checkpoints/samples
 
 ## Active code entrypoints
 

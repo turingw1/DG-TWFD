@@ -47,24 +47,24 @@ case "${variant}" in
     ;;
 esac
 
-export PROJ="${PROJ:-$HOME/workspace/Zhengwei/DG-TWFD}"
+export PROJ="${PROJ:-/data2/yl7622/Zhengwei/DG-TWFD}"
 export ENV_NAME="${ENV_NAME:-consistency}"
-export DATA_ROOT="${DATA_ROOT:-/cache/Zhengwei/datasets}"
-export RUNS_ROOT="${RUNS_ROOT:-/cache/Zhengwei/dgfm_runs}"
-export EVAL_ROOT="${EVAL_ROOT:-/cache/Zhengwei/dgfm_eval}"
-export REF_ROOT="${REF_ROOT:-/cache/Zhengwei/dgfm_refs}"
-export TRAJ_ROOT="${TRAJ_ROOT:-/cache/Zhengwei/dgfm_teacher_traj/cifar10_ddpm128_p33}"
-export IMAGENET_RAW_ROOT="${IMAGENET_RAW_ROOT:-/cache/Zhengwei/datasets/imagenet_raw}"
-export IMAGENET64_PREPROCESSED="${IMAGENET64_PREPROCESSED:-/cache/Zhengwei/datasets/imagenet64}"
+export DATA_ROOT="${DATA_ROOT:-${PROJ}/datasets}"
+export RUNS_ROOT="${RUNS_ROOT:-${PROJ}/runs}"
+export EVAL_ROOT="${EVAL_ROOT:-${PROJ}/eval}"
+export REF_ROOT="${REF_ROOT:-${PROJ}/refs}"
+export TRAJ_ROOT="${TRAJ_ROOT:-${PROJ}/teacher_traj/cifar10_ddpm128_p33}"
+export IMAGENET_RAW_ROOT="${IMAGENET_RAW_ROOT:-${DATA_ROOT}/imagenet_raw}"
+export IMAGENET64_PREPROCESSED="${IMAGENET64_PREPROCESSED:-${DATA_ROOT}/imagenet64}"
 export IMAGENET64_REFERENCE_NPZ="${IMAGENET64_REFERENCE_NPZ:-${REF_ROOT}/VIRTUAL_imagenet64_labeled.npz}"
 export OFFICIAL_REFERENCE_NPZ="${OFFICIAL_REFERENCE_NPZ:-}"
 export IMAGENET64_TEACHER_CKPT="${IMAGENET64_TEACHER_CKPT:-checkpoints/teachers/edm_imagenet64_ema.pt}"
-export HF_HOME="${HF_HOME:-/cache/huggingface}"
+export HF_HOME="${HF_HOME:-${PROJ}/.hf_home}"
 export HF_HUB_CACHE="${HF_HUB_CACHE:-${HF_HOME}/hub}"
-export HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
+unset HF_ENDPOINT
 export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-0}"
 export TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-0}"
-export DGFM_TORCH_FIDELITY_MIRROR_PREFIX="${DGFM_TORCH_FIDELITY_MIRROR_PREFIX:-https://githubfast.com/}"
+unset DGFM_TORCH_FIDELITY_MIRROR_PREFIX
 export EXP_VARIANT="${variant}"
 export EXP_TAG="${tag}"
 export EXP_NAME="${exp_prefix}_${tag}"
@@ -75,15 +75,21 @@ export CKPT_DIR="${RUN_ROOT}/checkpoints"
 export SAMPLE_ROOT="${RUN_ROOT}/samples"
 export LOG_ROOT="${RUN_ROOT}/logs"
 export METRIC_ROOT="${EVAL_ROOT}/${FM_EXP}"
-export ARCHIVE_ROOT="${ARCHIVE_ROOT:-/temp/Zhengwei/dgfm_runs/${FM_EXP}}"
-export DGFM_ARCHIVE_ROOT="${DGFM_ARCHIVE_ROOT:-${ARCHIVE_ROOT}}"
-export TORCH_CACHE_ROOT="${TORCH_CACHE_ROOT:-/cache/Zhengwei/torch_home}"
+unset ARCHIVE_ROOT
+unset DGFM_ARCHIVE_ROOT
+export TORCH_CACHE_ROOT="${TORCH_CACHE_ROOT:-${PROJ}/.torch}"
 export TORCH_HOME="${TORCH_HOME:-${TORCH_CACHE_ROOT}}"
-mkdir -p "${CKPT_DIR}" "${SAMPLE_ROOT}" "${LOG_ROOT}" "${METRIC_ROOT}" "${DGFM_ARCHIVE_ROOT}" 2>/dev/null || true
-mkdir -p "${TORCH_HOME}" 2>/dev/null || true
-mkdir -p "${REF_ROOT}" 2>/dev/null || true
+export NNODES="${NNODES:-1}"
+export NODE_RANK="${NODE_RANK:-0}"
+export NPROC_PER_NODE="${NPROC_PER_NODE:-1}"
+export MASTER_ADDR="${MASTER_ADDR:-127.0.0.1}"
+export MASTER_PORT="${MASTER_PORT:-29500}"
+mkdir -p "${DATA_ROOT}" "${RUNS_ROOT}" "${EVAL_ROOT}" "${REF_ROOT}" 2>/dev/null || true
+mkdir -p "${CKPT_DIR}" "${SAMPLE_ROOT}" "${LOG_ROOT}" "${METRIC_ROOT}" 2>/dev/null || true
+mkdir -p "${TORCH_HOME}" "${HF_HUB_CACHE}" 2>/dev/null || true
 
 echo "Activated dgfm experiment"
+echo "  PROJ=${PROJ}"
 echo "  variant=${variant}"
 echo "  EXP_VARIANT=${EXP_VARIANT}"
 echo "  EXP_TAG=${EXP_TAG}"
@@ -102,8 +108,11 @@ echo "  OFFICIAL_REFERENCE_NPZ=${OFFICIAL_REFERENCE_NPZ}"
 echo "  IMAGENET64_TEACHER_CKPT=${IMAGENET64_TEACHER_CKPT}"
 echo "  HF_HOME=${HF_HOME}"
 echo "  HF_HUB_CACHE=${HF_HUB_CACHE}"
-echo "  HF_ENDPOINT=${HF_ENDPOINT}"
 echo "  HF_HUB_OFFLINE=${HF_HUB_OFFLINE}"
 echo "  TRANSFORMERS_OFFLINE=${TRANSFORMERS_OFFLINE}"
-echo "  DGFM_TORCH_FIDELITY_MIRROR_PREFIX=${DGFM_TORCH_FIDELITY_MIRROR_PREFIX}"
-echo "  DGFM_ARCHIVE_ROOT=${DGFM_ARCHIVE_ROOT}"
+echo "  TORCH_HOME=${TORCH_HOME}"
+echo "  NNODES=${NNODES}"
+echo "  NODE_RANK=${NODE_RANK}"
+echo "  NPROC_PER_NODE=${NPROC_PER_NODE}"
+echo "  MASTER_ADDR=${MASTER_ADDR}"
+echo "  MASTER_PORT=${MASTER_PORT}"

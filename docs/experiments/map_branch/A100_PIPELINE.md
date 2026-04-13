@@ -6,17 +6,17 @@ If the server does not already have a usable conda environment, create one
 first:
 
 ```bash
-cd ~/workspace/Zhengwei/DG-TWFD
+cd /data2/yl7622/Zhengwei/DG-TWFD
 bash scripts/experiments/create_map_branch_env.sh dgfm_map
 ```
 
 Then use:
 
 ```bash
-cd ~/workspace/Zhengwei/DG-TWFD
-git checkout map_branch_ctm_explicit_map
+cd /data2/yl7622/Zhengwei/DG-TWFD
+git checkout server_single_root_workflow
 git pull --ff-only
-conda activate /cache/Zhengwei/conda_envs/dgfm_map
+conda activate /data2/yl7622/Zhengwei/DG-TWFD/.conda_envs/dgfm_map
 ```
 
 ## 2. Activate experiment
@@ -53,7 +53,6 @@ This sets stable environment variables for all later commands:
 - `METRIC_ROOT`
 - `HF_HOME`
 - `HF_HUB_CACHE`
-- `HF_ENDPOINT`
 - `TORCH_HOME`
 - `REF_ROOT`
 - `OFFICIAL_REFERENCE_NPZ`
@@ -61,6 +60,11 @@ This sets stable environment variables for all later commands:
 - `IMAGENET64_PREPROCESSED`
 - `IMAGENET64_REFERENCE_NPZ`
 - `IMAGENET64_TEACHER_CKPT`
+- `NNODES`
+- `NODE_RANK`
+- `NPROC_PER_NODE`
+- `MASTER_ADDR`
+- `MASTER_PORT`
 
 ## 3. Dataset preparation
 
@@ -213,9 +217,12 @@ Key readout:
 - official `fid / inception_score_mean / precision / recall`
 - held-out `defect_mean / defect_by_t_bin / defect_by_step_count`
 
-## 6. Cache notes
+## 6. Root layout notes
 
-- `TORCH_HOME` defaults to `/cache/Zhengwei/torch_home`
-- `HF_HOME` defaults to `/cache/huggingface`
-- `DGFM_ARCHIVE_ROOT` mirrors logs/checkpoints/samples into `/temp/Zhengwei/...`
-- `REF_ROOT` defaults to `/cache/Zhengwei/dgfm_refs`
+- `PROJ` defaults to `/data2/yl7622/Zhengwei/DG-TWFD`
+- `RUN_ROOT` stays under `$PROJ/runs/...`
+- `METRIC_ROOT` stays under `$PROJ/eval/...`
+- `TORCH_HOME` defaults to `$PROJ/.torch`
+- `HF_HOME` defaults to `$PROJ/.hf_home`
+- `REF_ROOT` defaults to `$PROJ/refs`
+- no default archive mirror is used on this server branch

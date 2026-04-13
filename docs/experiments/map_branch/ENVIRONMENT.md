@@ -1,285 +1,90 @@
 # map_branch environment
 
-This branch does not assume that the server already has a usable
-`consistency` environment. The recommended environment root is:
+This branch now assumes one server-local working root:
 
 ```bash
-/cache/Zhengwei/conda_envs
+/data2/yl7622/Zhengwei/DG-TWFD
 ```
 
-The recommended wheel cache root is:
+Everything lives under this directory:
+
+- code
+- datasets
+- runs
+- eval outputs
+- refs
+- teacher trajectories
+- HuggingFace cache
+- torch cache
+- conda environments
+
+There is no default archive mirror and no default backup directory.
+
+## 1. Default roots
+
+After sourcing
+[activate_fm_cifar10.sh](/home/gzwlinux/vscode/gitProject/DG-TWFD/scripts/experiments/activate_fm_cifar10.sh),
+the default layout is:
 
 ```bash
-/cache/Zhengwei/wheels
+PROJ=/data2/yl7622/Zhengwei/DG-TWFD
+DATA_ROOT=$PROJ/datasets
+RUNS_ROOT=$PROJ/runs
+EVAL_ROOT=$PROJ/eval
+REF_ROOT=$PROJ/refs
+TRAJ_ROOT=$PROJ/teacher_traj/cifar10_ddpm128_p33
+IMAGENET_RAW_ROOT=$DATA_ROOT/imagenet_raw
+IMAGENET64_PREPROCESSED=$DATA_ROOT/imagenet64
+HF_HOME=$PROJ/.hf_home
+TORCH_HOME=$PROJ/.torch
 ```
 
-## 1. Reference environment
+This keeps the workflow simple:
 
-Current local reference environment for this branch:
+- experiment outputs stay under `runs/` and `eval/`
+- model/data caches stay under the same project root
+- no `/cache/...` split
+- no `/temp/...` split
 
-- Python `3.10.19`
-- PyTorch `2.10.0+cu128`
-- torchvision `0.25.0+cu128`
-- numpy `2.2.3`
-- scipy `1.15.3`
-- PyYAML `6.0.3`
-- torch-fidelity `0.4.0`
-- diffusers `>=0.30`
-- transformers `>=4.40`
-- accelerate `>=0.30`
-- safetensors `>=0.4`
-- piq `>=0.8`
+## 2. Environment creation
 
-Minimum practical package set for current `map_branch`:
-
-- `python=3.10`
-- `torch==2.10.0`
-- `torchvision==0.25.0`
-- `PyYAML==6.0.3`
-- `numpy==2.2.3`
-- `scipy==1.15.3`
-- `torch-fidelity==0.4.0`
-- `diffusers>=0.30`
-- `transformers>=4.40`
-- `accelerate>=0.30`
-- `safetensors>=0.4`
-- `piq>=0.8`
-- `matplotlib`
-- `pillow`
-- `pytest`
-
-## 2. Mirror strategy
-
-Different assets come from different upstreams. Use different mirrors for
-different classes of downloads.
-
-### 2.1 pip packages
-
-Recommended default:
+Use the branch-local helper:
 
 ```bash
-export PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+cd /data2/yl7622/Zhengwei/DG-TWFD
+bash scripts/experiments/create_map_branch_env.sh dgfm_map
+conda activate /data2/yl7622/Zhengwei/DG-TWFD/.conda_envs/dgfm_map
 ```
 
-Optional alternatives:
+This script now keeps a pure workflow:
 
-```bash
-export PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
-export PIP_INDEX_URL=https://pypi.mirrors.ustc.edu.cn/simple
-```
+- no pip mirror configuration
+- no HuggingFace mirror configuration
+- no GitHub asset mirror configuration
+- no wheel cache staging
 
-If your server already has a global pip config, check it first:
+It installs:
 
-```bash
-python -m pip config list
-```
-
-### 2.2 HuggingFace
-
-Recommended:
-
-```bash
-export HF_HOME=/cache/huggingface
-export HF_HUB_CACHE=/cache/huggingface/hub
-export HF_ENDPOINT=https://hf-mirror.com
-export HF_HUB_OFFLINE=0
-export TRANSFORMERS_OFFLINE=0
-```
-
-This matters for:
-
+- Python `3.10`
+- PyTorch `2.10.0`
+- torchvision `0.25.0`
 - `diffusers`
 - `transformers`
-- online teacher loading
+- `accelerate`
+- `torch-fidelity`
+- `piq`
+- project editable install
 
-### 2.3 GitHub assets
+## 3. Manual environment creation
 
-For GitHub-hosted binary assets, use:
-
-```bash
-export DGFM_TORCH_FIDELITY_MIRROR_PREFIX=https://githubfast.com/
-```
-
-This currently affects:
-
-- `torch_fidelity` Inception weights during FID evaluation
-
-### 2.4 PyTorch wheels
-
-This is the important exception.
-
-Your current slow download:
-
-```text
-https://download-r2.pytorch.org/whl/cu128/torch-2.10.0+cu128-...
-```
-
-does **not** come from PyPI, HuggingFace, or GitHub. Therefore:
-
-- `PIP_INDEX_URL` does not solve this
-- `HF_ENDPOINT` does not solve this
-- `githubfast` does not solve this
-
-The recommended solution is:
-
-1. download the large Torch wheels once into `/cache/Zhengwei/wheels`
-2. install from local wheel files
-3. reuse that wheel cache across future environment creation
-
-## 3. Recommended creation method
-
-Use the branch-local setup script:
+If you do not want the helper script:
 
 ```bash
-git clone https://github.com/turingw1/DG-TWFD.git
-git checkout map_branch_ctm_explicit_map
-cd ~/workspace/Zhengwei/DG-TWFD
-bash scripts/experiments/create_map_branch_env.sh dgfm_map
-conda activate /cache/Zhengwei/conda_envs/dgfm_map
-```
+conda create -p /data2/yl7622/Zhengwei/DG-TWFD/.conda_envs/dgfm_map python=3.10 -y
+conda activate /data2/yl7622/Zhengwei/DG-TWFD/.conda_envs/dgfm_map
 
-By default, the script now:
-
-- creates the environment under `/cache/Zhengwei/conda_envs/<env_name>`
-- writes pip mirror config to the new environment
-- caches Torch wheels under `/cache/Zhengwei/wheels/torch-cu128`
-- installs Torch from local wheel files when available
-
-If your server should use a different env root:
-
-```bash
-bash scripts/experiments/create_map_branch_env.sh dgfm_map /cache/custom_user/conda_envs
-conda activate /cache/custom_user/conda_envs/dgfm_map
-```
-
-## 4. Fastest path for slow Torch downloads
-
-If downloading `torch-2.10.0+cu128` from `download-r2.pytorch.org` is too slow,
-do not repeatedly reinstall directly from the network.
-
-### Option A. Pre-download once to local wheel cache
-
-```bash
-mkdir -p /cache/Zhengwei/wheels/torch-cu128
-cd /cache/Zhengwei/wheels/torch-cu128
-
-wget -c https://download.pytorch.org/whl/cu128/torch-2.10.0%2Bcu128-cp310-cp310-manylinux_2_28_x86_64.whl
-wget -c https://download.pytorch.org/whl/cu128/torchvision-0.25.0%2Bcu128-cp310-cp310-manylinux_2_28_x86_64.whl
-```
-
-Then create the env:
-
-```bash
-cd ~/workspace/Zhengwei/DG-TWFD
-bash scripts/experiments/create_map_branch_env.sh dgfm_map
-```
-
-The script will detect the local wheel files and skip the slow online Torch
-download.
-
-### Option B. Use a custom Torch wheel mirror URL
-
-If you already have an internal mirror or object store that serves the same
-wheel filenames, set:
-
-```bash
-export TORCH_WHL_URL=https://<your-mirror>/whl/cu128
-```
-
-Then run:
-
-```bash
-cd ~/workspace/Zhengwei/DG-TWFD
-bash scripts/experiments/create_map_branch_env.sh dgfm_map
-```
-
-The script will download:
-
-- `torch-2.10.0+cu128-...whl`
-- `torchvision-0.25.0+cu128-...whl`
-
-into `/cache/Zhengwei/wheels/torch-cu128` and then install locally.
-
-### Option C. Download elsewhere, copy once, install locally
-
-If the target server network is poor:
-
-1. download the two wheel files on a faster machine
-2. copy them to:
-
-```bash
-/cache/Zhengwei/wheels/torch-cu128
-```
-
-3. rerun:
-
-```bash
-bash scripts/experiments/create_map_branch_env.sh dgfm_map
-```
-
-This is usually the most robust path on unstable servers.
-
-## 5. Manual creation commands
-
-If you do not want to use the helper script, use the following sequence.
-
-### 5.1 Prepare mirrors and caches
-
-```bash
-mkdir -p /cache/Zhengwei/conda_envs
-mkdir -p /cache/Zhengwei/wheels/torch-cu128
-
-export PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
-export HF_HOME=/cache/huggingface
-export HF_HUB_CACHE=/cache/huggingface/hub
-export HF_ENDPOINT=https://hf-mirror.com
-export DGFM_TORCH_FIDELITY_MIRROR_PREFIX=https://githubfast.com/
-```
-
-### 5.2 Create environment
-
-```bash
-conda create -p /cache/Zhengwei/conda_envs/dgfm_map python=3.10 -y
-conda activate /cache/Zhengwei/conda_envs/dgfm_map
-```
-
-### 5.3 Upgrade basic packaging tools
-
-```bash
 python -m pip install --upgrade pip setuptools wheel
-python -m pip config set global.index-url "$PIP_INDEX_URL"
-```
-
-### 5.4 Install Torch from local wheels
-
-If local wheels already exist:
-
-```bash
-python -m pip install \
-  /cache/Zhengwei/wheels/torch-cu128/torch-2.10.0+cu128-*.whl \
-  /cache/Zhengwei/wheels/torch-cu128/torchvision-0.25.0+cu128-*.whl
-```
-
-If they do not exist yet, download them first:
-
-```bash
-wget -c -P /cache/Zhengwei/wheels/torch-cu128 \
-  https://download.pytorch.org/whl/cu128/torch-2.10.0%2Bcu128-cp310-cp310-manylinux_2_28_x86_64.whl
-wget -c -P /cache/Zhengwei/wheels/torch-cu128 \
-  https://download.pytorch.org/whl/cu128/torchvision-0.25.0%2Bcu128-cp310-cp310-manylinux_2_28_x86_64.whl
-```
-
-Then install locally:
-
-```bash
-python -m pip install \
-  /cache/Zhengwei/wheels/torch-cu128/torch-2.10.0+cu128-*.whl \
-  /cache/Zhengwei/wheels/torch-cu128/torchvision-0.25.0+cu128-*.whl
-```
-
-### 5.5 Install the remaining Python packages
-
-```bash
+python -m pip install --index-url https://download.pytorch.org/whl/cu128 torch==2.10.0 torchvision==0.25.0
 python -m pip install \
   PyYAML==6.0.3 \
   numpy==2.2.3 \
@@ -293,41 +98,34 @@ python -m pip install \
   matplotlib \
   pillow \
   pytest
-
 python -m pip install -e .
 ```
 
-## 6. Validation
+## 4. Validation
 
-Check environment versions:
-
-```bash
-python - <<'PY'
-import torch, torchvision, yaml, numpy, scipy, torch_fidelity
-print("torch", torch.__version__)
-print("torchvision", torchvision.__version__)
-print("cuda_available", torch.cuda.is_available())
-print("numpy", numpy.__version__)
-print("scipy", scipy.__version__)
-print("yaml", yaml.__version__)
-print("torch_fidelity", torch_fidelity.__version__)
-PY
-```
-
-Run the branch smoke tests:
+Minimal checks:
 
 ```bash
-pytest tests/test_dgfm_map_branch.py tests/test_dgfm_teacher_trajectory.py tests/test_dgfm_teacher_sampler.py tests/test_dgfm_velocity_model.py tests/test_dgfm_config.py tests/test_dgfm_overrides.py -q
+cd /data2/yl7622/Zhengwei/DG-TWFD
+conda activate /data2/yl7622/Zhengwei/DG-TWFD/.conda_envs/dgfm_map
+pytest tests/test_dgfm_config.py tests/test_dgfm_map_branch.py tests/test_dgfm_teacher_sampler.py -q
 ```
 
-## 7. Practical recommendation
+## 5. Distributed-training prep
 
-On unstable A100 servers, use this order:
+The current workflow remains single-process by default, but activation now also
+exports these placeholders:
 
-1. set `PIP_INDEX_URL`
-2. set `HF_ENDPOINT=https://hf-mirror.com`
-3. set `DGFM_TORCH_FIDELITY_MIRROR_PREFIX=https://githubfast.com/`
-4. pre-download Torch wheels into `/cache/Zhengwei/wheels/torch-cu128`
-5. run `create_map_branch_env.sh`
+```bash
+NNODES
+NODE_RANK
+NPROC_PER_NODE
+MASTER_ADDR
+MASTER_PORT
+```
 
-That avoids repeatedly paying the slowest download cost.
+Current commands in
+[A100_PIPELINE.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/A100_PIPELINE.md)
+do not switch to `torchrun` yet. These variables are only reserved so the
+server branch can grow into distributed training later without another path
+cleanup pass.
