@@ -298,6 +298,7 @@ class MapTrainer:
     def _run_epoch(
         self,
         model: nn.Module,
+        raw_model: nn.Module,
         target_model: nn.Module | None,
         ema: ModelEMA | None,
         loader,
@@ -360,7 +361,7 @@ class MapTrainer:
                     batch,
                     device=device,
                     path=path,
-                    model=model,
+                    model=raw_model,
                     target_model=target_model,
                 )
                 total_target_build_sec += time.perf_counter() - target_t0
@@ -441,10 +442,10 @@ class MapTrainer:
                         assert timewarp_optimizer is not None
                         timewarp_t0 = time.perf_counter()
                         timewarp_optimizer.zero_grad(set_to_none=True)
-                        with _frozen_module_params(model):
+                        with _frozen_module_params(raw_model):
                             with _autocast_context(device, use_amp):
                                 timewarp_loss, timewarp_stats = _compute_timewarp_defect_loss(
-                                    model=model,
+                                    model=raw_model,
                                     timewarp=timewarp,
                                     x_0=target_batch.x_0,
                                     config=self.config,
@@ -459,7 +460,7 @@ class MapTrainer:
                         total_timewarp_updates += 1.0
                     elif timewarp_enabled and last_timewarp_stats is None:
                         _, timewarp_stats = _compute_timewarp_defect_loss(
-                            model=model,
+                            model=raw_model,
                             timewarp=timewarp,
                             x_0=target_batch.x_0,
                             config=self.config,
@@ -470,7 +471,7 @@ class MapTrainer:
                 elif timewarp_enabled:
                     timewarp_t0 = time.perf_counter()
                     _, timewarp_stats = _compute_timewarp_defect_loss(
-                        model=model,
+                        model=raw_model,
                         timewarp=timewarp,
                         x_0=target_batch.x_0,
                         config=self.config,
@@ -659,6 +660,7 @@ class MapTrainer:
             t0 = time.time()
             train_stats = self._run_epoch(
                 model,
+                raw_model,
                 ema.shadow if ema is not None else model,
                 ema,
                 dataloaders["train"],
@@ -676,6 +678,7 @@ class MapTrainer:
             global_step = int(train_stats["global_step_end"])
             eval_model = ema.shadow if ema is not None else raw_model
             val_stats = self._run_epoch(
+                eval_model,
                 eval_model,
                 ema.shadow if ema is not None else eval_model,
                 None,
