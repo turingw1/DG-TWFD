@@ -18,7 +18,7 @@ runtime:
 
 train:
   objective: explicit_map
-  batch_size: 96
-  num_workers: 8
+  batch_size: 160
+  num_workers: 12
   persistent_workers: true
-  prefetch_factor: 4
+  prefetch_factor: 6
