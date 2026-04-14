@@ -11,6 +11,13 @@ import yaml
 
 from dgfm.config import RunRoots
 from dgfm.datasets import build_image_dataloaders
+from dgfm.distributed import (
+    DistributedContext,
+    maybe_wrap_ddp,
+    reduce_scalar,
+    set_dataloader_epoch,
+    unwrap_model,
+)
 from dgfm.models import ModelEMA, build_velocity_model
 from dgfm.paths import build_path, ensure_flow_matching_on_path
 from dgfm.utils import build_experiment_archive
@@ -64,16 +71,18 @@ def _skewed_timestep_sample(num_samples: int, device: torch.device) -> torch.Ten
 class BaselineTrainer:
     config: dict
     roots: RunRoots
+    dist_ctx: DistributedContext
     archive: object | None = field(init=False, default=None)
 
     def prepare(self) -> None:
         self.roots.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         self.roots.sample_dir.mkdir(parents=True, exist_ok=True)
         self.roots.log_dir.mkdir(parents=True, exist_ok=True)
-        with (self.roots.log_dir / "config_resolved.yaml").open("w", encoding="utf-8") as handle:
-            yaml.safe_dump(self.config, handle, sort_keys=False)
         self.archive = build_experiment_archive(self.roots)
-        self.archive.dump_yaml("config_resolved.yaml", self.config)
+        if self.dist_ctx.is_main_process:
+            with (self.roots.log_dir / "config_resolved.yaml").open("w", encoding="utf-8") as handle:
+                yaml.safe_dump(self.config, handle, sort_keys=False)
+            self.archive.dump_yaml("config_resolved.yaml", self.config)
 
     def _run_epoch(
         self,
@@ -119,22 +128,24 @@ class BaselineTrainer:
                     scaler.step(optimizer)
                     scaler.update()
                     if ema is not None:
-                        ema.update(model)
+                        ema.update(unwrap_model(model))
                 total += float(loss.detach().item())
                 count += 1
-        return total / max(1, count)
+        loss_value = total / max(1, count)
+        return reduce_scalar(loss_value, device=device, ctx=self.dist_ctx, op="mean")
 
     def run(self, resume: str | None = None, verbose: bool = False) -> None:
         del verbose
         self.prepare()
         ensure_flow_matching_on_path()
-        device = _device_from_config(self.config)
+        device = self.dist_ctx.device if self.dist_ctx.enabled and self.dist_ctx.device is not None else _device_from_config(self.config)
         dataloaders = build_image_dataloaders(self.config)
         path = build_path(self.config)
-        model = build_velocity_model(self.config).to(device)
-        ema = ModelEMA(model, decay=float(self.config["train"].get("ema_decay", 0.9999)))
+        raw_model = build_velocity_model(self.config).to(device)
+        model = maybe_wrap_ddp(raw_model, self.dist_ctx, find_unused_parameters=False)
+        ema = ModelEMA(raw_model, decay=float(self.config["train"].get("ema_decay", 0.9999)))
         optimizer = torch.optim.AdamW(
-            model.parameters(),
+            raw_model.parameters(),
             lr=float(self.config["train"].get("lr", 1.0e-4)),
             weight_decay=float(self.config["train"].get("weight_decay", 0.0)),
             betas=tuple(self.config["train"].get("optimizer_betas", [0.9, 0.95])),
@@ -144,7 +155,7 @@ class BaselineTrainer:
         best_val = float("inf")
         if resume:
             ckpt = torch.load(resume, map_location=device)
-            model.load_state_dict(ckpt["model"])
+            raw_model.load_state_dict(ckpt["model"])
             optimizer.load_state_dict(ckpt["optimizer"])
             if "ema_model" in ckpt:
                 ema.load_state_dict(ckpt["ema_model"])
@@ -157,9 +168,11 @@ class BaselineTrainer:
         history_path = self.roots.log_dir / "train.jsonl"
         completed_epochs, total_elapsed_sec = _load_elapsed_history(history_path)
         for epoch in range(start_epoch, epochs):
+            set_dataloader_epoch(dataloaders["train"], epoch)
+            set_dataloader_epoch(dataloaders["val"], epoch)
             t0 = time.time()
             train_loss = self._run_epoch(model, ema, dataloaders["train"], optimizer, scaler, path, device, train=True)
-            eval_model = ema.shadow if ema is not None else model
+            eval_model = ema.shadow if ema is not None else raw_model
             val_loss = self._run_epoch(eval_model, None, dataloaders["val"], optimizer, scaler, path, device, train=False)
             elapsed = time.time() - t0
             total_elapsed_sec += elapsed
@@ -178,29 +191,34 @@ class BaselineTrainer:
                 "elapsed_sec": elapsed,
                 "eta_hours_remaining": eta_hours_remaining,
             }
-            with history_path.open("a", encoding="utf-8") as handle:
-                handle.write(json.dumps(payload) + "\n")
-            self.archive.append_jsonl("train.jsonl", payload)
+            if self.dist_ctx.is_main_process:
+                with history_path.open("a", encoding="utf-8") as handle:
+                    handle.write(json.dumps(payload) + "\n")
+                self.archive.append_jsonl("train.jsonl", payload)
             last_ckpt = {
                 "epoch": epoch,
-                "model": model.state_dict(),
+                "model": raw_model.state_dict(),
                 "ema_model": ema.state_dict(),
                 "optimizer": optimizer.state_dict(),
                 "scaler": scaler.state_dict() if scaler.is_enabled() else None,
                 "best_val": best_val,
                 "config": self.config,
             }
-            torch.save(last_ckpt, self.roots.checkpoint_dir / "last.pt")
-            self.archive.save_checkpoint("last.pt", last_ckpt)
-            if val_loss <= best_val:
-                best_val = val_loss
-                last_ckpt["best_val"] = best_val
-                torch.save(last_ckpt, self.roots.checkpoint_dir / "best.pt")
-                self.archive.save_checkpoint("best.pt", last_ckpt)
-            print(
-                f"epoch={epoch + 1}/{epochs} train_loss={train_loss:.6f} "
-                f"val_loss={val_loss:.6f} elapsed_sec={elapsed:.2f} "
-                f"epoch_sec_avg={avg_epoch_sec:.2f} "
-                f"eta_hours_remaining={eta_hours_remaining:.2f}",
-                flush=True,
-            )
+            if self.dist_ctx.is_main_process:
+                torch.save(last_ckpt, self.roots.checkpoint_dir / "last.pt")
+                self.archive.save_checkpoint("last.pt", last_ckpt)
+                if val_loss <= best_val:
+                    best_val = val_loss
+                    last_ckpt["best_val"] = best_val
+                    torch.save(last_ckpt, self.roots.checkpoint_dir / "best.pt")
+                    self.archive.save_checkpoint("best.pt", last_ckpt)
+                print(
+                    f"epoch={epoch + 1}/{epochs} train_loss={train_loss:.6f} "
+                    f"val_loss={val_loss:.6f} elapsed_sec={elapsed:.2f} "
+                    f"epoch_sec_avg={avg_epoch_sec:.2f} "
+                    f"eta_hours_remaining={eta_hours_remaining:.2f}",
+                    flush=True,
+                )
+            else:
+                if val_loss <= best_val:
+                    best_val = val_loss

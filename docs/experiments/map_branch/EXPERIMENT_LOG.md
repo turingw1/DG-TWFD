@@ -30,16 +30,40 @@ After activation, use these commands without extra overrides.
 Train:
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
+CUDA_VISIBLE_DEVICES=${TRAIN_CUDA_VISIBLE_DEVICES} torchrun \
+  --standalone \
+  --nnodes=$NNODES \
+  --nproc_per_node=$NPROC_PER_NODE \
+  --node_rank=$NODE_RANK \
+  --master_addr=$MASTER_ADDR \
+  --master_port=$MASTER_PORT \
+  scripts/run_train.py \
   --config $FM_CONFIG \
   --run-root $RUN_ROOT \
+  --verbose
+```
+
+Resume:
+
+```bash
+CUDA_VISIBLE_DEVICES=${TRAIN_CUDA_VISIBLE_DEVICES} torchrun \
+  --standalone \
+  --nnodes=$NNODES \
+  --nproc_per_node=$NPROC_PER_NODE \
+  --node_rank=$NODE_RANK \
+  --master_addr=$MASTER_ADDR \
+  --master_port=$MASTER_PORT \
+  scripts/run_train.py \
+  --config $FM_CONFIG \
+  --run-root $RUN_ROOT \
+  --resume $CKPT_DIR/last.pt \
   --verbose
 ```
 
 Eval:
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
+CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_eval.py \
   --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
   --eval-root $METRIC_ROOT \
@@ -49,7 +73,7 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
 Panel:
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_multistep_panel.py \
+CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_multistep_panel.py \
   --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
   --output-dir $SAMPLE_ROOT/multistep_panel \
@@ -61,7 +85,7 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_multistep_panel.py \
 Official sample export:
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_export_samples_npz.py \
+CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_export_samples_npz.py \
   --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
   --out $METRIC_ROOT/official/step16_samples.npz \
@@ -71,7 +95,7 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_export_samples_npz.py \
 Official metrics:
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_evaluate_metrics.py \
+CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_evaluate_metrics.py \
   --config $FM_CONFIG \
   --samples $METRIC_ROOT/official/step16_samples.npz \
   --reference ${OFFICIAL_REFERENCE_NPZ:-$IMAGENET64_REFERENCE_NPZ} \
@@ -81,11 +105,16 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_evaluate_metrics.py \
 Held-out defect:
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_evaluate_defect.py \
+CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_evaluate_defect.py \
   --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
   --out $METRIC_ROOT/defect/heldout.json
 ```
+
+Current server policy:
+- training uses GPUs `0,1`
+- eval and sampling use one GPU from `${INFER_CUDA_VISIBLE_DEVICES}`
+- keep GPUs `2,3` free for small side experiments unless explicitly reallocated
 
 ImageNet64 preprocessing:
 

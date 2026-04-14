@@ -12,6 +12,13 @@ import yaml
 
 from dgfm.config import RunRoots
 from dgfm.datasets import build_map_training_dataloaders
+from dgfm.distributed import (
+    DistributedContext,
+    maybe_wrap_ddp,
+    reduce_float_dict,
+    set_dataloader_epoch,
+    unwrap_model,
+)
 from dgfm.losses import build_perceptual_metric
 from dgfm.models import ModelEMA, build_map_model
 from dgfm.paths import build_path, ensure_flow_matching_on_path
@@ -275,16 +282,18 @@ def _resolve_training_target(
 class MapTrainer:
     config: dict
     roots: RunRoots
+    dist_ctx: DistributedContext
     archive: object | None = field(init=False, default=None)
 
     def prepare(self) -> None:
         self.roots.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         self.roots.sample_dir.mkdir(parents=True, exist_ok=True)
         self.roots.log_dir.mkdir(parents=True, exist_ok=True)
-        with (self.roots.log_dir / "config_resolved.yaml").open("w", encoding="utf-8") as handle:
-            yaml.safe_dump(self.config, handle, sort_keys=False)
         self.archive = build_experiment_archive(self.roots)
-        self.archive.dump_yaml("config_resolved.yaml", self.config)
+        if self.dist_ctx.is_main_process:
+            with (self.roots.log_dir / "config_resolved.yaml").open("w", encoding="utf-8") as handle:
+                yaml.safe_dump(self.config, handle, sort_keys=False)
+            self.archive.dump_yaml("config_resolved.yaml", self.config)
 
     def _run_epoch(
         self,
@@ -427,7 +436,7 @@ class MapTrainer:
                     scaler.step(optimizer)
                     scaler.update()
                     if ema is not None:
-                        ema.update(model)
+                        ema.update(unwrap_model(model))
                     if timewarp_enabled and global_step % timewarp_update_every == 0:
                         assert timewarp_optimizer is not None
                         timewarp_t0 = time.perf_counter()
@@ -524,6 +533,48 @@ class MapTrainer:
             "bridge_source": bridge_source_name,
         }
         payload.update({key: value / denom for key, value in total_diag.items()})
+        payload = reduce_float_dict(
+            payload,
+            device=device,
+            ctx=self.dist_ctx,
+            mean_keys=[
+                "loss",
+                "pixel_loss",
+                "perceptual_loss",
+                "endpoint_loss",
+                "endpoint_pixel_loss",
+                "endpoint_perceptual_loss",
+                "endpoint_step",
+                "timewarp_loss",
+                "timewarp_defect_loss",
+                "timewarp_balance_loss",
+                "t_mean",
+                "s_mean",
+                "delta_mean",
+                "target_build_sec",
+                "forward_sec",
+                "endpoint_sec",
+                "timewarp_sec",
+                "global_step_end",
+                "x_t_abs_mean",
+                "x_t_std",
+                "pred_abs_mean",
+                "pred_std",
+                "target_abs_mean",
+                "target_std",
+                "pred_update_abs_mean",
+                "target_update_abs_mean",
+                "update_ratio",
+                "update_cosine",
+                "clean_abs_mean",
+                "clean_std",
+            ],
+            sum_keys=[
+                "samples_seen",
+                "batches_seen",
+                "timewarp_updates",
+            ],
+        )
         if timewarp is not None:
             time_grid = build_runtime_time_grid(
                 config=self.config,
@@ -534,37 +585,45 @@ class MapTrainer:
             )
             payload.update({f"timewarp_{key}": value for key, value in summarize_time_grid(time_grid).items()})
             if last_timewarp_stats is not None:
-                payload["timewarp_interval_defects"] = list(last_timewarp_stats["interval_defects"])
+                interval_defects = [float(item) for item in last_timewarp_stats["interval_defects"]]
+                if self.dist_ctx.enabled and interval_defects:
+                    interval_tensor = torch.tensor(interval_defects, device=device, dtype=torch.float32)
+                    torch.distributed.all_reduce(interval_tensor, op=torch.distributed.ReduceOp.SUM)
+                    interval_tensor /= float(self.dist_ctx.world_size)
+                    interval_defects = [float(item) for item in interval_tensor.cpu().tolist()]
+                payload["timewarp_interval_defects"] = interval_defects
         return payload
 
     def run(self, resume: str | None = None, verbose: bool = False) -> None:
         self.prepare()
-        device = _device_from_config(self.config)
+        device = self.dist_ctx.device if self.dist_ctx.enabled and self.dist_ctx.device is not None else _device_from_config(self.config)
         target_builder = build_target_builder(self.config)
         dataloaders = build_map_training_dataloaders(self.config)
         path = None
         if bool(getattr(target_builder, "needs_path", False)):
             ensure_flow_matching_on_path()
             path = build_path(self.config)
-        model = build_map_model(self.config).to(device)
-        ema = ModelEMA(model, decay=float(self.config["train"].get("ema_decay", 0.9999)))
+        raw_model = build_map_model(self.config).to(device)
+        model = maybe_wrap_ddp(raw_model, self.dist_ctx, find_unused_parameters=False)
+        ema = ModelEMA(raw_model, decay=float(self.config["train"].get("ema_decay", 0.9999)))
         perceptual_metric = build_perceptual_metric(self.config)
         if perceptual_metric is not None:
             perceptual_metric = perceptual_metric.to(device)
-        timewarp = build_timewarp_module(self.config, device=device, dtype=torch.float32)
+        raw_timewarp = build_timewarp_module(self.config, device=device, dtype=torch.float32)
+        timewarp = maybe_wrap_ddp(raw_timewarp, self.dist_ctx, find_unused_parameters=False) if raw_timewarp is not None else None
         if hasattr(target_builder, "set_timewarp"):
-            target_builder.set_timewarp(timewarp)
+            target_builder.set_timewarp(raw_timewarp)
         optimizer = torch.optim.AdamW(
-            model.parameters(),
+            raw_model.parameters(),
             lr=float(self.config["train"].get("lr", 1.0e-4)),
             weight_decay=float(self.config["train"].get("weight_decay", 0.0)),
             betas=tuple(self.config["train"].get("optimizer_betas", [0.9, 0.95])),
         )
         timewarp_optimizer = None
-        if timewarp is not None and float(self.config.get("loss", {}).get("timewarp_weight", 0.0)) > 0.0:
+        if raw_timewarp is not None and float(self.config.get("loss", {}).get("timewarp_weight", 0.0)) > 0.0:
             scheduler_cfg = self.config.get("scheduler", {}).get("timewarp", {})
             timewarp_optimizer = torch.optim.AdamW(
-                timewarp.parameters(),
+                raw_timewarp.parameters(),
                 lr=float(scheduler_cfg.get("lr", self.config["train"].get("lr", 1.0e-4))),
                 weight_decay=float(scheduler_cfg.get("weight_decay", 0.0)),
                 betas=tuple(self.config["train"].get("optimizer_betas", [0.9, 0.95])),
@@ -575,12 +634,12 @@ class MapTrainer:
         global_step = 0
         if resume:
             ckpt = torch.load(resume, map_location=device)
-            model.load_state_dict(ckpt["model"])
+            raw_model.load_state_dict(ckpt["model"])
             optimizer.load_state_dict(ckpt["optimizer"])
             if "ema_model" in ckpt:
                 ema.load_state_dict(ckpt["ema_model"])
-            if timewarp is not None and ckpt.get("timewarp") is not None:
-                timewarp.load_state_dict(ckpt["timewarp"])
+            if raw_timewarp is not None and ckpt.get("timewarp") is not None:
+                raw_timewarp.load_state_dict(ckpt["timewarp"])
             if timewarp_optimizer is not None and ckpt.get("timewarp_optimizer") is not None:
                 timewarp_optimizer.load_state_dict(ckpt["timewarp_optimizer"])
             start_epoch = int(ckpt.get("epoch", 0)) + 1
@@ -595,6 +654,8 @@ class MapTrainer:
         target_mode = str(self.config.get("target", {}).get("builder", "analytic_path"))
         target_uses_dataset_images = bool(getattr(target_builder, "uses_dataset_images", True))
         for epoch in range(start_epoch, epochs):
+            set_dataloader_epoch(dataloaders["train"], epoch)
+            set_dataloader_epoch(dataloaders["val"], epoch)
             t0 = time.time()
             train_stats = self._run_epoch(
                 model,
@@ -613,7 +674,7 @@ class MapTrainer:
                 global_step_start=global_step,
             )
             global_step = int(train_stats["global_step_end"])
-            eval_model = ema.shadow if ema is not None else model
+            eval_model = ema.shadow if ema is not None else raw_model
             val_stats = self._run_epoch(
                 eval_model,
                 ema.shadow if ema is not None else eval_model,
@@ -726,12 +787,13 @@ class MapTrainer:
                 payload["timewarp_delta_std"] = train_stats["timewarp_delta_std"]
             if "timewarp_interval_defects" in train_stats:
                 payload["timewarp_interval_defects"] = train_stats["timewarp_interval_defects"]
-            with history_path.open("a", encoding="utf-8") as handle:
-                handle.write(json.dumps(payload) + "\n")
-            self.archive.append_jsonl("train.jsonl", payload)
+            if self.dist_ctx.is_main_process:
+                with history_path.open("a", encoding="utf-8") as handle:
+                    handle.write(json.dumps(payload) + "\n")
+                self.archive.append_jsonl("train.jsonl", payload)
             ckpt = {
                 "epoch": epoch,
-                "model": model.state_dict(),
+                "model": raw_model.state_dict(),
                 "ema_model": ema.state_dict(),
                 "optimizer": optimizer.state_dict(),
                 "scaler": scaler.state_dict() if scaler.is_enabled() else None,
@@ -739,38 +801,43 @@ class MapTrainer:
                 "global_step": global_step,
                 "config": self.config,
             }
-            if timewarp is not None:
-                ckpt["timewarp"] = timewarp.state_dict()
+            if raw_timewarp is not None:
+                ckpt["timewarp"] = raw_timewarp.state_dict()
             if timewarp_optimizer is not None:
                 ckpt["timewarp_optimizer"] = timewarp_optimizer.state_dict()
-            torch.save(ckpt, self.roots.checkpoint_dir / "last.pt")
-            self.archive.save_checkpoint("last.pt", ckpt)
-            if val_stats["loss"] <= best_val:
-                best_val = val_stats["loss"]
-                ckpt["best_val"] = best_val
-                torch.save(ckpt, self.roots.checkpoint_dir / "best.pt")
-                self.archive.save_checkpoint("best.pt", ckpt)
+            if self.dist_ctx.is_main_process:
+                torch.save(ckpt, self.roots.checkpoint_dir / "last.pt")
+                self.archive.save_checkpoint("last.pt", ckpt)
+                if val_stats["loss"] <= best_val:
+                    best_val = val_stats["loss"]
+                    ckpt["best_val"] = best_val
+                    torch.save(ckpt, self.roots.checkpoint_dir / "best.pt")
+                    self.archive.save_checkpoint("best.pt", ckpt)
+            else:
+                if val_stats["loss"] <= best_val:
+                    best_val = val_stats["loss"]
             train_samples_per_sec = train_stats["samples_seen"] / max(elapsed, 1.0e-8)
-            print(
-                f"epoch={epoch + 1}/{epochs} train_loss={train_stats['loss']:.6f} "
-                f"val_loss={val_stats['loss']:.6f} pixel={train_stats['pixel_loss']:.6f} "
-                f"perc={train_stats['perceptual_loss']:.6f} endpoint={train_stats['endpoint_loss']:.6f} "
-                f"timewarp={train_stats['timewarp_defect_loss']:.6f} "
-                f"target={target_mode} "
-                f"construction={train_stats['target_construction']} "
-                f"target_source={train_stats['target_source']} "
-                f"bridge_source={train_stats['bridge_source']} "
-                f"dataset_images={'yes' if target_uses_dataset_images else 'no'} "
-                f"t_mean={train_stats['t_mean']:.4f} s_mean={train_stats['s_mean']:.4f} "
-                f"delta_mean={train_stats['delta_mean']:.4f} endpoint_step={train_stats['endpoint_step']:.2f} "
-                f"timewarp_delta_min={train_stats.get('timewarp_delta_min', 0.0):.4f} "
-                f"timewarp_delta_max={train_stats.get('timewarp_delta_max', 0.0):.4f} "
-                f"samples_per_sec={train_samples_per_sec:.2f} elapsed_sec={elapsed:.2f} "
-                f"epoch_sec_avg={avg_epoch_sec:.2f} "
-                f"eta_hours_remaining={eta_hours_remaining:.2f}",
-                flush=True,
-            )
-            if verbose:
+            if self.dist_ctx.is_main_process:
+                print(
+                    f"epoch={epoch + 1}/{epochs} train_loss={train_stats['loss']:.6f} "
+                    f"val_loss={val_stats['loss']:.6f} pixel={train_stats['pixel_loss']:.6f} "
+                    f"perc={train_stats['perceptual_loss']:.6f} endpoint={train_stats['endpoint_loss']:.6f} "
+                    f"timewarp={train_stats['timewarp_defect_loss']:.6f} "
+                    f"target={target_mode} "
+                    f"construction={train_stats['target_construction']} "
+                    f"target_source={train_stats['target_source']} "
+                    f"bridge_source={train_stats['bridge_source']} "
+                    f"dataset_images={'yes' if target_uses_dataset_images else 'no'} "
+                    f"t_mean={train_stats['t_mean']:.4f} s_mean={train_stats['s_mean']:.4f} "
+                    f"delta_mean={train_stats['delta_mean']:.4f} endpoint_step={train_stats['endpoint_step']:.2f} "
+                    f"timewarp_delta_min={train_stats.get('timewarp_delta_min', 0.0):.4f} "
+                    f"timewarp_delta_max={train_stats.get('timewarp_delta_max', 0.0):.4f} "
+                    f"samples_per_sec={train_samples_per_sec:.2f} elapsed_sec={elapsed:.2f} "
+                    f"epoch_sec_avg={avg_epoch_sec:.2f} "
+                    f"eta_hours_remaining={eta_hours_remaining:.2f}",
+                    flush=True,
+                )
+            if verbose and self.dist_ctx.is_main_process:
                 verbose_payload = {
                     "epoch": epoch,
                     "train_pred_update_abs_mean": train_stats["pred_update_abs_mean"],

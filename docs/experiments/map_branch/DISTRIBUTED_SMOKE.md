@@ -1,6 +1,7 @@
 # Distributed Smoke
 
-This is a minimal preflight for single-node, two-GPU distributed execution.
+This is the required preflight before formal two-A6000 training runs on the
+server branch.
 
 Goal:
 - verify `cuda:0,1`
@@ -9,7 +10,8 @@ Goal:
 - verify `DistributedSampler`
 - verify DDP forward/backward/optimizer step on the current explicit-map model
 
-It does **not** start the full training pipeline.
+It does **not** start the full teacher-backed training pipeline. Its job is to
+verify that `torchrun + NCCL + DDP` can initialize cleanly on GPUs `0,1`.
 
 ## Command
 
@@ -45,6 +47,10 @@ The script should also write:
 ```bash
 $RUN_ROOT/logs/ddp_smoke.json
 ```
+
+After this passes, formal training should use the distributed train commands in
+[A100_PIPELINE.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/A100_PIPELINE.md),
+while eval and panel stay single-GPU.
 
 ## What to return
 

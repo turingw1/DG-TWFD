@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import torch
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, DistributedSampler, random_split
 from torchvision import datasets, transforms
 
 from .imagenet import build_imagenet64_datasets
@@ -52,6 +53,9 @@ def build_image_dataloaders(config: dict) -> dict[str, DataLoader]:
     batch_size = int(train_cfg["batch_size"])
     num_workers = int(train_cfg.get("num_workers", 4))
     val_split = float(train_cfg.get("val_fraction", 0.05))
+    distributed = int(os.environ.get("WORLD_SIZE", "1")) > 1
+    rank = int(os.environ.get("RANK", "0"))
+    world_size = int(os.environ.get("WORLD_SIZE", "1"))
     if dataset_cfg["name"] == "cifar10":
         root = Path(dataset_cfg["data_root"])
         train_transform, eval_transform = _build_cifar10_transforms()
@@ -103,10 +107,17 @@ def build_image_dataloaders(config: dict) -> dict[str, DataLoader]:
     if num_workers > 0:
         common["persistent_workers"] = bool(train_cfg.get("persistent_workers", True))
         common["prefetch_factor"] = int(train_cfg.get("prefetch_factor", 4))
+    train_sampler = None
+    val_sampler = None
+    test_sampler = None
+    if distributed and world_size > 1:
+        train_sampler = DistributedSampler(train_set, num_replicas=world_size, rank=rank, shuffle=True, drop_last=True)
+        val_sampler = DistributedSampler(val_set, num_replicas=world_size, rank=rank, shuffle=False, drop_last=False)
+        test_sampler = DistributedSampler(test_set, num_replicas=world_size, rank=rank, shuffle=False, drop_last=False)
     return {
-        "train": DataLoader(train_set, shuffle=True, drop_last=True, **common),
-        "val": DataLoader(val_set, shuffle=False, drop_last=False, **common),
-        "test": DataLoader(test_set, shuffle=False, drop_last=False, **common),
+        "train": DataLoader(train_set, shuffle=train_sampler is None, sampler=train_sampler, drop_last=True, **common),
+        "val": DataLoader(val_set, shuffle=False, sampler=val_sampler, drop_last=False, **common),
+        "test": DataLoader(test_set, shuffle=False, sampler=test_sampler, drop_last=False, **common),
     }
 
 

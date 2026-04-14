@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import bisect
 from collections import OrderedDict
+import os
 from pathlib import Path
 from typing import Any
 
 import torch
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, DistributedSampler
 import yaml
 
 from dgfm.targets.pair_sampling import sample_pair_indices
@@ -123,6 +124,9 @@ def build_trajectory_dataloaders(config: dict) -> dict[str, DataLoader]:
     train_cfg = config["train"]
     batch_size = int(train_cfg["batch_size"])
     num_workers = int(train_cfg.get("num_workers", 4))
+    distributed = int(os.environ.get("WORLD_SIZE", "1")) > 1
+    rank = int(os.environ.get("RANK", "0"))
+    world_size = int(os.environ.get("WORLD_SIZE", "1"))
     common = {
         "batch_size": batch_size,
         "num_workers": num_workers,
@@ -133,7 +137,12 @@ def build_trajectory_dataloaders(config: dict) -> dict[str, DataLoader]:
         common["prefetch_factor"] = int(train_cfg.get("prefetch_factor", 4))
     train_set = TrajectoryShardPairDataset(config=config, split="train")
     val_set = TrajectoryShardPairDataset(config=config, split="val")
+    train_sampler = None
+    val_sampler = None
+    if distributed and world_size > 1:
+        train_sampler = DistributedSampler(train_set, num_replicas=world_size, rank=rank, shuffle=True, drop_last=True)
+        val_sampler = DistributedSampler(val_set, num_replicas=world_size, rank=rank, shuffle=False, drop_last=False)
     return {
-        "train": DataLoader(train_set, shuffle=True, drop_last=True, **common),
-        "val": DataLoader(val_set, shuffle=False, drop_last=False, **common),
+        "train": DataLoader(train_set, shuffle=train_sampler is None, sampler=train_sampler, drop_last=True, **common),
+        "val": DataLoader(val_set, shuffle=False, sampler=val_sampler, drop_last=False, **common),
     }

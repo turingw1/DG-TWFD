@@ -8,7 +8,7 @@ external-integration update driven by `plan.md`.
 The plan is now split into three layers:
 
 - `Stage 0`
-  - server readiness smoke for the current single-GPU A6000-style branch
+  - server readiness smoke for the current two-A6000 distributed branch
 - `Stage 1`
   - algorithm selection inside the current CIFAR-10 map-branch system
 - `Stage 2`
@@ -112,11 +112,13 @@ but not a finished ImageNet64 map-branch teacher backend.
 
 ## Stage 0. Server readiness smoke
 
-### Experiment 0. A6000 fullstack preflight
+### Experiment 0. A6000 preflight
 
 Question:
-- can the current server run the fullstack map-branch path end-to-end before a
-  long run starts?
+- can the current server run both:
+  - the short fullstack teacher-backed smoke
+  - the two-GPU DDP initialization smoke
+  before a long run starts?
 
 Config:
 - `fm_cifar10_map_branch_s0_a6000_fullstack_smoke`
@@ -127,6 +129,9 @@ Acceptance:
 - timewarp update executes
 - few-step eval completes
 - no CUDA allocator / driver issue appears in the preflight
+- the distributed smoke in
+  [DISTRIBUTED_SMOKE.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/DISTRIBUTED_SMOKE.md)
+  passes on GPUs `0,1`
 
 ## Stage 1. CIFAR-10 algorithm selection
 

@@ -3,9 +3,11 @@
 This directory is the complete documentation context for the current
 `server_single_root_workflow` git branch.
 
-This server branch now defaults to a single-root, single-GPU-first setup tuned
-for A6000-class cards. The workflow remains the same; only path and memory
-budget defaults are reduced from the earlier A100-oriented assumptions.
+This server branch now defaults to a single-root workflow tuned for a mixed-GPU
+server where the two A6000 cards on `0,1` are reserved for formal distributed
+training and the remaining cards can stay free for side experiments. Path and
+memory defaults are reduced from the earlier A100-oriented assumptions, while
+eval and sampling remain single-GPU.
 
 ## Experiment tracking
 
@@ -22,7 +24,8 @@ budget defaults are reduced from the earlier A100-oriented assumptions.
    - operational entrypoint
    - environment setup
    - CIFAR-10 and online teacher target setup
-   - train / resume / eval / sample / panel
+   - distributed train / resume
+   - single-GPU eval / sample / panel
 
 2. [EXPERIMENT_LOG.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/EXPERIMENT_LOG.md)
    - experiment ids

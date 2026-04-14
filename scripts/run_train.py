@@ -12,6 +12,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from dgfm.config import load_experiment_config, resolve_run_roots
+from dgfm.distributed import cleanup_distributed, init_distributed
 from dgfm.trainers import build_trainer
 
 
@@ -31,8 +32,12 @@ def main() -> None:
     if bool(config.get("runtime", {}).get("cudnn_benchmark", False)) and torch.cuda.is_available():
         torch.backends.cudnn.benchmark = True
     roots = resolve_run_roots(args.run_root)
-    trainer = build_trainer(config=config, roots=roots)
-    trainer.run(resume=args.resume, verbose=args.verbose)
+    dist_ctx = init_distributed(config)
+    trainer = build_trainer(config=config, roots=roots, dist_ctx=dist_ctx)
+    try:
+        trainer.run(resume=args.resume, verbose=args.verbose)
+    finally:
+        cleanup_distributed(dist_ctx)
 
 
 if __name__ == "__main__":

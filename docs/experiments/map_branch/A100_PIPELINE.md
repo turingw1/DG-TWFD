@@ -38,6 +38,9 @@ Use this preflight to confirm:
 - timewarp update can run
 - few-step eval can write outputs
 - no CUDA allocator / driver issue appears before long runs
+- two-A6000 distributed training should only start after
+  [DISTRIBUTED_SMOKE.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/DISTRIBUTED_SMOKE.md)
+  passes on `CUDA_VISIBLE_DEVICES=0,1`
 
 Then activate the selected experiment once:
 
@@ -80,6 +83,11 @@ This sets stable environment variables for all later commands:
 - `NPROC_PER_NODE`
 - `MASTER_ADDR`
 - `MASTER_PORT`
+
+Server policy on this branch:
+- main training uses GPUs `0,1`
+- eval / panel / official metrics stay single-GPU
+- GPUs `2,3` are intentionally left free for small side experiments
 
 ## 3. Dataset preparation
 
@@ -124,7 +132,14 @@ Notes:
 ### Train
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python scripts/run_train.py \
+CUDA_VISIBLE_DEVICES=${TRAIN_CUDA_VISIBLE_DEVICES} torchrun \
+  --standalone \
+  --nnodes=$NNODES \
+  --nproc_per_node=$NPROC_PER_NODE \
+  --node_rank=$NODE_RANK \
+  --master_addr=$MASTER_ADDR \
+  --master_port=$MASTER_PORT \
+  scripts/run_train.py \
   --config $FM_CONFIG \
   --run-root $RUN_ROOT \
   --verbose
@@ -135,7 +150,14 @@ CUDA_VISIBLE_DEVICES=0 python scripts/run_train.py \
 Resume from the latest checkpoint in the same run root:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python scripts/run_train.py \
+CUDA_VISIBLE_DEVICES=${TRAIN_CUDA_VISIBLE_DEVICES} torchrun \
+  --standalone \
+  --nnodes=$NNODES \
+  --nproc_per_node=$NPROC_PER_NODE \
+  --node_rank=$NODE_RANK \
+  --master_addr=$MASTER_ADDR \
+  --master_port=$MASTER_PORT \
+  scripts/run_train.py \
   --config $FM_CONFIG \
   --run-root $RUN_ROOT \
   --resume $CKPT_DIR/last.pt \
@@ -145,7 +167,14 @@ CUDA_VISIBLE_DEVICES=0 python scripts/run_train.py \
 Resume from the current best checkpoint:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python scripts/run_train.py \
+CUDA_VISIBLE_DEVICES=${TRAIN_CUDA_VISIBLE_DEVICES} torchrun \
+  --standalone \
+  --nnodes=$NNODES \
+  --nproc_per_node=$NPROC_PER_NODE \
+  --node_rank=$NODE_RANK \
+  --master_addr=$MASTER_ADDR \
+  --master_port=$MASTER_PORT \
+  scripts/run_train.py \
   --config $FM_CONFIG \
   --run-root $RUN_ROOT \
   --resume $CKPT_DIR/best.pt \
@@ -155,7 +184,7 @@ CUDA_VISIBLE_DEVICES=0 python scripts/run_train.py \
 ### Eval
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python scripts/run_eval.py \
+CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_eval.py \
   --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
   --eval-root $METRIC_ROOT \
@@ -165,7 +194,7 @@ CUDA_VISIBLE_DEVICES=0 python scripts/run_eval.py \
 ### Multi-step panel
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python scripts/run_multistep_panel.py \
+CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_multistep_panel.py \
   --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
   --output-dir $SAMPLE_ROOT/multistep_panel \
@@ -177,7 +206,7 @@ CUDA_VISIBLE_DEVICES=0 python scripts/run_multistep_panel.py \
 ### Official sample export
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python scripts/run_export_samples_npz.py \
+CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_export_samples_npz.py \
   --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
   --out $METRIC_ROOT/official/step16_samples.npz \
@@ -191,7 +220,7 @@ This writes:
 ### Official metrics
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python scripts/run_evaluate_metrics.py \
+CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_evaluate_metrics.py \
   --config $FM_CONFIG \
   --samples $METRIC_ROOT/official/step16_samples.npz \
   --reference ${OFFICIAL_REFERENCE_NPZ:-$IMAGENET64_REFERENCE_NPZ} \
@@ -206,7 +235,7 @@ Use:
 ### Held-out defect
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python scripts/run_evaluate_defect.py \
+CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_evaluate_defect.py \
   --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
   --out $METRIC_ROOT/defect/heldout.json

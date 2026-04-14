@@ -111,10 +111,10 @@ conda activate /data2/yl7622/Zhengwei/DG-TWFD/.conda_envs/dgfm_map
 pytest tests/test_dgfm_config.py tests/test_dgfm_map_branch.py tests/test_dgfm_teacher_sampler.py -q
 ```
 
-## 5. Distributed-training prep
+## 5. Distributed-training defaults
 
-The current workflow remains single-process by default, but activation now also
-exports these placeholders:
+This server branch now defaults to two-process single-node training on GPUs
+`0,1`. Activation exports:
 
 ```bash
 NNODES
@@ -124,8 +124,23 @@ MASTER_ADDR
 MASTER_PORT
 ```
 
-Current commands in
+Current pipeline commands in
 [A100_PIPELINE.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/A100_PIPELINE.md)
-do not switch to `torchrun` yet. These variables are only reserved so the
-server branch can grow into distributed training later without another path
-cleanup pass.
+use these variables directly with `torchrun` for training and resume.
+
+Default activation values:
+
+```bash
+TRAIN_CUDA_VISIBLE_DEVICES=0,1
+INFER_CUDA_VISIBLE_DEVICES=0
+NNODES=1
+NODE_RANK=0
+NPROC_PER_NODE=2
+MASTER_ADDR=127.0.0.1
+MASTER_PORT=29500
+```
+
+Operational split:
+- training uses the two A6000 cards on `0,1`
+- eval / panel / official metrics remain single-GPU
+- leave GPUs `2,3` available for small side experiments
