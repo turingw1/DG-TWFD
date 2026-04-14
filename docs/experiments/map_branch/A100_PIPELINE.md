@@ -8,6 +8,8 @@ first:
 ```bash
 cd /data2/yl7622/Zhengwei/DG-TWFD
 bash scripts/experiments/create_map_branch_env.sh dgfm_map
+source /data2/yl7622/anaconda/etc/profile.d/conda.sh 
+
 ```
 
 Then use:
