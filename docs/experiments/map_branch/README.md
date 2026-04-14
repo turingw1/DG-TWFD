@@ -9,6 +9,12 @@ training and the remaining cards can stay free for side experiments. Path and
 memory defaults are reduced from the earlier A100-oriented assumptions, while
 eval and sampling remain single-GPU.
 
+Current throughput defaults on this branch:
+- training assumes two A6000 cards
+- per-rank batch and dataloader settings are higher than the earlier single-GPU
+  safety defaults
+- TF32 is enabled by default on CUDA runs
+
 ## Experiment tracking
 
 - use one stable pipeline document:

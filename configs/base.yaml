@@ -6,6 +6,7 @@ runtime:
   device: auto
   amp: true
   ddp: false
+  tf32: true
 
 train:
   objective: flow_matching_velocity

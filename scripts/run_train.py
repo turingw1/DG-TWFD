@@ -29,6 +29,11 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     config = load_experiment_config(args.config, overrides=args.set)
+    runtime_cfg = config.get("runtime", {})
+    if torch.cuda.is_available() and bool(runtime_cfg.get("tf32", True)):
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+        torch.set_float32_matmul_precision("high")
     if bool(config.get("runtime", {}).get("cudnn_benchmark", False)) and torch.cuda.is_available():
         torch.backends.cudnn.benchmark = True
     roots = resolve_run_roots(args.run_root)

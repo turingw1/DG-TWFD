@@ -39,6 +39,11 @@ def main() -> None:
     if args.sample_batch_size is not None:
         overrides.append(f"eval.sample_batch_size={args.sample_batch_size}")
     config = load_experiment_config(args.config, overrides=overrides)
+    runtime_cfg = config.get("runtime", {})
+    if torch.cuda.is_available() and bool(runtime_cfg.get("tf32", True)):
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+        torch.set_float32_matmul_precision("high")
     runner = build_evaluator(
         config=config,
         checkpoint=Path(args.checkpoint),

@@ -75,6 +75,11 @@ It installs:
 - `piq`
 - project editable install
 
+Runtime defaults on this branch:
+- AMP enabled
+- TF32 enabled on CUDA runs
+- training configs are tuned for two-A6000 throughput first, then memory safety
+
 ## 3. Manual environment creation
 
 If you do not want the helper script:
