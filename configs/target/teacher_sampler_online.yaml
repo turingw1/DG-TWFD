@@ -10,7 +10,7 @@ target:
   bridge_stop_grad: true
   loss_type: mse
   huber_delta: 0.1
-  teacher_sampler_sub_batch: 64
+  teacher_sampler_sub_batch: 32
   num_heun_step: 17
   num_heun_step_random: true
   heun_step_strategy: weighted

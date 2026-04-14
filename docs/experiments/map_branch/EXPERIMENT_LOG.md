@@ -95,6 +95,12 @@ python scripts/prepare_imagenet64.py \
   --output-root $IMAGENET64_PREPROCESSED/train
 ```
 
+## Stage 0. Server readiness smoke
+
+| Group | EXP_TAG | EXP_VARIANT | FM_CONFIG | Activate | Purpose | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| E0 | e001a | `fm_cifar10_map_branch_s0_a6000_fullstack_smoke` | `configs/experiment/fm_cifar10_map_branch_s0_a6000_fullstack_smoke.yaml` | `source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s0_a6000_fullstack_smoke e001a` | A6000 fullstack preflight: exercise target builder, endpoint rollout, timewarp update, and few-step eval before long runs | planned |
+
 ## Stage 1. CIFAR-10 algorithm selection
 
 | Group | EXP_TAG | EXP_VARIANT | FM_CONFIG | Activate | Purpose | Status |
@@ -127,18 +133,19 @@ python scripts/prepare_imagenet64.py \
 
 ## Execution order
 
-1. Run `E1` first and pick the best target-construction recipe.
-2. Run `E2` once to check whether defect diagnostics are coherent.
-3. Run `E3` to lock prediction parameterization.
-4. Run `E4` to decide whether endpoint should stay.
-5. Run `E5` to decide whether any warp strategy, including spline, is worth keeping.
-6. Use the winning recipe to interpret `E6`.
+1. Run `E0` first on a new server or new environment.
+2. Run `E1` first and pick the best target-construction recipe.
+3. Run `E2` once to check whether defect diagnostics are coherent.
+4. Run `E3` to lock prediction parameterization.
+5. Run `E4` to decide whether endpoint should stay.
+6. Run `E5` to decide whether any warp strategy, including spline, is worth keeping.
+7. Use the winning recipe to interpret `E6`.
    If you need one architecture-complete long run for final analysis, use
    `e603a`. If you need the cleaner best-known recipe without auxiliary
    timewarp/endpoint, use `e602a`.
-7. Activate `E7` and reuse the selected checkpoint to produce official `.npz` metrics.
-8. Activate `E8` and reuse the selected checkpoint(s) to produce held-out defect reports.
-9. Run `E9` to verify the ImageNet64 data / baseline / official-eval bridge.
+8. Activate `E7` and reuse the selected checkpoint to produce official `.npz` metrics.
+9. Activate `E8` and reuse the selected checkpoint(s) to produce held-out defect reports.
+10. Run `E9` to verify the ImageNet64 data / baseline / official-eval bridge.
 
 ## Output inspection
 

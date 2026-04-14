@@ -24,6 +24,21 @@ conda activate /data2/yl7622/Zhengwei/DG-TWFD/.conda_envs/dgfm_map
 Before entering the pipeline, first update
 [EXPERIMENT_LOG.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/EXPERIMENT_LOG.md).
 
+On a new server or fresh environment, run the Stage-0 A6000 preflight first:
+
+```bash
+source scripts/experiments/activate_fm_cifar10.sh fm_cifar10_map_branch_s0_a6000_fullstack_smoke e001a
+CUDA_VISIBLE_DEVICES=0 python scripts/run_train.py --config $FM_CONFIG --run-root $RUN_ROOT --verbose
+CUDA_VISIBLE_DEVICES=0 python scripts/run_eval.py --config $FM_CONFIG --checkpoint $CKPT_DIR/best.pt --eval-root $METRIC_ROOT --steps 1 4 16
+```
+
+Use this preflight to confirm:
+- teacher sampler can build targets on the server
+- endpoint rollout can run
+- timewarp update can run
+- few-step eval can write outputs
+- no CUDA allocator / driver issue appears before long runs
+
 Then activate the selected experiment once:
 
 ```bash
@@ -109,7 +124,7 @@ Notes:
 ### Train
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
+CUDA_VISIBLE_DEVICES=0 python scripts/run_train.py \
   --config $FM_CONFIG \
   --run-root $RUN_ROOT \
   --verbose
@@ -120,7 +135,7 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
 Resume from the latest checkpoint in the same run root:
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
+CUDA_VISIBLE_DEVICES=0 python scripts/run_train.py \
   --config $FM_CONFIG \
   --run-root $RUN_ROOT \
   --resume $CKPT_DIR/last.pt \
@@ -130,7 +145,7 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
 Resume from the current best checkpoint:
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
+CUDA_VISIBLE_DEVICES=0 python scripts/run_train.py \
   --config $FM_CONFIG \
   --run-root $RUN_ROOT \
   --resume $CKPT_DIR/best.pt \
@@ -140,7 +155,7 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_train.py \
 ### Eval
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
+CUDA_VISIBLE_DEVICES=0 python scripts/run_eval.py \
   --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
   --eval-root $METRIC_ROOT \
@@ -150,7 +165,7 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_eval.py \
 ### Multi-step panel
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_multistep_panel.py \
+CUDA_VISIBLE_DEVICES=0 python scripts/run_multistep_panel.py \
   --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
   --output-dir $SAMPLE_ROOT/multistep_panel \
@@ -162,7 +177,7 @@ CUDA_VISIBLE_DEVICES=1 python scripts/run_multistep_panel.py \
 ### Official sample export
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_export_samples_npz.py \
+CUDA_VISIBLE_DEVICES=0 python scripts/run_export_samples_npz.py \
   --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
   --out $METRIC_ROOT/official/step16_samples.npz \
@@ -176,7 +191,7 @@ This writes:
 ### Official metrics
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_evaluate_metrics.py \
+CUDA_VISIBLE_DEVICES=0 python scripts/run_evaluate_metrics.py \
   --config $FM_CONFIG \
   --samples $METRIC_ROOT/official/step16_samples.npz \
   --reference ${OFFICIAL_REFERENCE_NPZ:-$IMAGENET64_REFERENCE_NPZ} \
@@ -191,7 +206,7 @@ Use:
 ### Held-out defect
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 python scripts/run_evaluate_defect.py \
+CUDA_VISIBLE_DEVICES=0 python scripts/run_evaluate_defect.py \
   --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
   --out $METRIC_ROOT/defect/heldout.json
@@ -226,3 +241,8 @@ Key readout:
 - `HF_HOME` defaults to `$PROJ/.hf_home`
 - `REF_ROOT` defaults to `$PROJ/refs`
 - no default archive mirror is used on this server branch
+- current defaults are tuned for single-GPU A6000-style runs:
+  - lower training batch
+  - lower eval/sample batch
+  - lower teacher sampler sub-batch
+  - checkpointed UNet blocks enabled

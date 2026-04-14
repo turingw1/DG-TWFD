@@ -3,6 +3,10 @@
 This directory is the complete documentation context for the current
 `server_single_root_workflow` git branch.
 
+This server branch now defaults to a single-root, single-GPU-first setup tuned
+for A6000-class cards. The workflow remains the same; only path and memory
+budget defaults are reduced from the earlier A100-oriented assumptions.
+
 ## Experiment tracking
 
 - use one stable pipeline document:

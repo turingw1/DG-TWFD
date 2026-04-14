@@ -1,0 +1,36 @@
+base: configs/experiment/fm_cifar10_map_branch_s1_e6_budget_fullstack.yaml
+
+experiment:
+  name: fm_cifar10_map_branch_s0_a6000_fullstack_smoke
+
+train:
+  epochs: 1
+  batch_size: 24
+  num_workers: 2
+  persistent_workers: false
+  prefetch_factor: 2
+  max_train_batches: 4
+  max_val_batches: 2
+
+target:
+  start_scales: 12
+  teacher_sampler_sub_batch: 8
+  num_heun_step: 4
+  num_heun_step_random: false
+
+loss:
+  endpoint_every: 1
+  endpoint_batch_size: 4
+  endpoint_steps: [4, 8]
+  endpoint_step_weights: [0.5, 0.5]
+  timewarp_batch_size: 4
+  timewarp_defect_steps: 3
+
+eval:
+  step_counts: [1, 4, 16]
+  num_fid_samples: 128
+  fid_batch_size: 32
+  sample_batch_size: 4
+  fixed_grid_size: 16
+  fixed_grid_batch_size: 4
+  dump_image_count: 16
