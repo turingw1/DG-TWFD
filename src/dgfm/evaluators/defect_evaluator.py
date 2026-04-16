@@ -66,7 +66,7 @@ def evaluate_held_out_defect(
     device = device_from_config(config)
     model = load_model_from_checkpoint(config, checkpoint, device=device)
     timewarp = load_timewarp_from_checkpoint(config, checkpoint, device=device)
-    if str(config.get("train", {}).get("objective", "flow_matching_velocity")) not in {"explicit_map", "map_branch"}:
+    if str(config.get("train", {}).get("objective", "flow_matching_velocity")) not in {"explicit_map", "map_branch", "dgtd_map"}:
         raise ValueError("Held-out defect evaluator currently supports explicit_map checkpoints only")
 
     generator = torch.Generator(device=device).manual_seed(seed)

@@ -1,0 +1,44 @@
+teacher:
+  type: sampler
+  backend: diffusers_ddpm
+  name_or_path: google/ddpm-cifar10-32
+  scheduler: ddim
+  num_inference_steps: 128
+  retain_num_points: 33
+  local_files_only: false
+  x0_std: 1.0
+  guidance_scale: null
+  note_guidance_scale: "not used by the current unconditional DDPM teacher path"
+  store_dtype: float16
+  runtime_dtype: "float16 on CUDA, float32 on CPU"
+
+dataset:
+  name: cifar10
+  image_size: 32
+  channels: 3
+  num_classes: 10
+
+time_semantics:
+  public_grid_name: u
+  public_grid_direction: "ascending, 0=noise, 1=clean"
+  internal_teacher_time_name: tau
+  internal_teacher_mapping: "tau = 1 - u"
+
+target_sampler_defaults:
+  builder: teacher_sampler
+  sampling_mode: ctm_discrete
+  start_scales: 33
+  teacher_sampler_sub_batch: 128
+  num_heun_step: 17
+  num_heun_step_random: true
+  heun_step_strategy: weighted
+  heun_step_multiplier: 1.0
+  sample_s_strategy: uniform
+
+target_construction_defaults:
+  target_construction: ctm_consistency
+  target_source: ema_model
+  target_stop_grad: true
+  bridge_source: ema_model_rollout
+  bridge_steps: 1
+  bridge_stop_grad: true

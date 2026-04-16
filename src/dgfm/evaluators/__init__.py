@@ -7,7 +7,7 @@ from .timewarp_search import TimewarpSearchRunner
 
 def build_evaluator(config, checkpoint, eval_root):
     objective = str(config.get("train", {}).get("objective", "flow_matching_velocity"))
-    if objective in {"explicit_map", "map_branch"}:
+    if objective in {"explicit_map", "map_branch", "dgtd_map"}:
         return MapEvaluationRunner(config=config, checkpoint=checkpoint, eval_root=eval_root)
     return EvaluationRunner(config=config, checkpoint=checkpoint, eval_root=eval_root)
 

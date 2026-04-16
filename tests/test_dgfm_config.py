@@ -29,7 +29,7 @@ def test_load_experiment_config_expands_bash_style_default_env(monkeypatch) -> N
     assert cfg["teacher"]["name_or_path"] == "google/ddpm-cifar10-32"
 
     fallback_cfg = load_experiment_config("configs/target/teacher_trajectory.yaml")
-    assert fallback_cfg["target"]["shard_root"] == "/cache/Zhengwei/dgfm_teacher_traj/cifar10_ddpm128_p33"
+    assert fallback_cfg["target"]["shard_root"] == "/data2/yl7622/Zhengwei/DG-TWFD/teacher_traj/cifar10_ddpm128_p33"
     monkeypatch.setenv("TRAJ_ROOT", "/custom/traj")
     fallback_cfg = load_experiment_config("configs/target/teacher_trajectory.yaml")
     assert fallback_cfg["target"]["shard_root"] == "/custom/traj"

@@ -1,0 +1,77 @@
+base: configs/base.yaml
+includes:
+  - dataset/cifar10
+  - model/map_unet
+  - path/condot
+  - scheduler/condot
+  - scheduler/timewarp_hook
+  - target/teacher_trajectory
+  - teacher/sampler
+  - eval/map_branch
+
+experiment:
+  name: dgtd_cifar10_v3
+
+runtime:
+  cudnn_benchmark: true
+
+train:
+  objective: dgtd_map
+  epochs: 40
+  batch_size: 128
+  num_workers: 8
+  persistent_workers: true
+  prefetch_factor: 4
+  pin_memory: true
+  lr: 2.0e-4
+  weight_decay: 0.0
+  ema_decay: 0.9999
+
+scheduler:
+  timewarp:
+    enabled: true
+    type: dgtd_density
+    num_bins: 64
+    init: logit_normal
+    eps: 1.0e-6
+    lr: 1.0e-3
+    weight_decay: 0.0
+
+target:
+  cache_limit: 2
+
+eval:
+  metrics: [fid]
+  solver_method: map_rollout
+  step_counts: [1, 2, 4, 8, 16]
+  sample_batch_size: 16
+  fixed_grid_batch_size: 8
+  num_fid_samples: 10000
+  fid_batch_size: 128
+
+dgtd:
+  base_density: logit_normal
+  base_p_mean: -1.2
+  base_p_std: 1.2
+  warmup_frac: 0.12
+  flatten_frac: 0.20
+  beta_final: 0.75
+  eta_min: 0.4
+  ema_mu_warmup: 0.95
+  ema_mu_main: 0.99
+  update_density_every: 32
+  update_warp_every: 32
+  kappa: 0.5
+  lambda_hf_max: 0.1
+  sigma_detail: 0.2
+  sigma_data: 0.5
+  min_snr_gamma: 5.0
+  curvature_weight: 0.25
+  hf_weight: 0.5
+  teacher_proximity_rtol: 0.05
+  disable_warp: false
+  disable_hf_metric: false
+  disable_teacher_anchor: false
+  disable_online_teacher: true
+  uniform_time: false
+  logit_normal_time: true

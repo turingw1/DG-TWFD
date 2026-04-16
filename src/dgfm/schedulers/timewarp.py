@@ -14,6 +14,7 @@ DEFAULT_STRATEGIES = (
     "data_dense_power2",
     "random_dirichlet",
     "spline_mass",
+    "dgtd_density",
 )
 
 
@@ -227,6 +228,15 @@ def build_timewarp_module(config: dict, *, device: torch.device, dtype: torch.dt
     if not bool(timewarp_cfg.get("enabled", False)):
         return None
     warp_type = str(timewarp_cfg.get("type", "learnable_monotone"))
+    if warp_type == "dgtd_density":
+        from dgtd.warp import MonotoneDensityWarp
+
+        init = str(timewarp_cfg.get("init", "uniform"))
+        return MonotoneDensityWarp(
+            num_bins=int(timewarp_cfg.get("num_bins", 64)),
+            eps=float(timewarp_cfg.get("eps", 1.0e-6)),
+            init=init,
+        ).to(device=device, dtype=dtype)
     if warp_type not in {"learnable_monotone", "spline_mass"}:
         return None
     num_bins = int(timewarp_cfg.get("num_bins", 64))
@@ -249,6 +259,11 @@ def apply_time_warp(
 ) -> Tensor:
     if warp_type == "identity":
         return t_linear
+    if warp_type == "dgtd_density":
+        from dgtd.warp import MonotoneDensityWarp
+
+        module = MonotoneDensityWarp(num_bins=num_bins, init="uniform").to(device=t_linear.device, dtype=t_linear.dtype)
+        return module.r_to_t(t_linear)
     if warp_type == "learnable_monotone":
         module = TimeWarpMonotone(num_bins=num_bins, init_bias=init_bias).to(device=t_linear.device, dtype=t_linear.dtype)
         logits_tensor = _coerce_logits(logits, num_bins=num_bins, device=t_linear.device, dtype=t_linear.dtype)
@@ -306,7 +321,10 @@ def build_runtime_time_grid(
     if timewarp is None:
         return build_config_time_grid(config=config, step_count=step_count, device=device, dtype=dtype)
     linear = _uniform_grid(step_count, device=device, dtype=dtype)
-    warped = timewarp(linear).to(device=device, dtype=dtype)
+    if hasattr(timewarp, "r_to_t"):
+        warped = timewarp.r_to_t(linear).to(device=device, dtype=dtype)
+    else:
+        warped = timewarp(linear).to(device=device, dtype=dtype)
     warped[0] = torch.tensor(0.0, device=device, dtype=dtype)
     warped[-1] = torch.tensor(1.0, device=device, dtype=dtype)
     return _validate_time_grid(warped, step_count)

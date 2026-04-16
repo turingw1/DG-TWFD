@@ -1,41 +1,44 @@
-# DGFM Map Branch
+# DG_TWFD_v3
 
-This branch is focused only on the explicit map-learning experiment built on top
-of the current `dgfm` framework.
+This branch rebuilds the project around a unified `dgtd_map` objective on top
+of the current `dgfm` infrastructure.
 
-## Branch scope
+## Active scope
 
-- baseline FM code remains available as shared infrastructure
-- active research target:
-  - explicit map learning
-  - `M_theta(x_t, t, s) -> x_s`
-- current target mode:
-  - online `teacher_sampler`
-  - CTM-like discrete scale sampling on teacher rollouts
-- current time semantics:
-  - `0 <= t < s <= 1`
+- keep the reusable `dgfm` stack for datasets, distributed training, sampling,
+  evaluation, and server workflow
+- replace the old four-loss explicit-map baseline with one
+  warp-weighted DGTD residual
+- keep the current project time convention:
+  - `0 <= t < s < u <= 1`
+  - `0.0` is noisy and `1.0` is clean
+- use offline teacher trajectory cache as the primary supervision path
 
-## Use this documentation set
+## Start here
 
-All branch-facing documentation is under:
+- branch overview:
+  - [docs/experiments/DG_TWFD_v3/README.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/DG_TWFD_v3/README.md)
+- reconstruction prompt:
+  - [docs/experiments/DG_TWFD_v3/reconstruction_v3.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/DG_TWFD_v3/reconstruction_v3.md)
+- preserved baseline and teacher context:
+  - [docs/experiments/map_branch/baseline/current_losses.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/baseline/current_losses.md)
+  - [docs/experiments/map_branch/teacher/teacher_entry.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/teacher/teacher_entry.md)
+  - [docs/experiments/map_branch/teacher/cache_schema.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/teacher/cache_schema.md)
 
-- [docs/experiments/map_branch/README.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/README.md)
-
-Start there. The A100 launch instructions are in:
-
-- [docs/experiments/map_branch/A100_PIPELINE.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/A100_PIPELINE.md)
-
-## Branch implementation entrypoints
+## Main entrypoints
 
 - train:
   - [scripts/run_train.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/scripts/run_train.py)
 - eval:
   - [scripts/run_eval.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/scripts/run_eval.py)
-- sample:
+- generic sample:
   - [scripts/run_sample.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/scripts/run_sample.py)
-- multistep qualitative panel:
-  - [scripts/run_multistep_panel.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/scripts/run_multistep_panel.py)
+- DGTD sampling:
+  - [scripts/run_sample_dgtd.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/scripts/run_sample_dgtd.py)
 
-## Branch config entrypoint
+## Main configs
 
-- [configs/experiment/fm_cifar10_map_branch.yaml](/home/gzwlinux/vscode/gitProject/DG-TWFD/configs/experiment/fm_cifar10_map_branch.yaml)
+- full:
+  - [configs/experiment/dgtd_cifar10_v3.yaml](/home/gzwlinux/vscode/gitProject/DG-TWFD/configs/experiment/dgtd_cifar10_v3.yaml)
+- smoke:
+  - [configs/experiment/dgtd_cifar10_v3_smoke.yaml](/home/gzwlinux/vscode/gitProject/DG-TWFD/configs/experiment/dgtd_cifar10_v3_smoke.yaml)

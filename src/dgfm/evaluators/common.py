@@ -13,7 +13,7 @@ def objective_mode(config: dict) -> str:
     objective = str(config.get("train", {}).get("objective", "flow_matching_velocity"))
     if objective in {"flow_matching_velocity", "velocity_fm"}:
         return "velocity_fm"
-    if objective in {"explicit_map", "map_branch"}:
+    if objective in {"explicit_map", "map_branch", "dgtd_map"}:
         return "explicit_map"
     raise ValueError(f"Unsupported train.objective: {objective}")
 

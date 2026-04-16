@@ -1,0 +1,578 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+import json
+import math
+import time
+
+import torch
+import torch.distributed as dist
+from torch import nn
+import yaml
+
+from dgfm.config import RunRoots
+from dgfm.distributed import (
+    DistributedContext,
+    maybe_wrap_ddp,
+    reduce_float_dict,
+    set_dataloader_epoch,
+    unwrap_model,
+)
+from dgfm.models import ModelEMA, build_map_model
+from dgfm.schedulers import build_runtime_time_grid, build_timewarp_module, summarize_time_grid
+from dgfm.utils import build_experiment_archive
+
+from .cache import build_cache_dataloaders, interpolate_curvature, interpolate_state
+from .defect import build_target_density, compute_dgtd_residual, compute_sample_defect, smooth_density, update_ema_bins
+from .metrics import edm_weight, high_frequency_norm, laplacian_filter, metric_norm, min_snr_weight
+from .teacher import build_teacher_adapter
+
+
+def _load_elapsed_history(history_path) -> tuple[int, float]:
+    if not history_path.exists():
+        return 0, 0.0
+    count = 0
+    total = 0.0
+    with history_path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            elapsed = payload.get("elapsed_sec")
+            if elapsed is None:
+                continue
+            total += float(elapsed)
+            count += 1
+    return count, total
+
+
+def _device_from_config(config: dict) -> torch.device:
+    requested = config.get("runtime", {}).get("device", "auto")
+    if requested == "auto":
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    return torch.device(requested)
+
+
+def _autocast_context(device: torch.device, enabled: bool):
+    if device.type != "cuda" or not enabled:
+        return torch.autocast(device_type="cpu", enabled=False)
+    return torch.autocast(device_type="cuda", dtype=torch.float16, enabled=True)
+
+
+def _move_batch_to_device(batch: dict[str, torch.Tensor], device: torch.device) -> dict[str, torch.Tensor]:
+    moved: dict[str, torch.Tensor] = {}
+    for key, value in batch.items():
+        moved[key] = value.to(device=device, non_blocking=True)
+    return moved
+
+
+def _base_density(config: dict, *, num_bins: int, device: torch.device, dtype: torch.dtype) -> torch.Tensor:
+    dgtd_cfg = config.get("dgtd", {})
+    mode = str(dgtd_cfg.get("base_density", "logit_normal"))
+    if bool(dgtd_cfg.get("uniform_time", False)):
+        mode = "uniform"
+    if mode == "uniform":
+        return torch.full((num_bins,), 1.0 / num_bins, device=device, dtype=dtype)
+    centers = torch.linspace(0.5 / num_bins, 1.0 - 0.5 / num_bins, steps=num_bins, device=device, dtype=dtype)
+    p_mean = float(dgtd_cfg.get("base_p_mean", -1.2))
+    p_std = float(dgtd_cfg.get("base_p_std", 1.2))
+    sigma = torch.clamp((1.0 - centers) / torch.clamp(centers, min=1.0e-6), min=1.0e-6)
+    logits = (torch.log(sigma) - p_mean) / max(p_std, 1.0e-6)
+    density = torch.exp(-0.5 * logits.square()) + 1.0e-6
+    density = density / density.sum()
+    return density
+
+
+def _bin_ids_from_time(time_value: torch.Tensor, *, num_bins: int) -> torch.Tensor:
+    return torch.clamp((time_value * num_bins).floor().long(), min=0, max=num_bins - 1)
+
+
+def _global_bin_means(
+    bin_ids: torch.Tensor,
+    values: torch.Tensor,
+    *,
+    num_bins: int,
+    device: torch.device,
+    ctx: DistributedContext,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    sums = torch.zeros(num_bins, device=device, dtype=values.dtype)
+    counts = torch.zeros(num_bins, device=device, dtype=values.dtype)
+    sums.scatter_add_(0, bin_ids, values)
+    counts.scatter_add_(0, bin_ids, torch.ones_like(values))
+    if ctx.enabled:
+        dist.all_reduce(sums, op=dist.ReduceOp.SUM)
+        dist.all_reduce(counts, op=dist.ReduceOp.SUM)
+    valid = counts > 0
+    if not valid.any():
+        return torch.zeros(0, device=device, dtype=torch.long), torch.zeros(0, device=device, dtype=values.dtype)
+    mean_values = sums[valid] / counts[valid]
+    return torch.arange(num_bins, device=device, dtype=torch.long)[valid], mean_values
+
+
+def _stage_values(config: dict, *, global_step: int, total_steps: int) -> dict[str, float | str]:
+    dgtd_cfg = config.get("dgtd", {})
+    warmup_frac = float(dgtd_cfg.get("warmup_frac", 0.12))
+    flatten_frac = float(dgtd_cfg.get("flatten_frac", 0.2))
+    warmup_end = max(1, int(total_steps * warmup_frac))
+    flatten_start = max(warmup_end + 1, int(total_steps * (1.0 - flatten_frac)))
+    beta_final = float(dgtd_cfg.get("beta_final", dgtd_cfg.get("defect_beta", 0.75)))
+    eta_min = float(dgtd_cfg.get("eta_min", 0.4))
+    if global_step < warmup_end:
+        return {
+            "stage": "warmup",
+            "beta": 0.0,
+            "eta": 1.0,
+            "mu": float(dgtd_cfg.get("ema_mu_warmup", 0.95)),
+            "flatten_mix": 0.0,
+            "warmup_end": float(warmup_end),
+            "flatten_start": float(flatten_start),
+        }
+    if global_step < flatten_start:
+        alpha = (global_step - warmup_end) / max(1, flatten_start - warmup_end)
+        return {
+            "stage": "adaptive",
+            "beta": beta_final * alpha,
+            "eta": 1.0 - alpha * (1.0 - eta_min),
+            "mu": float(dgtd_cfg.get("ema_mu_main", 0.99)),
+            "flatten_mix": 0.0,
+            "warmup_end": float(warmup_end),
+            "flatten_start": float(flatten_start),
+        }
+    alpha = (global_step - flatten_start) / max(1, total_steps - flatten_start)
+    return {
+        "stage": "flatten",
+        "beta": beta_final * (1.0 - 0.5 * alpha),
+        "eta": eta_min,
+        "mu": float(dgtd_cfg.get("ema_mu_main", 0.99)),
+        "flatten_mix": min(0.5, 0.5 * alpha),
+        "warmup_end": float(warmup_end),
+        "flatten_start": float(flatten_start),
+    }
+
+
+@dataclass(slots=True)
+class DGTDTrainer:
+    config: dict
+    roots: RunRoots
+    dist_ctx: DistributedContext
+    archive: object | None = field(init=False, default=None)
+
+    def prepare(self) -> None:
+        self.roots.checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        self.roots.sample_dir.mkdir(parents=True, exist_ok=True)
+        self.roots.log_dir.mkdir(parents=True, exist_ok=True)
+        self.archive = build_experiment_archive(self.roots)
+        if self.dist_ctx.is_main_process:
+            with (self.roots.log_dir / "config_resolved.yaml").open("w", encoding="utf-8") as handle:
+                yaml.safe_dump(self.config, handle, sort_keys=False)
+            self.archive.dump_yaml("config_resolved.yaml", self.config)
+
+    def _init_stats(self, num_bins: int, device: torch.device) -> None:
+        zeros = torch.zeros(num_bins, device=device, dtype=torch.float32)
+        self.stats = {
+            "D": {"bar": zeros.clone(), "count": zeros.clone()},
+            "K": {"bar": zeros.clone(), "count": zeros.clone()},
+            "HF": {"bar": zeros.clone(), "count": zeros.clone()},
+        }
+        self.q_base = _base_density(self.config, num_bins=num_bins, device=device, dtype=torch.float32)
+        self.q_target = self.q_base.clone()
+
+    def _run_epoch(
+        self,
+        *,
+        model: nn.Module,
+        raw_model: nn.Module,
+        ema: ModelEMA,
+        loader,
+        optimizer,
+        scaler: torch.amp.GradScaler,
+        warp,
+        warp_optimizer,
+        teacher_adapter,
+        device: torch.device,
+        total_steps: int,
+        train: bool,
+        global_step_start: int,
+    ) -> tuple[dict[str, float], int]:
+        model.train(train)
+        dgtd_cfg = self.config.get("dgtd", {})
+        runtime_cfg = self.config.get("runtime", {})
+        use_amp = bool(runtime_cfg.get("amp", True))
+        batch_limit_key = "max_train_batches" if train else "max_val_batches"
+        batch_limit = int(self.config.get("train", {}).get(batch_limit_key, 0) or 0)
+        num_bins = warp.num_bins
+        totals: dict[str, float] = {
+            "loss": 0.0,
+            "defect": 0.0,
+            "hf": 0.0,
+            "curvature": 0.0,
+            "low_sigma_hf": 0.0,
+            "omega": 0.0,
+            "target_build_sec": 0.0,
+            "forward_sec": 0.0,
+            "warp_sec": 0.0,
+            "samples_seen": 0.0,
+            "batches_seen": 0.0,
+            "warp_loss": 0.0,
+        }
+        stage_name = "warmup"
+        eta_value = 1.0
+        beta_value = 0.0
+        global_step = global_step_start
+        ctx = torch.enable_grad if train else torch.no_grad
+        with ctx():
+            for batch_idx, batch in enumerate(loader):
+                if batch_limit > 0 and batch_idx >= batch_limit:
+                    break
+                batch = _move_batch_to_device(batch, device)
+                batch_size = int(batch["states"].shape[0])
+                stage = _stage_values(self.config, global_step=global_step, total_steps=total_steps)
+                stage_name = str(stage["stage"])
+                eta_value = float(stage["eta"])
+                beta_value = float(stage["beta"])
+                t0 = time.perf_counter()
+                r_t, r_s, r_u = warp.sample_triplets(batch_size=batch_size, device=device)
+                if bool(dgtd_cfg.get("uniform_time", False)):
+                    t, s, u = r_t, r_s, r_u
+                else:
+                    t = warp.r_to_t(r_t)
+                    s = warp.r_to_t(r_s)
+                    u = warp.r_to_t(r_u)
+                if not torch.all(t < s) or not torch.all(s < u):
+                    raise AssertionError("Current dgfm convention for DGTD requires t < s < u")
+                x_t = interpolate_state(batch, t)
+                x_u_teacher = interpolate_state(batch, u)
+                curvature = interpolate_curvature(batch, u)
+                totals["target_build_sec"] += time.perf_counter() - t0
+                cond = teacher_adapter.get_condition(batch)
+                model_extra = {"label": cond} if cond is not None else {}
+                forward_t0 = time.perf_counter()
+                with _autocast_context(device, use_amp):
+                    residual_info = compute_dgtd_residual(
+                        model,
+                        teacher_adapter,
+                        x_t,
+                        t,
+                        s,
+                        u,
+                        eta_value if not bool(dgtd_cfg.get("disable_teacher_anchor", False)) else 0.0,
+                        trajectory=batch,
+                        extra=model_extra,
+                    )
+                    residual = residual_info["residual"]
+                    metric_value = metric_norm(
+                        residual,
+                        u,
+                        sigma_fn=teacher_adapter.sigma,
+                        lambda_hf_max=float(dgtd_cfg.get("lambda_hf_max", 0.1)),
+                        sigma_detail=float(dgtd_cfg.get("sigma_detail", 0.2)),
+                        disable_hf_metric=bool(dgtd_cfg.get("disable_hf_metric", False)),
+                    )
+                    p_corr = warp.density_at(t) if not bool(dgtd_cfg.get("uniform_time", False)) else torch.ones_like(t)
+                    omega = edm_weight(
+                        u,
+                        sigma_fn=teacher_adapter.sigma,
+                        sigma_data=float(dgtd_cfg.get("sigma_data", self.config.get("model", {}).get("sigma_data", 0.5))),
+                    )
+                    omega = omega * min_snr_weight(
+                        u,
+                        sigma_fn=teacher_adapter.sigma,
+                        gamma=float(dgtd_cfg.get("min_snr_gamma", 5.0)),
+                    )
+                    omega = omega * torch.pow(torch.clamp(p_corr, min=1.0e-6), -float(dgtd_cfg.get("kappa", 0.5)))
+                    omega = omega / torch.clamp(omega.mean(), min=1.0e-6)
+                    loss = torch.mean(omega.detach() * metric_value)
+                totals["forward_sec"] += time.perf_counter() - forward_t0
+                if train:
+                    optimizer.zero_grad(set_to_none=True)
+                    scaler.scale(loss).backward()
+                    scaler.step(optimizer)
+                    scaler.update()
+                    ema.update(unwrap_model(model))
+                sample_defect = compute_sample_defect(
+                    residual.detach(),
+                    x_t,
+                    x_u_teacher,
+                    metric_value.detach(),
+                )
+                hf_values = high_frequency_norm(laplacian_filter(residual.detach()))
+                bin_ids = _bin_ids_from_time(u.detach(), num_bins=num_bins)
+                ids, values = _global_bin_means(bin_ids, sample_defect, num_bins=num_bins, device=device, ctx=self.dist_ctx)
+                if ids.numel() > 0:
+                    update_ema_bins(self.stats["D"], ids, values, float(stage["mu"]))
+                ids, values = _global_bin_means(bin_ids, curvature.detach(), num_bins=num_bins, device=device, ctx=self.dist_ctx)
+                if ids.numel() > 0:
+                    update_ema_bins(self.stats["K"], ids, values, float(stage["mu"]))
+                ids, values = _global_bin_means(bin_ids, hf_values, num_bins=num_bins, device=device, ctx=self.dist_ctx)
+                if ids.numel() > 0:
+                    update_ema_bins(self.stats["HF"], ids, values, float(stage["mu"]))
+
+                if train and global_step >= int(stage["warmup_end"]):
+                    update_density_every = max(1, int(dgtd_cfg.get("update_density_every", 32)))
+                    if global_step % update_density_every == 0:
+                        q_target = build_target_density(
+                            self.stats["D"]["bar"],
+                            self.stats["K"]["bar"],
+                            self.stats["HF"]["bar"],
+                            self.q_base,
+                            beta_value,
+                            1.0e-6,
+                            curvature_weight=float(dgtd_cfg.get("curvature_weight", 0.25)),
+                            hf_weight=float(dgtd_cfg.get("hf_weight", 0.5)),
+                        )
+                        q_target = smooth_density(q_target)
+                        flatten_mix = float(stage["flatten_mix"])
+                        if flatten_mix > 0.0:
+                            q_target = (1.0 - flatten_mix) * q_target + flatten_mix * self.q_base
+                            q_target = q_target / torch.clamp(q_target.sum(), min=1.0e-6)
+                        self.q_target = q_target.detach()
+                    if not bool(dgtd_cfg.get("disable_warp", False)):
+                        update_warp_every = max(1, int(dgtd_cfg.get("update_warp_every", 32)))
+                        if global_step % update_warp_every == 0 and warp_optimizer is not None:
+                            warp_t0 = time.perf_counter()
+                            warp_optimizer.zero_grad(set_to_none=True)
+                            warp_loss = warp.kl_to_target_density(self.q_target)
+                            warp_loss.backward()
+                            warp_optimizer.step()
+                            totals["warp_sec"] += time.perf_counter() - warp_t0
+                            totals["warp_loss"] += float(warp_loss.detach().item())
+                sigma_u = teacher_adapter.sigma(u.detach())
+                low_sigma_mask = sigma_u <= float(dgtd_cfg.get("sigma_detail", 0.2))
+                low_sigma_hf = hf_values[low_sigma_mask].mean() if bool(low_sigma_mask.any()) else torch.zeros((), device=device)
+
+                totals["loss"] += float(loss.detach().item())
+                totals["defect"] += float(sample_defect.mean().item())
+                totals["hf"] += float(hf_values.mean().item())
+                totals["curvature"] += float(curvature.mean().item())
+                totals["low_sigma_hf"] += float(low_sigma_hf.item())
+                totals["omega"] += float(omega.mean().item())
+                totals["samples_seen"] += float(batch_size)
+                totals["batches_seen"] += 1.0
+                if train:
+                    global_step += 1
+        denom = max(1.0, totals["batches_seen"])
+        payload = {
+            "loss": totals["loss"] / denom,
+            "defect": totals["defect"] / denom,
+            "hf": totals["hf"] / denom,
+            "curvature": totals["curvature"] / denom,
+            "low_sigma_hf": totals["low_sigma_hf"] / denom,
+            "omega": totals["omega"] / denom,
+            "target_build_sec": totals["target_build_sec"],
+            "forward_sec": totals["forward_sec"],
+            "warp_sec": totals["warp_sec"],
+            "warp_loss": totals["warp_loss"] / denom,
+            "samples_seen": totals["samples_seen"],
+            "batches_seen": totals["batches_seen"],
+            "eta": eta_value,
+            "beta": beta_value,
+        }
+        payload = reduce_float_dict(
+            payload,
+            device=device,
+            ctx=self.dist_ctx,
+            mean_keys=["loss", "defect", "hf", "curvature", "low_sigma_hf", "omega", "warp_loss", "eta", "beta"],
+            sum_keys=["samples_seen", "batches_seen", "target_build_sec", "forward_sec", "warp_sec"],
+        )
+        grid = build_runtime_time_grid(
+            config=self.config,
+            step_count=int(self.config.get("eval", {}).get("default_sample_steps", 16)),
+            device=device,
+            dtype=torch.float32,
+            timewarp=warp,
+        )
+        payload.update(
+            {
+                "stage": stage_name,
+                "q_phi": [float(item) for item in warp.density().detach().cpu().tolist()],
+                "q_D": [float(item) for item in self.q_target.detach().cpu().tolist()],
+                "D_bar": [float(item) for item in self.stats["D"]["bar"].detach().cpu().tolist()],
+                "K_bar": [float(item) for item in self.stats["K"]["bar"].detach().cpu().tolist()],
+                "HF_bar": [float(item) for item in self.stats["HF"]["bar"].detach().cpu().tolist()],
+                "time_grid": summarize_time_grid(grid)["time_grid"],
+            }
+        )
+        return payload, global_step
+
+    def run(self, resume: str | None = None, verbose: bool = False) -> None:
+        self.prepare()
+        device = self.dist_ctx.device if self.dist_ctx.enabled and self.dist_ctx.device is not None else _device_from_config(self.config)
+        dataloaders = build_cache_dataloaders(self.config)
+        raw_model = build_map_model(self.config).to(device)
+        model = maybe_wrap_ddp(raw_model, self.dist_ctx, find_unused_parameters=False)
+        ema = ModelEMA(raw_model, decay=float(self.config["train"].get("ema_decay", 0.9999)))
+        optimizer = torch.optim.AdamW(
+            raw_model.parameters(),
+            lr=float(self.config["train"].get("lr", 2.0e-4)),
+            weight_decay=float(self.config["train"].get("weight_decay", 0.0)),
+            betas=tuple(self.config["train"].get("optimizer_betas", [0.9, 0.95])),
+        )
+        warp = build_timewarp_module(self.config, device=device, dtype=torch.float32)
+        if warp is None:
+            raise ValueError("DGTDTrainer requires scheduler.timewarp.enabled=true with a supported warp type")
+        warp_optimizer = torch.optim.AdamW(
+            warp.parameters(),
+            lr=float(self.config.get("scheduler", {}).get("timewarp", {}).get("lr", 1.0e-3)),
+            weight_decay=float(self.config.get("scheduler", {}).get("timewarp", {}).get("weight_decay", 0.0)),
+            betas=tuple(self.config["train"].get("optimizer_betas", [0.9, 0.95])),
+        )
+        scaler = torch.amp.GradScaler(device="cuda", enabled=device.type == "cuda" and bool(self.config.get("runtime", {}).get("amp", True)))
+        teacher_adapter = build_teacher_adapter(self.config)
+        teacher_adapter.prepare(device)
+        self._init_stats(num_bins=warp.num_bins, device=device)
+        start_epoch = 0
+        best_val = float("inf")
+        global_step = 0
+        if resume:
+            ckpt = torch.load(resume, map_location=device)
+            raw_model.load_state_dict(ckpt["model"])
+            optimizer.load_state_dict(ckpt["optimizer"])
+            if "ema_model" in ckpt:
+                ema.load_state_dict(ckpt["ema_model"])
+            if ckpt.get("timewarp") is not None:
+                warp.load_state_dict(ckpt["timewarp"])
+            if ckpt.get("timewarp_optimizer") is not None:
+                warp_optimizer.load_state_dict(ckpt["timewarp_optimizer"])
+            if ckpt.get("dgtd_q_target") is not None:
+                self.q_target = ckpt["dgtd_q_target"].to(device)
+            if ckpt.get("dgtd_stats") is not None:
+                saved_stats = ckpt["dgtd_stats"]
+                for name in ("D", "K", "HF"):
+                    self.stats[name]["bar"].copy_(saved_stats[name]["bar"].to(device))
+                    self.stats[name]["count"].copy_(saved_stats[name]["count"].to(device))
+            start_epoch = int(ckpt.get("epoch", 0)) + 1
+            best_val = float(ckpt.get("best_val", best_val))
+            global_step = int(ckpt.get("global_step", 0))
+            if ckpt.get("scaler") is not None and scaler.is_enabled():
+                scaler.load_state_dict(ckpt["scaler"])
+
+        epochs = int(self.config["train"].get("epochs", 1))
+        history_path = self.roots.log_dir / "train.jsonl"
+        completed_epochs, total_elapsed_sec = _load_elapsed_history(history_path)
+        total_steps = epochs * max(1, len(dataloaders["train"]))
+        for epoch in range(start_epoch, epochs):
+            set_dataloader_epoch(dataloaders["train"], epoch)
+            set_dataloader_epoch(dataloaders["val"], epoch)
+            t0 = time.time()
+            train_stats, global_step = self._run_epoch(
+                model=model,
+                raw_model=raw_model,
+                ema=ema,
+                loader=dataloaders["train"],
+                optimizer=optimizer,
+                scaler=scaler,
+                warp=warp,
+                warp_optimizer=warp_optimizer,
+                teacher_adapter=teacher_adapter,
+                device=device,
+                total_steps=total_steps,
+                train=True,
+                global_step_start=global_step,
+            )
+            eval_model = ema.shadow if ema is not None else raw_model
+            val_stats, _ = self._run_epoch(
+                model=eval_model,
+                raw_model=eval_model,
+                ema=ema,
+                loader=dataloaders["val"],
+                optimizer=optimizer,
+                scaler=scaler,
+                warp=warp,
+                warp_optimizer=warp_optimizer,
+                teacher_adapter=teacher_adapter,
+                device=device,
+                total_steps=total_steps,
+                train=False,
+                global_step_start=global_step,
+            )
+            elapsed = time.time() - t0
+            total_elapsed_sec += elapsed
+            completed_epochs += 1
+            avg_epoch_sec = total_elapsed_sec / max(completed_epochs, 1)
+            remaining_epochs = max(epochs - (epoch + 1), 0)
+            payload = {
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "epoch": epoch,
+                "train_loss": train_stats["loss"],
+                "val_loss": val_stats["loss"],
+                "train_defect": train_stats["defect"],
+                "val_defect": val_stats["defect"],
+                "train_low_sigma_hf": train_stats["low_sigma_hf"],
+                "val_low_sigma_hf": val_stats["low_sigma_hf"],
+                "train_target_build_sec": train_stats["target_build_sec"],
+                "train_forward_sec": train_stats["forward_sec"],
+                "train_warp_sec": train_stats["warp_sec"],
+                "train_warp_loss": train_stats["warp_loss"],
+                "q_phi": train_stats["q_phi"],
+                "q_D": train_stats["q_D"],
+                "D_bar": train_stats["D_bar"],
+                "K_bar": train_stats["K_bar"],
+                "HF_bar": train_stats["HF_bar"],
+                "time_grid": train_stats["time_grid"],
+                "eta": train_stats["eta"],
+                "beta": train_stats["beta"],
+                "stage": train_stats["stage"],
+                "elapsed_sec": elapsed,
+                "epoch_sec_avg": avg_epoch_sec,
+                "global_step": global_step,
+            }
+            if self.dist_ctx.is_main_process:
+                with history_path.open("a", encoding="utf-8") as handle:
+                    handle.write(json.dumps(payload) + "\n")
+                self.archive.append_jsonl("train.jsonl", payload)
+            ckpt = {
+                "epoch": epoch,
+                "model": raw_model.state_dict(),
+                "ema_model": ema.state_dict(),
+                "optimizer": optimizer.state_dict(),
+                "scaler": scaler.state_dict() if scaler.is_enabled() else None,
+                "best_val": best_val,
+                "global_step": global_step,
+                "config": self.config,
+                "timewarp": warp.state_dict(),
+                "timewarp_optimizer": warp_optimizer.state_dict(),
+                "dgtd_q_target": self.q_target.detach().cpu(),
+                "dgtd_stats": {
+                    name: {
+                        "bar": state["bar"].detach().cpu(),
+                        "count": state["count"].detach().cpu(),
+                    }
+                    for name, state in self.stats.items()
+                },
+            }
+            if self.dist_ctx.is_main_process:
+                torch.save(ckpt, self.roots.checkpoint_dir / "last.pt")
+                self.archive.save_checkpoint("last.pt", ckpt)
+                if val_stats["loss"] <= best_val:
+                    best_val = val_stats["loss"]
+                    ckpt["best_val"] = best_val
+                    torch.save(ckpt, self.roots.checkpoint_dir / "best.pt")
+                    self.archive.save_checkpoint("best.pt", ckpt)
+                print(
+                    f"epoch={epoch + 1}/{epochs} train_loss={train_stats['loss']:.6f} "
+                    f"val_loss={val_stats['loss']:.6f} defect={train_stats['defect']:.6f} "
+                    f"low_sigma_hf={train_stats['low_sigma_hf']:.6f} stage={train_stats['stage']} "
+                    f"eta={train_stats['eta']:.4f} beta={train_stats['beta']:.4f} "
+                    f"elapsed_sec={elapsed:.2f}",
+                    flush=True,
+                )
+                if verbose:
+                    print(
+                        json.dumps(
+                            {
+                                "epoch": epoch,
+                                "q_phi": train_stats["q_phi"],
+                                "q_D": train_stats["q_D"],
+                                "D_bar": train_stats["D_bar"],
+                                "K_bar": train_stats["K_bar"],
+                                "HF_bar": train_stats["HF_bar"],
+                                "time_grid": train_stats["time_grid"],
+                            },
+                            sort_keys=True,
+                        ),
+                        flush=True,
+                    )

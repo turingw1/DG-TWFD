@@ -30,6 +30,14 @@ case "${variant}" in
     export FM_CONFIG="configs/experiment/fm_cifar10_map_branch_timewarp_smoke.yaml"
     exp_prefix="fm_cifar10_map_branch_timewarp_smoke"
     ;;
+  dgtd_v3)
+    export FM_CONFIG="configs/experiment/dgtd_cifar10_v3.yaml"
+    exp_prefix="dgtd_cifar10_v3"
+    ;;
+  dgtd_v3_smoke)
+    export FM_CONFIG="configs/experiment/dgtd_cifar10_v3_smoke.yaml"
+    exp_prefix="dgtd_cifar10_v3_smoke"
+    ;;
   stable)
     export FM_CONFIG="configs/experiment/fm_cifar10_stable.yaml"
     exp_prefix="fm_cifar10_stable"
@@ -41,7 +49,7 @@ case "${variant}" in
       exp_prefix="${variant}"
     else
       echo "Unknown FM variant: ${variant}" >&2
-      echo "Expected one of: baseline map_branch map_branch_quick map_branch_timewarp_probe map_branch_timewarp_smoke stable or any config stem under configs/experiment/" >&2
+      echo "Expected one of: baseline map_branch map_branch_quick map_branch_timewarp_probe map_branch_timewarp_smoke dgtd_v3 dgtd_v3_smoke stable or any config stem under configs/experiment/" >&2
       return 1
     fi
     ;;
