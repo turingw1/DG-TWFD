@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 import sys
 
+import torch
+
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 os.environ.setdefault("MPLCONFIGDIR", str(ROOT / "outputs" / "debug" / ".mplconfig"))
