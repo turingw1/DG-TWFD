@@ -1,5 +1,12 @@
 # DG_TWFD_v3 Checklist
 
+This checklist tracks only implementation and result-facing milestones.
+
+Intermediate smoke commands, deployment-side checks, and temporary validation
+instructions live in:
+
+- [DEVELOPMENT_VALIDATION.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/DG_TWFD_v3/DEVELOPMENT_VALIDATION.md)
+
 Status labels:
 
 - `[done]` implemented locally and covered by targeted local checks
@@ -7,14 +14,14 @@ Status labels:
 - `[todo]` not finished yet
 - `[blocked]` waiting on server results or user decision
 
-## Core implementation
+## Milestone A: Runnable DGTD stack
 
 - `[done]` unified `dgtd_map` training objective is wired into trainer dispatch
 - `[done]` `dgtd/warp.py`, `defect.py`, `metrics.py`, `cache.py`, `train_dgtd.py`, `sample_dgtd.py` exist
 - `[partial]` `TeacherAdapter.local_flow()` only supports cached-near-state fallback plus detached student bootstrap
 - `[todo]` optional online teacher one-step local solver hook is not implemented
 
-## Experiment configs
+## Milestone B: Experiment configs
 
 - `[done]` main config: `configs/experiment/dgtd_cifar10_v3.yaml`
 - `[done]` smoke config: `configs/experiment/dgtd_cifar10_v3_smoke.yaml`
@@ -23,7 +30,7 @@ Status labels:
 - `[done]` ablation config D: DGTD + learned warp + HF metric
 - `[partial]` ablation E is currently a runtime eval/sample override, not a standalone train config
 
-## Diagnostics
+## Milestone C: Diagnostics and visibility
 
 - `[done]` basic diagnostics script exists: `scripts/plot_dgtd_diagnostics.py`
 - `[partial]` density/bin plots exist
@@ -31,7 +38,7 @@ Status labels:
 - `[todo]` loss-by-bin plot
 - `[todo]` schedule panel for `K=1,2,4,8,16`
 
-## Validation
+## Milestone D: Server validation
 
 - `[done]` targeted local tests for DGTD config/warp/cache dispatch
 - `[blocked]` smoke train on real trajectory cache
@@ -39,13 +46,8 @@ Status labels:
 - `[blocked]` smoke eval on trained checkpoint
 - `[blocked]` ablation smoke comparison on server
 
-## First server round
+## Milestone E: Final experiment package
 
-Run these and send back the command outputs plus the generated `logs/train.jsonl` tail and sample directory listing.
-
-1. Smoke train:
-   `python scripts/run_train.py --config configs/experiment/dgtd_cifar10_v3_smoke.yaml --run-root /tmp/dgtd_v3_smoke --set target.shard_root=$TRAJ_ROOT`
-2. Smoke sample:
-   `python scripts/run_sample_dgtd.py --config configs/experiment/dgtd_cifar10_v3_smoke.yaml --checkpoint /tmp/dgtd_v3_smoke/checkpoints/last.pt --output-dir /tmp/dgtd_v3_smoke/sample --steps 4 --set target.shard_root=$TRAJ_ROOT`
-3. Smoke eval:
-   `python scripts/run_eval.py --config configs/experiment/dgtd_cifar10_v3_smoke.yaml --checkpoint /tmp/dgtd_v3_smoke/checkpoints/last.pt --eval-root /tmp/dgtd_v3_smoke/eval --steps 1 2 4 --set target.shard_root=$TRAJ_ROOT`
+- `[todo]` final result-oriented pipeline doc
+- `[todo]` final result-oriented experiment log
+- `[todo]` final ablation table with runtime and quality summary

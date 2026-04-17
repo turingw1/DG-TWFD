@@ -21,11 +21,25 @@ reconstruction.
 ## Reading order
 
 1. [reconstruction_v3.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/DG_TWFD_v3/reconstruction_v3.md)
-2. [../map_branch/HANDOFF_2026-04-16.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/HANDOFF_2026-04-16.md)
-3. [../map_branch/baseline/current_losses.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/baseline/current_losses.md)
-4. [../map_branch/teacher/teacher_entry.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/teacher/teacher_entry.md)
-5. [../map_branch/teacher/cache_schema.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/teacher/cache_schema.md)
-6. [../map_branch/A100_PIPELINE.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/A100_PIPELINE.md)
+2. [CHECKLIST.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/DG_TWFD_v3/CHECKLIST.md)
+3. [DEVELOPMENT_VALIDATION.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/DG_TWFD_v3/DEVELOPMENT_VALIDATION.md)
+4. [../map_branch/HANDOFF_2026-04-16.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/HANDOFF_2026-04-16.md)
+5. [../map_branch/baseline/current_losses.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/baseline/current_losses.md)
+6. [../map_branch/teacher/teacher_entry.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/teacher/teacher_entry.md)
+7. [../map_branch/teacher/cache_schema.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/teacher/cache_schema.md)
+8. [../map_branch/A100_PIPELINE.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/A100_PIPELINE.md)
+
+## Documentation roles
+
+- `CHECKLIST.md`:
+  - tracks completion state
+  - stays concise and result-oriented
+- `DEVELOPMENT_VALIDATION.md`:
+  - contains smoke commands and temporary deployment checks
+  - is allowed to be noisy and iterative
+- final `EXP_LOG` and final pipeline docs:
+  - should not absorb temporary smoke/debug content
+  - should record only accepted commands, measured results, and decisions
 
 ## Active code entrypoints
 
