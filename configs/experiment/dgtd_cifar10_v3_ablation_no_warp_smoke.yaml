@@ -1,0 +1,31 @@
+base: configs/experiment/dgtd_cifar10_v3_ablation_no_warp.yaml
+
+experiment:
+  name: dgtd_cifar10_v3_ablation_no_warp_smoke
+
+train:
+  epochs: 1
+  batch_size: 4
+  num_workers: 0
+  persistent_workers: false
+  max_train_batches: 1
+  max_val_batches: 1
+
+eval:
+  step_counts: [1, 2, 4]
+  num_fid_samples: 64
+  fid_batch_size: 8
+  sample_batch_size: 8
+  fixed_grid_size: 16
+  fixed_grid_batch_size: 8
+
+target:
+  cache_limit: 1
+
+scheduler:
+  timewarp:
+    num_bins: 16
+
+dgtd:
+  update_density_every: 1
+  update_warp_every: 1

@@ -1,0 +1,9 @@
+base: configs/experiment/dgtd_cifar10_v3.yaml
+
+experiment:
+  name: dgtd_cifar10_v3_ablation_warp_no_hf
+
+dgtd:
+  disable_hf_metric: true
+  hf_weight: 0.0
+  lambda_hf_max: 0.0

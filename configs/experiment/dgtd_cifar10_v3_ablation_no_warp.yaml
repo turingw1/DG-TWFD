@@ -1,0 +1,12 @@
+base: configs/experiment/dgtd_cifar10_v3.yaml
+
+experiment:
+  name: dgtd_cifar10_v3_ablation_no_warp
+
+dgtd:
+  disable_warp: true
+  uniform_time: true
+
+scheduler:
+  timewarp:
+    init: uniform

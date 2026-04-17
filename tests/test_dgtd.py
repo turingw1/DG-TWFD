@@ -78,6 +78,14 @@ def test_dgtd_config_loads() -> None:
     assert cfg["target"]["builder"] == "trajectory_shard"
     assert cfg["dgtd"]["disable_online_teacher"] is True
 
+    no_warp = load_experiment_config("configs/experiment/dgtd_cifar10_v3_ablation_no_warp.yaml")
+    assert no_warp["dgtd"]["disable_warp"] is True
+    assert no_warp["dgtd"]["uniform_time"] is True
+
+    no_hf = load_experiment_config("configs/experiment/dgtd_cifar10_v3_ablation_warp_no_hf.yaml")
+    assert no_hf["dgtd"]["disable_hf_metric"] is True
+    assert no_hf["dgtd"]["lambda_hf_max"] == 0.0
+
 
 def test_dgtd_dispatch_uses_map_mode_and_trainer(tmp_path: Path) -> None:
     cfg = _dgtd_config(tmp_path)
