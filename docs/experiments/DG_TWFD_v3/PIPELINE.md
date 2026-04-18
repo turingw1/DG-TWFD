@@ -78,7 +78,7 @@ After activation, use only:
 
 Current `e402a` default is tuned to raise GPU memory usage and throughput:
 
-- `train.batch_size=384`
+- `train.batch_size=512`
 - `model.use_checkpoint=false`
 - `eval.fid_batch_size=256`
 - `eval.sample_batch_size=64`
