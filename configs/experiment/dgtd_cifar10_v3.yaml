@@ -53,6 +53,7 @@ dgtd:
   symmetric_residual: true
   teacher_continuation_mode: affine_fallback
   teacher_keep_cached_exact: true
+  use_online_teacher_data: true
   sigma_mode: linear_1mt
   sigma_max: 1.0
   base_density: logit_normal

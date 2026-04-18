@@ -11,6 +11,7 @@ from torch import nn
 import yaml
 
 from dgfm.config import RunRoots
+from dgfm.datasets import build_image_dataloaders
 from dgfm.distributed import (
     DistributedContext,
     maybe_wrap_ddp,
@@ -76,6 +77,26 @@ def _move_batch_to_device(batch: dict[str, torch.Tensor], device: torch.device) 
     return moved
 
 
+def _extract_online_teacher_batch(batch, device: torch.device) -> tuple[torch.Tensor, torch.Tensor | None]:
+    if isinstance(batch, (list, tuple)):
+        if not batch:
+            raise ValueError("Empty batch received for online teacher mode")
+        images = batch[0]
+        cond = batch[1] if len(batch) > 1 and isinstance(batch[1], torch.Tensor) else None
+    elif isinstance(batch, dict):
+        image_key = next((key for key in ("images", "image", "x", "inputs") if key in batch), None)
+        if image_key is None:
+            raise KeyError("Online teacher batch dict must contain an image tensor")
+        images = batch[image_key]
+        cond = batch.get("label", batch.get("labels", batch.get("y")))
+    else:
+        raise TypeError(f"Unsupported batch type for online teacher mode: {type(batch).__name__}")
+    images = images.to(device=device, non_blocking=True)
+    if cond is not None:
+        cond = cond.to(device=device, non_blocking=True)
+    return images, cond
+
+
 def _base_density(config: dict, *, num_bins: int, device: torch.device, dtype: torch.dtype) -> torch.Tensor:
     dgtd_cfg = config.get("dgtd", {})
     mode = str(dgtd_cfg.get("base_density", "logit_normal"))
@@ -91,6 +112,20 @@ def _base_density(config: dict, *, num_bins: int, device: torch.device, dtype: t
     density = torch.exp(-0.5 * logits.square()) + 1.0e-6
     density = density / density.sum()
     return density
+
+
+def select_dgtd_dataloaders(config: dict, teacher_adapter) -> tuple[dict, bool]:
+    dgtd_cfg = config.get("dgtd", {})
+    online_requested = not bool(dgtd_cfg.get("disable_online_teacher", False))
+    use_online_teacher_data = bool(dgtd_cfg.get("use_online_teacher_data", True))
+    if online_requested and use_online_teacher_data and not teacher_adapter.has_online_teacher():
+        raise RuntimeError(
+            "Online teacher mode was requested, but the online teacher could not be built. "
+            "Check teacher configuration, connectivity, and local model cache."
+        )
+    online_teacher_data = use_online_teacher_data and teacher_adapter.has_online_teacher()
+    dataloaders = build_image_dataloaders(config) if online_teacher_data else build_cache_dataloaders(config)
+    return dataloaders, online_teacher_data
 
 
 def _bin_ids_from_time(time_value: torch.Tensor, *, num_bins: int) -> torch.Tensor:
@@ -224,6 +259,7 @@ class DGTDTrainer:
         total_steps: int,
         train: bool,
         global_step_start: int,
+        online_teacher_data: bool,
     ) -> tuple[dict[str, float], int]:
         model.train(train)
         dgtd_cfg = self.config.get("dgtd", {})
@@ -277,7 +313,11 @@ class DGTDTrainer:
             for batch_idx, batch in enumerate(loader):
                 if batch_limit > 0 and batch_idx >= batch_limit:
                     break
-                batch = _move_batch_to_device(batch, device)
+                if online_teacher_data:
+                    x_0, cond = _extract_online_teacher_batch(batch, device)
+                    batch = teacher_adapter.online_trajectory_from_x0(x_0, cond=cond, device=device)
+                else:
+                    batch = _move_batch_to_device(batch, device)
                 batch_size = int(batch["states"].shape[0])
                 stage = _stage_values(self.config, global_step=global_step, total_steps=total_steps)
                 stage_name = str(stage["stage"])
@@ -584,7 +624,9 @@ class DGTDTrainer:
     def run(self, resume: str | None = None, verbose: bool = False) -> None:
         self.prepare()
         device = self.dist_ctx.device if self.dist_ctx.enabled and self.dist_ctx.device is not None else _device_from_config(self.config)
-        dataloaders = build_cache_dataloaders(self.config)
+        teacher_adapter = build_teacher_adapter(self.config)
+        teacher_adapter.prepare(device)
+        dataloaders, online_teacher_data = select_dgtd_dataloaders(self.config, teacher_adapter)
         raw_model = build_map_model(self.config).to(device)
         model = maybe_wrap_ddp(raw_model, self.dist_ctx, find_unused_parameters=False)
         ema = ModelEMA(raw_model, decay=float(self.config["train"].get("ema_decay", 0.9999)))
@@ -604,8 +646,6 @@ class DGTDTrainer:
             betas=tuple(self.config["train"].get("optimizer_betas", [0.9, 0.95])),
         )
         scaler = torch.amp.GradScaler(device="cuda", enabled=device.type == "cuda" and bool(self.config.get("runtime", {}).get("amp", True)))
-        teacher_adapter = build_teacher_adapter(self.config)
-        teacher_adapter.prepare(device)
         self._init_stats(num_bins=warp.num_bins, device=device)
         start_epoch = 0
         best_val = float("inf")
@@ -655,6 +695,7 @@ class DGTDTrainer:
                 total_steps=total_steps,
                 train=True,
                 global_step_start=global_step,
+                online_teacher_data=online_teacher_data,
             )
             eval_model = ema.shadow if ema is not None else raw_model
             val_stats, _ = self._run_epoch(
@@ -671,6 +712,7 @@ class DGTDTrainer:
                 total_steps=total_steps,
                 train=False,
                 global_step_start=global_step,
+                online_teacher_data=online_teacher_data,
             )
             elapsed = time.time() - t0
             total_elapsed_sec += elapsed
@@ -725,6 +767,7 @@ class DGTDTrainer:
                 "elapsed_sec": elapsed,
                 "epoch_sec_avg": avg_epoch_sec,
                 "global_step": global_step,
+                "online_teacher_data": online_teacher_data,
             }
             if self.dist_ctx.is_main_process:
                 with history_path.open("a", encoding="utf-8") as handle:
@@ -764,6 +807,7 @@ class DGTDTrainer:
                     f"low_sigma_hf={train_stats['low_sigma_hf']:.6f} stage={train_stats['stage']} "
                     f"eta={train_stats['eta']:.4f} beta={train_stats['beta']:.4f} "
                     f"kl_qD_qphi={train_stats['kl_qD_qphi']:.6f} "
+                    f"online_teacher_data={'yes' if online_teacher_data else 'no'} "
                     f"elapsed_sec={elapsed:.2f}",
                     flush=True,
                 )

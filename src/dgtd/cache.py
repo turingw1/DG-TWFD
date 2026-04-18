@@ -40,6 +40,58 @@ def _curvature_from_sorted(times: Tensor, states: Tensor) -> Tensor:
     return delta_v / torch.clamp(vel_norm, min=1.0e-6)
 
 
+def build_trajectory_payload(
+    *,
+    times,
+    states,
+    cond: Tensor | None = None,
+    device: torch.device | None = None,
+) -> dict[str, Tensor]:
+    times_tensor = torch.as_tensor(times).float()
+    states_tensor = torch.as_tensor(states).float()
+    if device is not None:
+        times_tensor = times_tensor.to(device=device)
+        states_tensor = states_tensor.to(device=device)
+        if cond is not None:
+            cond = cond.to(device=device)
+    if states_tensor.ndim == 4:
+        sorted_times, sorted_states = _sort_sample({"t_grid": times_tensor, "x_grid": states_tensor})
+        payload = {
+            "times": sorted_times,
+            "states": sorted_states,
+            "curvature": _curvature_from_sorted(sorted_times, sorted_states),
+        }
+        if cond is not None:
+            payload["cond"] = cond
+        return payload
+    if states_tensor.ndim != 5:
+        raise ValueError(f"states must have shape [M,C,H,W] or [B,M,C,H,W], got {tuple(states_tensor.shape)}")
+    if times_tensor.ndim == 1:
+        times_tensor = times_tensor.unsqueeze(0).expand(states_tensor.shape[0], -1)
+    if times_tensor.ndim != 2:
+        raise ValueError(f"times must have shape [M] or [B,M], got {tuple(times_tensor.shape)}")
+    if times_tensor.shape[0] != states_tensor.shape[0]:
+        raise ValueError("batch size mismatch between times and states")
+    batch_times = []
+    batch_states = []
+    batch_curvature = []
+    for idx in range(states_tensor.shape[0]):
+        order = torch.argsort(times_tensor[idx])
+        sorted_times = times_tensor[idx][order]
+        sorted_states = states_tensor[idx][order]
+        batch_times.append(sorted_times)
+        batch_states.append(sorted_states)
+        batch_curvature.append(_curvature_from_sorted(sorted_times, sorted_states))
+    payload = {
+        "times": torch.stack(batch_times, dim=0),
+        "states": torch.stack(batch_states, dim=0),
+        "curvature": torch.stack(batch_curvature, dim=0),
+    }
+    if cond is not None:
+        payload["cond"] = cond
+    return payload
+
+
 class TrajectoryCacheDataset(Dataset[dict[str, Tensor]]):
     def __init__(self, config: dict, split: str = "train") -> None:
         self.config = config

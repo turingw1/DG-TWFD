@@ -38,31 +38,27 @@ Return enough server evidence to verify:
 
 ## Important Constraint About Online Teacher
 
-This round can and should **prefer online teacher as the intended direction**,
-but the current DGTD v3 implementation is **not yet a pure online-teacher
-trainer**.
+This instruction file now assumes the preferred smoke path is the online-teacher
+mode.
 
 Current code facts:
 
-- `DGTDTrainer.run()` still builds data through `build_cache_dataloaders(...)`
-  in [src/dgtd/train_dgtd.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dgtd/train_dgtd.py:587)
-- `build_cache_dataloaders(...)` always instantiates
-  `TrajectoryCacheDataset(...)` in [src/dgtd/cache.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dgtd/cache.py:218)
-- `TeacherAdapter.local_flow()` only uses the online path if the teacher object
-  implements `local_flow(...)`, checked at
-  [src/dgtd/teacher.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dgtd/teacher.py:71)
-- the current `DiffusersDDPMTeacher` does **not** implement `local_flow(...)`;
-  it implements trajectory sampling APIs instead, see
-  [src/dgfm/teachers/diffusers_ddpm.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dgfm/teachers/diffusers_ddpm.py:113)
+- `DGTDTrainer.run()` now selects image dataloaders when online teacher is
+  enabled and successfully built
+- the online path materializes a teacher trajectory per batch from the clean
+  batch images
+- the training smoke no longer requires `target.shard_root`
+- `TeacherAdapter.local_flow()` still prefers a true online `local_flow(...)`
+  implementation if available
+- for the current `DiffusersDDPMTeacher`, continuation is still built from the
+  on-the-fly trajectory using `cached_exact / cached_affine`, but the trajectory
+  source itself is online
 
 So the practical rule for this instruction file is:
 
-- we will explicitly enable online teacher during smoke to check that the
-  server can load it
-- but we still need a valid `target.shard_root` for the current DGTD v3 trainer
-
-If the project later lands a true online-teacher DGTD trainer path, this
-instruction file should be simplified accordingly.
+- explicitly enable online teacher during smoke
+- do not pass `target.shard_root`
+- if training still errors on missing shard root, treat that as a regression
 
 ## Naming For This Round
 
@@ -78,8 +74,6 @@ source scripts/experiments/activate_fm_cifar10.sh dgtd_v3_smoke round2_verify
 ```
 
 This is a smoke / verification run, not a formal experiment campaign row.
-Using `--set target.shard_root=...` is acceptable here because the goal is
-acceptance debugging, not final experiment logging.
 
 ## 0. Server Bootstrap
 
@@ -205,47 +199,23 @@ Pass condition:
 If this step fails because weights are not cached and the server cannot
 download, return the traceback before continuing.
 
-## 4. Trajectory Root Validation
+## 4. Dataset Root Validation
 
-Even though the long-term direction is online teacher, the current DGTD v3
-trainer still requires shard-backed dataloaders. So for this round, we only do
-a **minimal** shard-root check, not a long cache-discovery workflow.
+The online-teacher smoke no longer depends on `TRAJ_ROOT`, but it still needs
+the actual image dataset root.
 
-If the activated `TRAJ_ROOT` already exists, validate it with:
-
-```bash
-if [ -d "$TRAJ_ROOT" ]; then
-  echo "Resolved TRAJ_ROOT exists"
-  find "$TRAJ_ROOT" -maxdepth 2 | head -n 30
-else
-  echo "Resolved TRAJ_ROOT does not exist: $TRAJ_ROOT"
-fi
-```
-
-If the activated `TRAJ_ROOT` does **not** exist, do this one discovery step and
-stop there if nothing valid is found:
+Validate CIFAR-10 availability with:
 
 ```bash
-echo "==== teacher_traj candidates under $PROJ ===="
-find "$PROJ" -maxdepth 4 -type d \( -name 'teacher_traj' -o -name 'cifar10_ddpm128_p33' \) | sort
-```
-
-If you find the correct cache root manually, export it in the current shell:
-
-```bash
-export TRAJ_ROOT=/actual/path/to/the/cifar10_teacher_cache
-echo "TRAJ_ROOT=$TRAJ_ROOT"
-find "$TRAJ_ROOT" -maxdepth 2 | head -n 30
+echo "DATA_ROOT=$DATA_ROOT"
+find "$DATA_ROOT/cifar10" -maxdepth 2 | head -n 30
 ```
 
 Pass condition:
 
-- `TRAJ_ROOT` exists
-- it contains either:
-  - `train/` and `val/`, or
-  - flat shard files
+- `"$DATA_ROOT/cifar10/cifar-10-batches-py"` exists
 
-If you cannot resolve a valid `TRAJ_ROOT`, stop and return the outputs from this section.
+If this path is missing, stop and return the outputs from this section.
 
 ## 5. Entry-Point Import Check
 
@@ -294,7 +264,6 @@ python scripts/run_train.py \
   --run-root "$DGTD_V3_R2_ROOT" \
   --set dgtd.disable_online_teacher=false \
   --set teacher.local_files_only=false \
-  --set target.shard_root="$TRAJ_ROOT" \
   2>&1 | tee "$DGTD_V3_R2_ROOT/train.stdout_stderr.txt"
 ```
 
@@ -318,6 +287,7 @@ Train pass condition:
 
 - `$DGTD_V3_R2_ROOT/checkpoints/last.pt` exists
 - `$DGTD_V3_R2_ROOT/logs/train.jsonl` exists
+- stdout includes `online_teacher_data=yes`
 
 ## 8. Smoke Sample
 
@@ -330,7 +300,6 @@ python scripts/run_sample_dgtd.py \
   --checkpoint "$DGTD_V3_R2_ROOT/checkpoints/last.pt" \
   --output-dir "$DGTD_V3_R2_ROOT/sample" \
   --steps 4 \
-  --set target.shard_root="$TRAJ_ROOT" \
   2>&1 | tee "$DGTD_V3_R2_ROOT/sample.stdout_stderr.txt"
 ```
 
@@ -360,7 +329,6 @@ python scripts/run_eval.py \
   --checkpoint "$DGTD_V3_R2_ROOT/checkpoints/last.pt" \
   --eval-root "$DGTD_V3_R2_ROOT/eval" \
   --steps 1 2 4 \
-  --set target.shard_root="$TRAJ_ROOT" \
   2>&1 | tee "$DGTD_V3_R2_ROOT/eval.stdout_stderr.txt"
 ```
 

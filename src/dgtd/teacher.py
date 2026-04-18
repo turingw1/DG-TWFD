@@ -7,7 +7,7 @@ from torch import Tensor
 
 from dgfm.teachers import build_teacher
 
-from .cache import interpolate_state
+from .cache import build_trajectory_payload, interpolate_state
 from .sigma import SigmaSchedule, build_sigma_schedule
 
 
@@ -48,6 +48,33 @@ class TeacherAdapter:
     def prepare(self, device: torch.device) -> None:
         if self.online_teacher is not None and hasattr(self.online_teacher, "prepare"):
             self.online_teacher.prepare(device)
+
+    def has_online_teacher(self) -> bool:
+        return self.online_teacher is not None
+
+    def online_u_grid(self, *, device: torch.device, dtype: torch.dtype) -> Tensor:
+        num_points = int(self.config.get("teacher", {}).get("retain_num_points", 33))
+        if num_points < 2:
+            raise ValueError("teacher.retain_num_points must be at least 2 for online trajectories")
+        return torch.linspace(0.0, 1.0, steps=num_points, device=device, dtype=dtype)
+
+    def online_trajectory_from_x0(
+        self,
+        x_0: Tensor,
+        *,
+        cond: Tensor | None = None,
+        device: torch.device,
+    ) -> dict[str, Tensor]:
+        if self.online_teacher is None or not hasattr(self.online_teacher, "sample_trajectory_from_x0"):
+            raise RuntimeError("Online teacher trajectory sampling is not available")
+        u_grid = self.online_u_grid(device=device, dtype=x_0.dtype)
+        traj = self.online_teacher.sample_trajectory_from_x0(x_0=x_0, u_grid=u_grid, device=device)
+        return build_trajectory_payload(
+            times=traj.t_grid,
+            states=traj.x_grid,
+            cond=cond,
+            device=device,
+        )
 
     def cached_state(self, traj: dict[str, Tensor], t: Tensor) -> Tensor:
         return interpolate_state(traj, t)

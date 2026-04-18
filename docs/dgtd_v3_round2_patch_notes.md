@@ -111,6 +111,24 @@ Fix:
 - trainer now logs entropy, KL, maximum density ratio, peak bin, stage values,
   and continuation source ratios
 
+### 2.5 Online teacher data path for server smoke
+
+Problem before:
+
+- even with `dgtd.disable_online_teacher=false`, the trainer still constructed
+  cache-backed dataloaders first
+- this caused misleading failures on missing `target.shard_root`
+
+Fix:
+
+- `src/dgtd/train_dgtd.py` now selects image dataloaders when online teacher is
+  enabled and built
+- clean batch images are converted into an online teacher trajectory batch on
+  the fly
+- if online teacher mode is explicitly requested but the teacher cannot be
+  built, the code now fails fast with a clear online-teacher error instead of
+  silently falling back to cache mode
+
 ## 3. Updated residual formula
 
 Define:
@@ -199,6 +217,24 @@ Current users of the shared sigma schedule:
 - `lambda_hf(u)`
 - `edm_weight(u)`
 - `min_snr_weight(u)`
+
+## 5.5 Online teacher data path
+
+When these conditions hold:
+
+- `dgtd.disable_online_teacher=false`
+- `dgtd.use_online_teacher_data=true`
+- `TeacherAdapter` successfully builds an online teacher
+
+the trainer now uses:
+
+- image dataloaders from the dataset root
+- online teacher trajectory materialization per batch
+
+This means the train smoke no longer requires:
+
+- `target.shard_root`
+- pre-generated offline teacher shards
 
 ## 6. New diagnostics
 

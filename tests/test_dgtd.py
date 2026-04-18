@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import torch
+import pytest
 
 from dgfm.config import load_experiment_config, resolve_run_roots
 from dgfm.distributed import DistributedContext
@@ -17,7 +18,7 @@ from dgtd import (
 )
 from dgtd.defect import build_target_density
 from dgtd.teacher import CONTINUATION_SOURCE_CACHED_AFFINE, build_teacher_adapter
-from dgtd.train_dgtd import DGTDTrainer
+from dgtd.train_dgtd import DGTDTrainer, select_dgtd_dataloaders
 
 
 def _dgtd_config(tmp_path: Path) -> dict:
@@ -74,7 +75,7 @@ def _dgtd_config(tmp_path: Path) -> dict:
             "trajectory_file_glob": "*.pt",
             "cache_limit": 1,
         },
-        "teacher": {"type": "none"},
+        "teacher": {"type": "none", "retain_num_points": 5},
         "eval": {"metrics": ["fid"]},
         "dgtd": {
             "disable_online_teacher": True,
@@ -236,3 +237,55 @@ def test_target_density_can_disable_hf_bar_and_cap_ratio() -> None:
     assert torch.isclose(q_no_hf.sum(), torch.tensor(1.0))
     assert torch.isclose(q_with_cap.sum(), torch.tensor(1.0))
     assert float(torch.max(q_with_cap / q_base).item()) <= 1.25 + 1.0e-5
+
+
+def test_online_teacher_materialization_and_loader_selection(tmp_path: Path, monkeypatch) -> None:
+    cfg = _dgtd_config(tmp_path)
+    cfg["teacher"] = {
+        "type": "sampler",
+        "backend": "dummy",
+        "retain_num_points": 5,
+    }
+    cfg["dgtd"]["disable_online_teacher"] = False
+    cfg["dgtd"]["use_online_teacher_data"] = True
+
+    adapter = build_teacher_adapter(cfg)
+    adapter.prepare(torch.device("cpu"))
+    x_0 = torch.randn(2, 1, 2, 2)
+    cond = torch.tensor([1, 2])
+    traj = adapter.online_trajectory_from_x0(x_0, cond=cond, device=torch.device("cpu"))
+    assert traj["times"].shape == (2, 5)
+    assert traj["states"].shape == (2, 5, 1, 2, 2)
+    assert traj["curvature"].shape == (2, 3)
+    assert torch.equal(traj["cond"], cond)
+
+    seen = {"image": 0, "cache": 0}
+
+    def _fake_image(_config):
+        seen["image"] += 1
+        return {"train": [], "val": []}
+
+    def _fake_cache(_config):
+        seen["cache"] += 1
+        raise AssertionError("cache loaders should not be used in online teacher mode")
+
+    monkeypatch.setattr("dgtd.train_dgtd.build_image_dataloaders", _fake_image)
+    monkeypatch.setattr("dgtd.train_dgtd.build_cache_dataloaders", _fake_cache)
+    loaders, online = select_dgtd_dataloaders(cfg, adapter)
+    assert online is True
+    assert seen["image"] == 1
+    assert seen["cache"] == 0
+    assert set(loaders.keys()) == {"train", "val"}
+
+
+def test_online_teacher_selection_fails_fast_when_teacher_missing(tmp_path: Path) -> None:
+    cfg = _dgtd_config(tmp_path)
+    cfg["teacher"] = {
+        "type": "sampler",
+        "backend": "unsupported_backend",
+    }
+    cfg["dgtd"]["disable_online_teacher"] = False
+    cfg["dgtd"]["use_online_teacher_data"] = True
+    adapter = build_teacher_adapter(cfg)
+    with pytest.raises(RuntimeError, match="Online teacher mode was requested"):
+        select_dgtd_dataloaders(cfg, adapter)
