@@ -46,6 +46,7 @@ def build_trajectory_payload(
     states,
     cond: Tensor | None = None,
     device: torch.device | None = None,
+    online_anchor: bool = False,
 ) -> dict[str, Tensor]:
     times_tensor = torch.as_tensor(times).float()
     states_tensor = torch.as_tensor(states).float()
@@ -60,6 +61,7 @@ def build_trajectory_payload(
             "times": sorted_times,
             "states": sorted_states,
             "curvature": _curvature_from_sorted(sorted_times, sorted_states),
+            "teacher_anchor_online": torch.tensor(bool(online_anchor)),
         }
         if cond is not None:
             payload["cond"] = cond
@@ -86,6 +88,7 @@ def build_trajectory_payload(
         "times": torch.stack(batch_times, dim=0),
         "states": torch.stack(batch_states, dim=0),
         "curvature": torch.stack(batch_curvature, dim=0),
+        "teacher_anchor_online": torch.full((states_tensor.shape[0],), bool(online_anchor), dtype=torch.bool, device=states_tensor.device),
     }
     if cond is not None:
         payload["cond"] = cond
@@ -166,6 +169,7 @@ class TrajectoryCacheDataset(Dataset[dict[str, Tensor]]):
             "times": times,
             "states": states,
             "curvature": _curvature_from_sorted(times, states),
+            "teacher_anchor_online": torch.tensor(False),
         }
         if "y" in sample:
             payload["cond"] = torch.as_tensor(sample["y"]).long()

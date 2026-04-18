@@ -34,6 +34,8 @@ class TeacherContinuation:
     teacher_u: Tensor | None = None
     rel_error: Tensor | None = None
     alpha: Tensor | None = None
+    exact_mask: Tensor | None = None
+    used_online_anchor: Tensor | None = None
 
 
 @dataclass(slots=True)
@@ -43,6 +45,7 @@ class TeacherAdapter:
     online_teacher: object | None = None
     proximity_rtol: float = 0.05
     continuation_mode: str = "affine_fallback"
+    online_continuation_mode: str = "affine_mainline"
     keep_cached_exact: bool = True
 
     def prepare(self, device: torch.device) -> None:
@@ -74,10 +77,35 @@ class TeacherAdapter:
             states=traj.x_grid,
             cond=cond,
             device=device,
+            online_anchor=True,
         )
 
     def cached_state(self, traj: dict[str, Tensor], t: Tensor) -> Tensor:
         return interpolate_state(traj, t)
+
+    def local_gain(self, s: Tensor, u: Tensor) -> Tensor:
+        return self.sigma_schedule.alpha(s, u)
+
+    def _source_none(self, z: Tensor) -> Tensor:
+        return torch.full(
+            (z.shape[0],),
+            CONTINUATION_SOURCE_NONE,
+            device=z.device,
+            dtype=torch.long,
+        )
+
+    def _online_anchor_mask(self, traj: dict[str, Tensor] | None, batch_size: int, device: torch.device) -> Tensor:
+        if traj is None:
+            return torch.zeros(batch_size, device=device, dtype=torch.bool)
+        value = traj.get("teacher_anchor_online")
+        if value is None:
+            return torch.zeros(batch_size, device=device, dtype=torch.bool)
+        mask = value.to(device=device, dtype=torch.bool).view(-1)
+        if mask.numel() == 1 and batch_size > 1:
+            mask = mask.expand(batch_size)
+        if mask.numel() != batch_size:
+            raise ValueError(f"teacher_anchor_online batch mismatch: {mask.numel()} vs {batch_size}")
+        return mask
 
     def local_flow(
         self,
@@ -89,12 +117,26 @@ class TeacherAdapter:
         extra: dict | None = None,
     ) -> TeacherContinuation:
         del extra
-        source_none = torch.full(
-            (z.shape[0],),
-            CONTINUATION_SOURCE_NONE,
-            device=z.device,
-            dtype=torch.long,
-        )
+        source_none = self._source_none(z)
+        used_online_anchor = self._online_anchor_mask(traj, z.shape[0], z.device)
+        if bool(used_online_anchor.any()) and self.online_continuation_mode == "affine_mainline":
+            x_s_online = self.cached_state(traj, s).to(device=z.device, dtype=z.dtype)
+            x_u_online = self.cached_state(traj, u).to(device=z.device, dtype=z.dtype)
+            rel = (z.detach() - x_s_online).flatten(1).square().mean(dim=1)
+            denom = torch.clamp(x_s_online.flatten(1).square().mean(dim=1), min=1.0e-6)
+            rel_error = rel / denom
+            alpha = self.local_gain(s, u).to(device=z.device, dtype=z.dtype)
+            online = x_u_online.detach() + alpha.view(-1, 1, 1, 1) * (z - x_s_online.detach())
+            return TeacherContinuation(
+                continuation=online,
+                source_ids=torch.full_like(source_none, CONTINUATION_SOURCE_ONLINE),
+                teacher_s=x_s_online.detach(),
+                teacher_u=x_u_online.detach(),
+                rel_error=rel_error.detach(),
+                alpha=alpha.detach(),
+                exact_mask=torch.zeros_like(source_none, dtype=torch.bool),
+                used_online_anchor=used_online_anchor,
+            )
         if self.online_teacher is not None and hasattr(self.online_teacher, "local_flow"):
             with torch.no_grad():
                 online = self.online_teacher.local_flow(s, u, z.detach())
@@ -105,6 +147,8 @@ class TeacherAdapter:
                 return TeacherContinuation(
                     continuation=online,
                     source_ids=torch.full_like(source_none, CONTINUATION_SOURCE_ONLINE),
+                    exact_mask=torch.zeros_like(source_none, dtype=torch.bool),
+                    used_online_anchor=used_online_anchor,
                 )
         if traj is not None:
             x_s_cached = self.cached_state(traj, s).to(device=z.device, dtype=z.dtype)
@@ -113,7 +157,7 @@ class TeacherAdapter:
             denom = torch.clamp(x_s_cached.flatten(1).square().mean(dim=1), min=1.0e-6)
             rel_error = rel / denom
             exact_mask = rel_error <= float(self.proximity_rtol)
-            alpha = self.sigma_schedule.alpha(s, u).to(device=z.device, dtype=z.dtype)
+            alpha = self.local_gain(s, u).to(device=z.device, dtype=z.dtype)
             if self.continuation_mode not in {"affine_fallback", "cached_affine"}:
                 cached_exact = x_u_cached.detach()
                 return TeacherContinuation(
@@ -123,6 +167,8 @@ class TeacherAdapter:
                     teacher_u=x_u_cached.detach(),
                     rel_error=rel_error.detach(),
                     alpha=alpha.detach(),
+                    exact_mask=exact_mask.detach(),
+                    used_online_anchor=used_online_anchor,
                 )
             affine = x_u_cached.detach() + alpha.view(-1, 1, 1, 1) * (z - x_s_cached.detach())
             source_ids = torch.full_like(source_none, CONTINUATION_SOURCE_CACHED_AFFINE)
@@ -137,8 +183,15 @@ class TeacherAdapter:
                 teacher_u=x_u_cached.detach(),
                 rel_error=rel_error.detach(),
                 alpha=alpha.detach(),
+                exact_mask=exact_mask.detach(),
+                used_online_anchor=used_online_anchor,
             )
-        return TeacherContinuation(continuation=None, source_ids=source_none)
+        return TeacherContinuation(
+            continuation=None,
+            source_ids=source_none,
+            exact_mask=torch.zeros_like(source_none, dtype=torch.bool),
+            used_online_anchor=used_online_anchor,
+        )
 
     def sigma(self, t: Tensor) -> Tensor:
         return self.sigma_schedule.sigma(t)
@@ -169,5 +222,6 @@ def build_teacher_adapter(config: dict) -> TeacherAdapter:
         online_teacher=online_teacher,
         proximity_rtol=float(dgtd_cfg.get("teacher_proximity_rtol", 0.05)),
         continuation_mode=str(dgtd_cfg.get("teacher_continuation_mode", "affine_fallback")),
+        online_continuation_mode=str(dgtd_cfg.get("online_continuation_mode", "affine_mainline")),
         keep_cached_exact=bool(dgtd_cfg.get("teacher_keep_cached_exact", True)),
     )

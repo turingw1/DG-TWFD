@@ -51,6 +51,8 @@ def compute_dgtd_residual(
         "teacher_u": teacher_info.teacher_u,
         "teacher_rel_error": teacher_info.rel_error,
         "teacher_alpha": teacher_info.alpha,
+        "teacher_exact_mask": teacher_info.exact_mask,
+        "teacher_used_online_anchor": teacher_info.used_online_anchor,
         "source_ids": source_ids,
         "residual": residual,
     }

@@ -31,3 +31,4 @@ dgtd:
   update_warp_every: 1
   qd_use_hf_bar: false
   qd_hf_weight: 0.0
+  eta_start: 0.95

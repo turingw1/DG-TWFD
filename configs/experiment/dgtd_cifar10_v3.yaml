@@ -53,15 +53,22 @@ dgtd:
   symmetric_residual: true
   teacher_continuation_mode: affine_fallback
   teacher_keep_cached_exact: true
+  online_continuation_mode: affine_mainline
   use_online_teacher_data: true
+  disable_online_teacher: false
   sigma_mode: linear_1mt
   sigma_max: 1.0
+  alpha_mode: clamped_ratio_sigma
+  alpha_min: 0.05
+  alpha_max: 1.0
+  alpha_power: 1.0
   base_density: logit_normal
   base_p_mean: -1.2
   base_p_std: 1.2
   warmup_frac: 0.12
   flatten_frac: 0.20
   beta_final: 0.75
+  eta_start: 0.95
   eta_min: 0.4
   ema_mu_warmup: 0.95
   ema_mu_main: 0.99
@@ -82,6 +89,5 @@ dgtd:
   disable_warp: false
   disable_hf_metric: false
   disable_teacher_anchor: false
-  disable_online_teacher: true
   uniform_time: false
   logit_normal_time: true

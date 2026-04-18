@@ -11,6 +11,10 @@ class SigmaSchedule:
     mode: str
     sigma_min: float
     sigma_max: float = 1.0
+    alpha_mode: str = "clamped_ratio_sigma"
+    alpha_min: float = 0.0
+    alpha_max: float = 1.0
+    alpha_power: float = 1.0
     t_grid: Tensor | None = None
     sigma_grid: Tensor | None = None
 
@@ -32,7 +36,16 @@ class SigmaSchedule:
     def alpha(self, s: Tensor, u: Tensor, *, eps: float = 1.0e-6) -> Tensor:
         sigma_s = self.sigma(s)
         sigma_u = self.sigma(u)
-        return sigma_u / torch.clamp(sigma_s, min=float(eps))
+        if self.alpha_mode == "identity":
+            return torch.ones_like(sigma_s)
+        ratio = sigma_u / torch.clamp(sigma_s, min=float(eps))
+        if self.alpha_mode == "ratio_sigma":
+            return ratio
+        if self.alpha_mode == "power_ratio_sigma":
+            return torch.pow(torch.clamp(ratio, min=float(eps)), float(self.alpha_power))
+        if self.alpha_mode == "clamped_ratio_sigma":
+            return torch.clamp(ratio, min=float(self.alpha_min), max=float(self.alpha_max))
+        raise ValueError(f"Unsupported dgtd alpha_mode: {self.alpha_mode}")
 
 
 def _as_optional_tensor(values, *, dtype: torch.dtype) -> Tensor | None:
@@ -77,6 +90,10 @@ def build_sigma_schedule(config: dict) -> SigmaSchedule:
     mode = str(dgtd_cfg.get("sigma_mode", "linear_1mt"))
     sigma_min = float(dgtd_cfg.get("sigma_min", model_cfg.get("sigma_min", 1.0e-3)))
     sigma_max = float(dgtd_cfg.get("sigma_max", 1.0))
+    alpha_mode = str(dgtd_cfg.get("alpha_mode", "clamped_ratio_sigma"))
+    alpha_min = float(dgtd_cfg.get("alpha_min", 0.0))
+    alpha_max = float(dgtd_cfg.get("alpha_max", 1.0))
+    alpha_power = float(dgtd_cfg.get("alpha_power", 1.0))
     dtype = torch.float32
     t_grid = _as_optional_tensor(dgtd_cfg.get("sigma_t_grid"), dtype=dtype)
     sigma_grid = _as_optional_tensor(dgtd_cfg.get("sigma_value_grid"), dtype=dtype)
@@ -86,6 +103,10 @@ def build_sigma_schedule(config: dict) -> SigmaSchedule:
         mode=mode,
         sigma_min=sigma_min,
         sigma_max=sigma_max,
+        alpha_mode=alpha_mode,
+        alpha_min=alpha_min,
+        alpha_max=alpha_max,
+        alpha_power=alpha_power,
         t_grid=t_grid,
         sigma_grid=sigma_grid,
     )

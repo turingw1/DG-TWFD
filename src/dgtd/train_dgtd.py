@@ -161,12 +161,13 @@ def _stage_values(config: dict, *, global_step: int, total_steps: int) -> dict[s
     warmup_end = max(1, int(total_steps * warmup_frac))
     flatten_start = max(warmup_end + 1, int(total_steps * (1.0 - flatten_frac)))
     beta_final = float(dgtd_cfg.get("beta_final", dgtd_cfg.get("defect_beta", 0.75)))
+    eta_start = float(dgtd_cfg.get("eta_start", 0.95))
     eta_min = float(dgtd_cfg.get("eta_min", 0.4))
     if global_step < warmup_end:
         return {
             "stage": "warmup",
             "beta": 0.0,
-            "eta": 1.0,
+            "eta": eta_start,
             "mu": float(dgtd_cfg.get("ema_mu_warmup", 0.95)),
             "flatten_mix": 0.0,
             "warmup_end": float(warmup_end),
@@ -177,7 +178,7 @@ def _stage_values(config: dict, *, global_step: int, total_steps: int) -> dict[s
         return {
             "stage": "adaptive",
             "beta": beta_final * alpha,
-            "eta": 1.0 - alpha * (1.0 - eta_min),
+            "eta": eta_start - alpha * (eta_start - eta_min),
             "mu": float(dgtd_cfg.get("ema_mu_main", 0.99)),
             "flatten_mix": 0.0,
             "warmup_end": float(warmup_end),
@@ -279,10 +280,12 @@ class DGTDTrainer:
             "low_sigma_hf": 0.0,
             "omega": 0.0,
             "direct_teacher_error": 0.0,
-            "bridge_teacher_error": 0.0,
+            "bridge_state_teacher_error": 0.0,
+            "bridge_u_teacher_error": 0.0,
             "direct_bridge_gap": 0.0,
             "teacher_rel_error": 0.0,
             "target_build_sec": 0.0,
+            "online_teacher_traj_sec": 0.0,
             "forward_sec": 0.0,
             "warp_sec": 0.0,
             "samples_seen": 0.0,
@@ -304,6 +307,14 @@ class DGTDTrainer:
             "noisy_endpoint_error": 0.0,
             "mid_endpoint_error": 0.0,
             "clean_endpoint_error": 0.0,
+            "online_anchor_used": 0.0,
+            "online_continuation_used": 0.0,
+            "cached_fallback_used": 0.0,
+            "exact_mask_hits": 0.0,
+            "alpha_online_sum": 0.0,
+            "alpha_online_count": 0.0,
+            "alpha_online_min": 0.0,
+            "alpha_online_max": 0.0,
         }
         stage_name = "warmup"
         eta_value = 1.0
@@ -317,8 +328,10 @@ class DGTDTrainer:
                 if batch_limit > 0 and batch_idx >= batch_limit:
                     break
                 if online_teacher_data:
+                    traj_t0 = time.perf_counter()
                     x_0, cond = _extract_online_teacher_batch(batch, device)
                     batch = teacher_adapter.online_trajectory_from_x0(x_0, cond=cond, device=device)
+                    totals["online_teacher_traj_sec"] += time.perf_counter() - traj_t0
                 else:
                     batch = _move_batch_to_device(batch, device)
                 batch_size = int(batch["states"].shape[0])
@@ -417,11 +430,19 @@ class DGTDTrainer:
                 )
                 hf_values = high_frequency_norm(laplacian_filter(residual.detach()))
                 direct_teacher_error = _per_sample_mse(residual_info["x_u_direct"].detach(), x_u_teacher)
-                bridge_teacher_error = _per_sample_mse(residual_info["x_s_pred"].detach(), x_s_teacher)
+                bridge_state_teacher_error = _per_sample_mse(residual_info["x_s_pred"].detach(), x_s_teacher)
+                bridge_u_teacher_error = _per_sample_mse(residual_info["bridge_cont"].detach(), x_u_teacher)
                 direct_bridge_gap = _per_sample_mse(residual_info["x_u_direct"].detach(), residual_info["x_u_cont"].detach())
                 teacher_rel_error = residual_info["teacher_rel_error"]
                 if teacher_rel_error is None:
                     teacher_rel_error = torch.zeros_like(direct_teacher_error)
+                teacher_exact_mask = residual_info["teacher_exact_mask"]
+                if teacher_exact_mask is None:
+                    teacher_exact_mask = torch.zeros_like(direct_teacher_error, dtype=torch.bool)
+                teacher_used_online_anchor = residual_info["teacher_used_online_anchor"]
+                if teacher_used_online_anchor is None:
+                    teacher_used_online_anchor = torch.zeros_like(direct_teacher_error, dtype=torch.bool)
+                teacher_alpha = residual_info["teacher_alpha"]
                 source_ids = residual_info["source_ids"]
                 bin_ids = _bin_ids_from_time(u.detach(), num_bins=num_bins)
                 ids, values = _global_bin_means(bin_ids, sample_defect, num_bins=num_bins, device=device, ctx=self.dist_ctx)
@@ -477,7 +498,8 @@ class DGTDTrainer:
                 totals["low_sigma_hf"] += float(low_sigma_hf.item())
                 totals["omega"] += float(omega.mean().item())
                 totals["direct_teacher_error"] += float(direct_teacher_error.mean().item())
-                totals["bridge_teacher_error"] += float(bridge_teacher_error.mean().item())
+                totals["bridge_state_teacher_error"] += float(bridge_state_teacher_error.mean().item())
+                totals["bridge_u_teacher_error"] += float(bridge_u_teacher_error.mean().item())
                 totals["direct_bridge_gap"] += float(direct_bridge_gap.mean().item())
                 totals["teacher_rel_error"] += float(teacher_rel_error.mean().item())
                 totals["samples_seen"] += float(batch_size)
@@ -486,6 +508,25 @@ class DGTDTrainer:
                 totals["source_cached_affine"] += float((source_ids == CONTINUATION_SOURCE_CACHED_AFFINE).sum().item())
                 totals["source_cached_exact"] += float((source_ids == CONTINUATION_SOURCE_CACHED_EXACT).sum().item())
                 totals["source_bootstrap"] += float((source_ids == CONTINUATION_SOURCE_BOOTSTRAP).sum().item())
+                totals["online_anchor_used"] += float(teacher_used_online_anchor.sum().item())
+                totals["online_continuation_used"] += float((source_ids == CONTINUATION_SOURCE_ONLINE).sum().item())
+                totals["cached_fallback_used"] += float(
+                    ((source_ids == CONTINUATION_SOURCE_CACHED_AFFINE) | (source_ids == CONTINUATION_SOURCE_CACHED_EXACT)).sum().item()
+                )
+                totals["exact_mask_hits"] += float(teacher_exact_mask.sum().item())
+                if teacher_alpha is not None:
+                    alpha_online = teacher_alpha[teacher_used_online_anchor]
+                    if alpha_online.numel() > 0:
+                        totals["alpha_online_sum"] += float(alpha_online.sum().item())
+                        totals["alpha_online_count"] += float(alpha_online.numel())
+                        current_min = float(alpha_online.min().item())
+                        current_max = float(alpha_online.max().item())
+                        if totals["alpha_online_count"] == float(alpha_online.numel()):
+                            totals["alpha_online_min"] = current_min
+                            totals["alpha_online_max"] = current_max
+                        else:
+                            totals["alpha_online_min"] = min(totals["alpha_online_min"], current_min)
+                            totals["alpha_online_max"] = max(totals["alpha_online_max"], current_max)
                 region_masks = _region_masks(u.detach())
                 for region_name, mask in region_masks.items():
                     count = float(mask.sum().item())
@@ -506,10 +547,13 @@ class DGTDTrainer:
             "low_sigma_hf": totals["low_sigma_hf"] / denom,
             "omega": totals["omega"] / denom,
             "direct_teacher_error": totals["direct_teacher_error"] / denom,
-            "bridge_teacher_error": totals["bridge_teacher_error"] / denom,
+            "bridge_state_teacher_error": totals["bridge_state_teacher_error"] / denom,
+            "bridge_u_teacher_error": totals["bridge_u_teacher_error"] / denom,
             "direct_bridge_gap": totals["direct_bridge_gap"] / denom,
             "teacher_rel_error": totals["teacher_rel_error"] / denom,
+            "teacher_rel_error_mean": totals["teacher_rel_error"] / denom,
             "target_build_sec": totals["target_build_sec"],
+            "online_teacher_traj_sec": totals["online_teacher_traj_sec"],
             "forward_sec": totals["forward_sec"],
             "warp_sec": totals["warp_sec"],
             "warp_loss": totals["warp_loss"] / denom,
@@ -523,6 +567,14 @@ class DGTDTrainer:
             "source_cached_affine": totals["source_cached_affine"],
             "source_cached_exact": totals["source_cached_exact"],
             "source_bootstrap": totals["source_bootstrap"],
+            "online_anchor_used": totals["online_anchor_used"],
+            "online_continuation_used": totals["online_continuation_used"],
+            "cached_fallback_used": totals["cached_fallback_used"],
+            "exact_mask_hits": totals["exact_mask_hits"],
+            "alpha_online_sum": totals["alpha_online_sum"],
+            "alpha_online_count": totals["alpha_online_count"],
+            "alpha_online_min": totals["alpha_online_min"],
+            "alpha_online_max": totals["alpha_online_max"],
             "noisy_count": totals["noisy_count"],
             "mid_count": totals["mid_count"],
             "clean_count": totals["clean_count"],
@@ -553,20 +605,29 @@ class DGTDTrainer:
                 "mu",
                 "flatten_mix",
                 "direct_teacher_error",
-                "bridge_teacher_error",
+                "bridge_state_teacher_error",
+                "bridge_u_teacher_error",
                 "direct_bridge_gap",
                 "teacher_rel_error",
+                "teacher_rel_error_mean",
             ],
             sum_keys=[
                 "samples_seen",
                 "batches_seen",
                 "target_build_sec",
+                "online_teacher_traj_sec",
                 "forward_sec",
                 "warp_sec",
                 "source_online",
                 "source_cached_affine",
                 "source_cached_exact",
                 "source_bootstrap",
+                "online_anchor_used",
+                "online_continuation_used",
+                "cached_fallback_used",
+                "exact_mask_hits",
+                "alpha_online_sum",
+                "alpha_online_count",
                 "noisy_count",
                 "mid_count",
                 "clean_count",
@@ -584,6 +645,15 @@ class DGTDTrainer:
         samples_seen = max(float(payload["samples_seen"]), 1.0)
         for source_name in ("online", "cached_affine", "cached_exact", "bootstrap"):
             payload[f"source_ratio_{source_name}"] = payload[f"source_{source_name}"] / samples_seen
+        payload["online_anchor_used_rate"] = payload["online_anchor_used"] / samples_seen
+        payload["online_continuation_rate"] = payload["online_continuation_used"] / samples_seen
+        payload["cached_fallback_rate"] = payload["cached_fallback_used"] / samples_seen
+        payload["exact_mask_hit_rate"] = payload["exact_mask_hits"] / samples_seen
+        alpha_count = max(float(payload["alpha_online_count"]), 1.0)
+        payload["alpha_online_mean"] = payload["alpha_online_sum"] / alpha_count if float(payload["alpha_online_count"]) > 0.0 else 0.0
+        if float(payload["alpha_online_count"]) <= 0.0:
+            payload["alpha_online_min"] = 0.0
+            payload["alpha_online_max"] = 0.0
         for region_name in ("noisy", "mid", "clean"):
             count = max(float(payload[f"{region_name}_count"]), 1.0)
             payload[f"{region_name}_defect"] = payload[f"{region_name}_defect"] / count
@@ -732,13 +802,16 @@ class DGTDTrainer:
                 "val_low_sigma_hf": val_stats["low_sigma_hf"],
                 "train_direct_teacher_error": train_stats["direct_teacher_error"],
                 "val_direct_teacher_error": val_stats["direct_teacher_error"],
-                "train_bridge_teacher_error": train_stats["bridge_teacher_error"],
-                "val_bridge_teacher_error": val_stats["bridge_teacher_error"],
+                "train_bridge_state_teacher_error": train_stats["bridge_state_teacher_error"],
+                "val_bridge_state_teacher_error": val_stats["bridge_state_teacher_error"],
+                "train_bridge_u_teacher_error": train_stats["bridge_u_teacher_error"],
+                "val_bridge_u_teacher_error": val_stats["bridge_u_teacher_error"],
                 "train_direct_bridge_gap": train_stats["direct_bridge_gap"],
                 "val_direct_bridge_gap": val_stats["direct_bridge_gap"],
-                "train_teacher_rel_error": train_stats["teacher_rel_error"],
-                "val_teacher_rel_error": val_stats["teacher_rel_error"],
+                "train_teacher_rel_error_mean": train_stats["teacher_rel_error_mean"],
+                "val_teacher_rel_error_mean": val_stats["teacher_rel_error_mean"],
                 "train_target_build_sec": train_stats["target_build_sec"],
+                "train_online_teacher_traj_sec": train_stats["online_teacher_traj_sec"],
                 "train_forward_sec": train_stats["forward_sec"],
                 "train_warp_sec": train_stats["warp_sec"],
                 "train_warp_loss": train_stats["warp_loss"],
@@ -758,6 +831,13 @@ class DGTDTrainer:
                 "flatten_mix": train_stats["flatten_mix"],
                 "stage": train_stats["stage"],
                 "continuation_sources": train_stats["continuation_sources"],
+                "online_anchor_used_rate": train_stats["online_anchor_used_rate"],
+                "online_continuation_rate": train_stats["online_continuation_rate"],
+                "cached_fallback_rate": train_stats["cached_fallback_rate"],
+                "exact_mask_hit_rate": train_stats["exact_mask_hit_rate"],
+                "alpha_online_mean": train_stats["alpha_online_mean"],
+                "alpha_online_min": train_stats["alpha_online_min"],
+                "alpha_online_max": train_stats["alpha_online_max"],
                 "train_noisy_defect": train_stats["noisy_defect"],
                 "train_mid_defect": train_stats["mid_defect"],
                 "train_clean_defect": train_stats["clean_defect"],
@@ -810,6 +890,7 @@ class DGTDTrainer:
                     f"low_sigma_hf={train_stats['low_sigma_hf']:.6f} stage={train_stats['stage']} "
                     f"eta={train_stats['eta']:.4f} beta={train_stats['beta']:.4f} "
                     f"kl_qD_qphi={train_stats['kl_qD_qphi']:.6f} "
+                    f"online_cont={train_stats['online_continuation_rate']:.3f} "
                     f"online_teacher_data={'yes' if online_teacher_data else 'no'} "
                     f"elapsed_sec={elapsed:.2f}",
                     flush=True,
@@ -826,6 +907,13 @@ class DGTDTrainer:
                                 "HF_bar": train_stats["HF_bar"],
                                 "time_grid": train_stats["time_grid"],
                                 "continuation_sources": train_stats["continuation_sources"],
+                                "online_anchor_used_rate": train_stats["online_anchor_used_rate"],
+                                "online_continuation_rate": train_stats["online_continuation_rate"],
+                                "cached_fallback_rate": train_stats["cached_fallback_rate"],
+                                "exact_mask_hit_rate": train_stats["exact_mask_hit_rate"],
+                                "alpha_online_mean": train_stats["alpha_online_mean"],
+                                "alpha_online_min": train_stats["alpha_online_min"],
+                                "alpha_online_max": train_stats["alpha_online_max"],
                                 "entropy_q_phi": train_stats["entropy_q_phi"],
                                 "kl_qD_qphi": train_stats["kl_qD_qphi"],
                             },

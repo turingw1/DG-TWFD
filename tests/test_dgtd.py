@@ -16,8 +16,8 @@ from dgtd import (
     interpolate_curvature,
     interpolate_state,
 )
-from dgtd.defect import build_target_density
-from dgtd.teacher import CONTINUATION_SOURCE_CACHED_AFFINE, build_teacher_adapter
+from dgtd.defect import build_target_density, compute_dgtd_residual
+from dgtd.teacher import CONTINUATION_SOURCE_CACHED_AFFINE, CONTINUATION_SOURCE_ONLINE, build_teacher_adapter
 from dgtd.train_dgtd import DGTDTrainer, select_dgtd_dataloaders
 
 
@@ -80,10 +80,15 @@ def _dgtd_config(tmp_path: Path) -> dict:
         "teacher": {"type": "none", "retain_num_points": 5},
         "eval": {"metrics": ["fid"]},
         "dgtd": {
-            "disable_online_teacher": True,
+            "disable_online_teacher": False,
             "symmetric_residual": True,
             "teacher_continuation_mode": "affine_fallback",
+            "online_continuation_mode": "affine_mainline",
             "sigma_mode": "linear_1mt",
+            "alpha_mode": "clamped_ratio_sigma",
+            "alpha_min": 0.1,
+            "alpha_max": 0.8,
+            "eta_start": 0.95,
             "qd_use_hf_bar": False,
             "qd_hf_weight": 0.0,
             "qd_ratio_cap": 0.0,
@@ -96,11 +101,14 @@ def test_dgtd_config_loads() -> None:
     assert cfg["train"]["objective"] == "dgtd_map"
     assert cfg["scheduler"]["timewarp"]["type"] == "dgtd_density"
     assert cfg["target"]["builder"] == "trajectory_shard"
-    assert cfg["dgtd"]["disable_online_teacher"] is True
+    assert cfg["dgtd"]["disable_online_teacher"] is False
     assert cfg["model"]["family"] == "local_map_resnet"
     assert cfg["dgtd"]["symmetric_residual"] is True
     assert cfg["dgtd"]["teacher_continuation_mode"] == "affine_fallback"
+    assert cfg["dgtd"]["online_continuation_mode"] == "affine_mainline"
     assert cfg["dgtd"]["sigma_mode"] == "linear_1mt"
+    assert cfg["dgtd"]["alpha_mode"] == "clamped_ratio_sigma"
+    assert cfg["dgtd"]["eta_start"] < 1.0
     assert cfg["dgtd"]["qd_use_hf_bar"] is False
 
     no_warp = load_experiment_config("configs/experiment/dgtd_cifar10_v3_ablation_no_warp.yaml")
@@ -205,6 +213,8 @@ def test_sigma_schedule_and_affine_teacher_fallback(tmp_path: Path) -> None:
     t = torch.tensor([0.25, 0.75])
     sigma = schedule.sigma(t)
     assert torch.allclose(sigma, torch.tensor([0.75, 0.25]), atol=1.0e-6)
+    alpha = schedule.alpha(torch.tensor([0.25]), torch.tensor([0.75]))
+    assert torch.allclose(alpha, torch.tensor([1.0 / 3.0]), atol=1.0e-6)
 
     adapter = build_teacher_adapter(cfg)
     dataset = TrajectoryCacheDataset(cfg, split="train")
@@ -218,6 +228,18 @@ def test_sigma_schedule_and_affine_teacher_fallback(tmp_path: Path) -> None:
     teacher_info.continuation.sum().backward()
     assert z.grad is not None
     assert torch.all(z.grad > 0)
+
+
+def test_sigma_schedule_alpha_clamp_and_identity_modes(tmp_path: Path) -> None:
+    cfg = _dgtd_config(tmp_path)
+    schedule = build_sigma_schedule(cfg)
+    alpha = schedule.alpha(torch.tensor([0.05]), torch.tensor([0.95]))
+    assert torch.allclose(alpha, torch.tensor([0.1]), atol=1.0e-6)
+
+    cfg["dgtd"]["alpha_mode"] = "identity"
+    schedule = build_sigma_schedule(cfg)
+    alpha = schedule.alpha(torch.tensor([0.25]), torch.tensor([0.75]))
+    assert torch.allclose(alpha, torch.ones(1), atol=1.0e-6)
 
 
 def test_target_density_can_disable_hf_bar_and_cap_ratio() -> None:
@@ -304,3 +326,94 @@ def test_online_teacher_selection_fails_fast_when_teacher_missing(tmp_path: Path
     adapter = build_teacher_adapter(cfg)
     with pytest.raises(RuntimeError, match="Online teacher mode was requested"):
         select_dgtd_dataloaders(cfg, adapter)
+
+
+def test_online_trajectory_uses_online_continuation_source(tmp_path: Path) -> None:
+    cfg = _dgtd_config(tmp_path)
+    cfg["teacher"] = {
+        "type": "sampler",
+        "backend": "dummy",
+        "retain_num_points": 5,
+    }
+    adapter = build_teacher_adapter(cfg)
+    x_0 = torch.randn(2, 1, 2, 2)
+    traj = adapter.online_trajectory_from_x0(x_0, device=torch.device("cpu"))
+    s = torch.tensor([0.5, 0.5])
+    u = torch.tensor([1.0, 1.0])
+    z = torch.full((2, 1, 2, 2), 0.25, requires_grad=True)
+    teacher_info = adapter.local_flow(traj, s, u, z)
+    assert teacher_info.continuation is not None
+    assert torch.all(teacher_info.source_ids == CONTINUATION_SOURCE_ONLINE)
+    assert teacher_info.used_online_anchor is not None
+    assert bool(torch.all(teacher_info.used_online_anchor).item())
+    teacher_info.continuation.sum().backward()
+    assert z.grad is not None
+    assert torch.all(z.grad != 0)
+
+
+class _ToyStudent(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.weight = torch.nn.Parameter(torch.tensor(0.5))
+
+    def forward(self, x_t, t, s, extra=None):
+        del extra
+        return x_t + self.weight * s.view(-1, 1, 1, 1)
+
+
+def test_eta_below_one_keeps_bridge_gradient_with_exact_cached_teacher(tmp_path: Path) -> None:
+    root = tmp_path / "traj"
+    root.mkdir(parents=True)
+    sample = {
+        "t_grid": torch.tensor([0.0, 0.5, 1.0]),
+        "x_grid": torch.tensor(
+            [
+                [[[0.0, 0.0], [0.0, 0.0]]],
+                [[[1.0, 1.0], [1.0, 1.0]]],
+                [[[2.0, 2.0], [2.0, 2.0]]],
+            ]
+        ),
+    }
+    torch.save([sample], root / "toy.pt")
+    cfg = _dgtd_config(tmp_path)
+    cfg["dgtd"]["disable_online_teacher"] = True
+    adapter = build_teacher_adapter(cfg)
+    dataset = TrajectoryCacheDataset(cfg, split="train")
+    item = dataset[0]
+    student = _ToyStudent()
+    x_t = torch.zeros(1, 1, 2, 2)
+    t = torch.tensor([0.0])
+    s = torch.tensor([0.5])
+    u = torch.tensor([1.0])
+    info = compute_dgtd_residual(student, adapter, x_t, t, s, u, 0.95, trajectory=item, extra={})
+    loss = info["x_u_cont"].sum()
+    loss.backward()
+    assert student.weight.grad is not None
+    assert abs(float(student.weight.grad.item())) > 0.0
+
+
+def test_cached_fallback_still_available_when_online_anchor_absent(tmp_path: Path) -> None:
+    root = tmp_path / "traj"
+    root.mkdir(parents=True)
+    sample = {
+        "t_grid": torch.tensor([0.0, 0.5, 1.0]),
+        "x_grid": torch.tensor(
+            [
+                [[[0.0, 0.0], [0.0, 0.0]]],
+                [[[1.0, 1.0], [1.0, 1.0]]],
+                [[[2.0, 2.0], [2.0, 2.0]]],
+            ]
+        ),
+    }
+    torch.save([sample], root / "toy.pt")
+    cfg = _dgtd_config(tmp_path)
+    cfg["dgtd"]["disable_online_teacher"] = True
+    adapter = build_teacher_adapter(cfg)
+    item = TrajectoryCacheDataset(cfg, split="train")[0]
+    s = torch.tensor([0.5])
+    u = torch.tensor([1.0])
+    z = torch.full((1, 1, 2, 2), 1.4, requires_grad=True)
+    teacher_info = adapter.local_flow(item, s, u, z)
+    assert int(teacher_info.source_ids.item()) == CONTINUATION_SOURCE_CACHED_AFFINE
+    assert teacher_info.used_online_anchor is not None
+    assert not bool(teacher_info.used_online_anchor.any().item())
