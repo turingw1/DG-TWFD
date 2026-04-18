@@ -1,386 +1,328 @@
-# DGTD v3 Round-4 Online Mainline Verification
-
-## Verdict
-
-**结论：有条件通过**
-
-这轮 patch 在代码语义上已经把 online teacher 从“仅在线轨迹/data provider”推进到了
-DGTD continuation 主路径，且 bridge branch 在 online source 下可训练。  
-但本次验收只做了静态代码核查和本地最小单测/梯度检查，没有做服务器 smoke/short-run
-实跑，因此不建议直接跳 full run。
-
-## Scope
-
-本轮检查了：
-
-- `docs/dgtd_v3_round4_online_mainline_patch_notes.md`
-- `src/dgtd/cache.py`
-- `src/dgtd/teacher.py`
-- `src/dgtd/defect.py`
-- `src/dgtd/train_dgtd.py`
-- `src/dgtd/sigma.py`
-- `src/dgtd/metrics.py`
-- `src/dgfm/teachers/diffusers_ddpm.py`
-- `configs/experiment/dgtd_cifar10_v3.yaml`
-- `configs/experiment/dgtd_cifar10_v3_smoke.yaml`
-- `tests/test_dgtd.py`
-
-本地最小验证：
-
-- `pytest tests/test_dgtd.py -q` -> `14 passed`
-- 额外运行了一个小型 autograd 脚本，验证 online source 的 continuation 对 `z_s` 有梯度，
-  且 `eta=0.95` 时 bridge 侧梯度非零
-
-## 1. Online continuation 是否真的成为主源
-
-### 1.1 Online teacher data path 仍然正常
-
-`DGTDTrainer.run()` 先构建并 `prepare()` online teacher，然后通过
-`select_dgtd_dataloaders(...)` 决定使用 image loader 还是 cache loader。
-
-关键调用链：
-
-- image loader 选择：[`src/dgtd/train_dgtd.py:117`](../src/dgtd/train_dgtd.py#L117)
-- online batch 提取：[`src/dgtd/train_dgtd.py:80`](../src/dgtd/train_dgtd.py#L80)
-- online trajectory materialization：[`src/dgtd/train_dgtd.py:330`](../src/dgtd/train_dgtd.py#L330)
-
-当 `dgtd.use_online_teacher_data=true` 且 teacher 可构建时，训练不再读取 trajectory
-cache，而是从图像 batch 构建在线 trajectory。
-
-### 1.2 Online continuation 已经进入 residual 主路径
-
-`TeacherAdapter.online_trajectory_from_x0(...)` 会把在线 rollout 包装为带
-`teacher_anchor_online=true` 的 trajectory payload：
-
-- online anchor 标记：[`src/dgtd/cache.py:43`](../src/dgtd/cache.py#L43)
-- online trajectory 包装：[`src/dgtd/teacher.py:64`](../src/dgtd/teacher.py#L64)
-
-`TeacherAdapter.local_flow(...)` 在进入 cached fallback 之前，优先检查
-`teacher_anchor_online`：
-
-- online anchor mask：[`src/dgtd/teacher.py:97`](../src/dgtd/teacher.py#L97)
-- online continuation branch：[`src/dgtd/teacher.py:121`](../src/dgtd/teacher.py#L121)
-
-满足 `used_online_anchor.any()` 且
-`online_continuation_mode == "affine_mainline"` 时，它直接返回
-`source_ids = CONTINUATION_SOURCE_ONLINE`，不会再把 online trajectory 名义上记成
-`cached_affine/cached_exact`。
-
-因此，代码逻辑上 `continuation_sources.online` 现在确实可以大于 `0`，并且在
-online teacher data 主线下应成为默认主源。
-
-### 1.3 Cached source 已退为 fallback
-
-source 优先级现在是：
-
-1. online anchor affine mainline
-2. `online_teacher.local_flow(...)`，如果 teacher 真有这个接口
-3. cached exact / cached affine
-4. bootstrap
-
-对应实现位置：
-
-- online mainline：[`src/dgtd/teacher.py:122`](../src/dgtd/teacher.py#L122)
-- optional teacher-native local flow：[`src/dgtd/teacher.py:140`](../src/dgtd/teacher.py#L140)
-- cached fallback：[`src/dgtd/teacher.py:153`](../src/dgtd/teacher.py#L153)
-
-`DiffusersDDPMTeacher` 当前并没有 `local_flow(...)`，只有 trajectory rollout：
-
-- [`src/dgfm/teachers/diffusers_ddpm.py:97`](../src/dgfm/teachers/diffusers_ddpm.py#L97)
-
-所以当前“online continuation”的真实含义是：
-
-- online rollout 提供 teacher anchors
-- DGTD continuation 用这些在线 anchors 构建 affine / Jacobian-lite mainline
-
-这符合 patch notes 的设计目标，但它不是 teacher 内部的原生 online local solver。
-
-## 2. Online continuation 的数学与梯度性质
-
-### 2.1 公式已按 online affine / Jacobian-lite 实现
-
-实现是：
-
-```text
-x_u_teacher_online.detach()
-+ alpha(s,u) * ( z_s - x_s_teacher_online.detach() )
-```
-
-对应代码：
-
-- [`src/dgtd/teacher.py:128`](../src/dgtd/teacher.py#L128)
-- [`src/dgtd/teacher.py:129`](../src/dgtd/teacher.py#L129)
-
-这与 patch note 里的目标形式一致：
-
-\[
-x_u^{T,online} + \alpha(s,u)(z_s - x_s^{T,online})
-\]
-
-### 2.2 Teacher anchor 仍然 detach
-
-detach 点很清楚：
-
-- `x_u_online.detach()`
-- `x_s_online.detach()`
-- 返回的 `teacher_s/teacher_u/rel_error/alpha` 也都 detach
-
-对应代码：
-
-- [`src/dgtd/teacher.py:129`](../src/dgtd/teacher.py#L129)
-- [`src/dgtd/teacher.py:133`](../src/dgtd/teacher.py#L133)
-
-所以 teacher 端仍是固定 anchor，不会反向污染 teacher 分支。
-
-### 2.3 continuation 对 `z_s` 有梯度依赖，bridge 在 online source 下可训练
-
-`compute_dgtd_residual(...)` 的关键链路是：
-
-```text
-x_s_pred = student(x_t, t, s)
-teacher_cont = online_affine(x_s_pred)
-bridge_cont = student(x_s_pred, s, u)
-x_u_cont = eta * teacher_cont + (1 - eta) * bridge_cont
-residual = x_u_direct - x_u_cont
-```
-
-对应代码：
-
-- `x_s_pred`：[`src/dgtd/defect.py:26`](../src/dgtd/defect.py#L26)
-- teacher_cont 输入 `x_s_pred`：[`src/dgtd/defect.py:28`](../src/dgtd/defect.py#L28)
-- `bridge_cont`：[`src/dgtd/defect.py:35`](../src/dgtd/defect.py#L35)
-- `x_u_cont` 混合：[`src/dgtd/defect.py:42`](../src/dgtd/defect.py#L42)
-
-因此 online source 下的梯度路径是：
-
-```text
-loss
- -> residual
- -> x_u_cont
- -> teacher_cont( z_s = x_s_pred )    [eta 路径]
- -> bridge_cont( x_s_pred )           [1-eta 路径]
- -> x_s_pred
- -> student parameters
-```
-
-本地 autograd 验证结果：
-
-- `source_online_all True`
-- `used_online_anchor_all True`
-- `z_grad_abs_sum 0.40000003576278687`
-- `bridge_grad_with_online_eta095 0.7899999618530273`
-
-这说明：
-
-- online continuation 本身对 `z_s` 有非零梯度
-- 即使 `eta=0.95`，bridge 侧参数梯度仍非零
-
-## 3. Warmup 是否修正到位
-
-### 3.1 `eta` 不再从 1.0 开始
-
-默认 config 已改为：
-
-- `eta_start: 0.95`
-
-位置：
-
-- full config：[`configs/experiment/dgtd_cifar10_v3.yaml:50`](../configs/experiment/dgtd_cifar10_v3.yaml#L50)
-- smoke config：[`configs/experiment/dgtd_cifar10_v3_smoke.yaml:23`](../configs/experiment/dgtd_cifar10_v3_smoke.yaml#L23)
-
-warmup 调度实现：
-
-- [`src/dgtd/train_dgtd.py:157`](../src/dgtd/train_dgtd.py#L157)
-- [`src/dgtd/train_dgtd.py:166`](../src/dgtd/train_dgtd.py#L166)
-
-### 3.2 这次不是单靠“把 eta 降低一点”硬修
-
-真正的修正有两层：
-
-1. warmup 不再精确等于 `eta=1.0`
-2. 更重要的是，online continuation 本身依赖 `z_s`
-
-所以即便 teacher 权重仍很高，teacher-cont 路径也会对 `x_s_pred` 反传梯度。
-这比单纯降低 `eta` 更稳，因为它保留了 teacher 主导，同时避免 warmup 退化成
-明显的 direct-only。
-
-### 3.3 是否还残留 direct-only corner case
-
-对 online mainline 来说，明显的 direct-only corner case 已基本被消掉。  
-但残余风险仍在 fallback 路径：
-
-- 如果运行中退回 `cached_exact`
-- 且 `eta` 很高
-
-那么 exact 部分仍然是 detached anchor，bridge 梯度主要来自 `(1-eta) * bridge_cont`
-这一路。由于现在 `eta_start=0.95` 而不是 `1.0`，这个 corner case 被弱化了，但没有从
-所有 source 上彻底消失。
-
-我的判断：
-
-- 对 online mainline：warmup 设计已经足够稳，可以进入 short run
-- 对 cached fallback：仍应监控 `cached_fallback_rate` 和 `exact_mask_hit_rate`
-
-## 4. Alpha 设计
-
-### 4.1 `alpha_online(s,u)` 来自统一 sigma 体系
-
-`TeacherAdapter.local_gain(...)` 直接调用统一 sigma schedule：
-
-- [`src/dgtd/teacher.py:86`](../src/dgtd/teacher.py#L86)
-
-而 `SigmaSchedule.alpha(...)` 同时服务：
-
-- teacher online continuation
-- cached affine continuation
-- `lambda_hf_weight`
-- `edm_weight`
-- `min_snr_weight`
-
-其中后三者通过 `sigma_fn=teacher_adapter.sigma` 进入统一 sigma：
-
-- `metric_norm` / `lambda_hf_weight`：[`src/dgtd/train_dgtd.py:378`](../src/dgtd/train_dgtd.py#L378)
-- `edm_weight`：[`src/dgtd/train_dgtd.py:405`](../src/dgtd/train_dgtd.py#L405)
-- `min_snr_weight`：[`src/dgtd/train_dgtd.py:410`](../src/dgtd/train_dgtd.py#L410)
-
-### 4.2 默认 alpha 设计合理且有 safe range
-
-默认：
-
-- `sigma_mode: linear_1mt`
-- `alpha_mode: clamped_ratio_sigma`
-- `alpha_min: 0.05`
-- `alpha_max: 1.0`
-
-实现：
-
-- sigma：[`src/dgtd/sigma.py:21`](../src/dgtd/sigma.py#L21)
-- alpha：[`src/dgtd/sigma.py:36`](../src/dgtd/sigma.py#L36)
-
-在当前时间语义下，`t < s < u` 且 `sigma(t)=1-t` 单调下降，所以通常
-`sigma(u) / sigma(s) <= 1`。`clamped_ratio_sigma` 进一步避免 clean-end 过小或异常比值。
-
-本地最小脚本里，`s=0.5, u=1.0` 时得到：
-
-- `alpha = 0.05`
-
-这和 `alpha_min` clamp 一致，说明 clean end 不会因为 ratio 过小而直接失去 bridge
-耦合。
-
-### 4.3 一个需要继续盯的风险
-
-`metrics._resolve_sigma(...)` 在未显式传 `sigma_fn` 时仍回退到 `1 - t`：
-
-- [`src/dgtd/metrics.py:24`](../src/dgtd/metrics.py#L24)
-
-当前 DGTD trainer 已显式传入 `teacher_adapter.sigma`，所以本主线没问题；但如果未来有
-别的调用点漏传 `sigma_fn`，仍可能重新引入隐式 `1-t` 假设。
-
-## 5. Source 语义和日志
-
-### 5.1 训练内部统计已足够支撑研究判断
-
-`_run_epoch(...)` 里已实际累加并导出：
-
-- `online_anchor_used_rate`
-- `online_continuation_rate`
-- `cached_fallback_rate`
-- `exact_mask_hit_rate`
-- `teacher_rel_error_mean`
-- `alpha_online_mean`
-- `alpha_online_min`
-- `alpha_online_max`
-- `continuation_sources`
-
-统计位置：
-
-- source / alpha 累加：[`src/dgtd/train_dgtd.py:507`](../src/dgtd/train_dgtd.py#L507)
-- rate 生成：[`src/dgtd/train_dgtd.py:645`](../src/dgtd/train_dgtd.py#L645)
-- continuation_sources 写入：[`src/dgtd/train_dgtd.py:689`](../src/dgtd/train_dgtd.py#L689)
-
-### 5.2 epoch JSON payload 也真的写出了这些字段
-
-写入 `train.jsonl` 的 payload 包含：
-
-- `online_anchor_used_rate`
-- `online_continuation_rate`
-- `cached_fallback_rate`
-- `exact_mask_hit_rate`
-- `alpha_online_mean/min/max`
-- `train_bridge_state_teacher_error`
-- `train_bridge_u_teacher_error`
-- `train_teacher_rel_error_mean`
-- `continuation_sources`
-
-位置：
-
-- [`src/dgtd/train_dgtd.py:794`](../src/dgtd/train_dgtd.py#L794)
-
-### 5.3 命名比上一轮清楚，但还有一处可再改进
-
-这次把旧的 bridge 命名拆成：
-
-- `bridge_state_teacher_error = MSE(x_s_pred, x_s_teacher)`
-- `bridge_u_teacher_error = MSE(bridge_cont, x_u_teacher)`
-
-实现：
-
-- [`src/dgtd/train_dgtd.py:433`](../src/dgtd/train_dgtd.py#L433)
-- [`src/dgtd/train_dgtd.py:434`](../src/dgtd/train_dgtd.py#L434)
-
-这比 round-2 的 `bridge_teacher_error` 清楚很多。  
-目前我认为 source 语义和日志已经足够支撑下一轮 short run。
-
-## 6. Smoke / short-run 可行性
-
-### 6.1 本轮没有服务器 smoke 结果
-
-这次验收没有服务器环境结果，因此我不能用运行结果证明：
-
-- `continuation_sources.online` 在真实 smoke 中一定非零
-- online continuation 在实际 DDPM rollout 上一定占主导
-
-### 6.2 本地最小一致性结果
-
-本地可以确认的最小事实是：
-
-- `pytest tests/test_dgtd.py -q` -> `14 passed`
-- `test_online_trajectory_uses_online_continuation_source(...)` 明确验证了
-  online trajectory 会得到 `source=online`
-- `test_eta_below_one_keeps_bridge_gradient_with_exact_cached_teacher(...)`
-  说明即便 fallback 到 cached exact，只要 `eta < 1`，bridge 梯度仍不为零
-
-### 6.3 进入下一步的建议
-
-建议：
-
-- **可以进入 short run**
-- **不建议直接 full run**
-
-short run 的主要目标不是“看 loss 漂不漂亮”，而是确认：
-
-- `online_teacher_data=true`
-- `online_continuation_rate > 0`
-- `cached_fallback_rate` 不高
-- `alpha_online_mean/min/max` 分布合理
-- `bridge_state_teacher_error` / `bridge_u_teacher_error` 没有明显恶化
-
-## 7. Final Assessment
-
-### 通过点
-
-1. online trajectory anchor 已真实进入 DGTD continuation 主路径，不再只是 data provider。
-2. online continuation 使用 detached teacher anchors + 对 `z_s` 的 affine 依赖，bridge 在 online source 下可训练。
-3. warmup 不再是明显 direct-only；日志字段也足以区分 online 主源和 cached fallback。
-
-### 剩余风险
-
-1. 还没有服务器 smoke / short-run 结果，无法确认 `online_continuation_rate` 在真实 DDPM teacher 下确实稳定大于 0。
-2. 当前“online continuation”依然是基于 online-generated trajectory anchors 的 affine mainline，而不是 teacher-native `local_flow`；命名上虽然已清晰，但能力边界要认清。
-3. cached fallback，尤其 `cached_exact`，仍然保留高 teacher 权重下的弱 direct-only 风险；需要用 `cached_fallback_rate` 和 `exact_mask_hit_rate` 盯实跑日志。
-
-## Recommendation
-
-- **是否建议进入 short run：建议**
-- **是否建议直接进入 full run：不建议**
-
+# Prompt — 设计并执行 DGTD online-mainline 的完整实验计划（以 full run 为目标）
+
+你现在不要继续做功能开发，当前主任务是：**围绕已经打通的 online teacher continuation 主线，完成一套严谨的 full-run 实验设计与执行方案**，并输出可以支撑研究决策的日志、图表和结论。
+
+## 0. 实验目标
+当前分支已经在 smoke 级别证明：
+- online continuation 能进入 DGTD residual 主路径
+- bridge branch 在 online source 下可训练
+- warmup 不再明显 direct-only
+- eval 闭环能跑通
+
+但这些都只是 smoke 证据，不足以证明：
+1. 更长训练下是否稳定
+2. online mainline 是否真的优于 cached-fallback 主线
+3. warp 是否在中长期训练中学偏
+4. few-step 质量是否实质提升
+
+所以本轮实验的目标不是“再验证能不能跑”，而是回答下面四个研究问题：
+
+### Q1. Stability
+online continuation 主线在 short run / full run 下是否稳定，不会导致 loss、defect、warp collapse 或 clean-end 过耦合？
+
+### Q2. Mainline value
+相比旧的 cached-style continuation 主线，online continuation 是否带来更好的 bridge consistency、few-step FID 和更合理的 warp density？
+
+### Q3. Warp validity
+defect-guided warp 在 online mainline 下是否真的学到有意义的时间重分配，而不是简单向 clean end 坍缩？
+
+### Q4. Cost-quality tradeoff
+online continuation 带来的训练吞吐损失是否值得，其质量收益是否足够支撑主线继续沿此方向推进？
+
+---
+
+## 1. 核心原则
+你不要一次性直接无脑跑最长 full run。  
+你必须执行**分阶段 gated 实验**，每一阶段通过后才能进入下一阶段。
+
+要求：
+- 保持当前 online-mainline 代码不再大改
+- 重点做训练/评估/对比实验
+- 若发现严重异常，可以只做最小 instrumentation 补充，但不要再做方法改写
+- 不要在这轮引入新的 loss 或新 teacher 机制
+
+---
+
+## 2. 实验分阶段设计
+
+## Stage A — Online Mainline Short-Run Sanity
+目的：
+- 验证 online mainline 在超出 smoke 的训练长度下仍稳定
+- 观察 warmup -> adaptive 的切换是否健康
+- 检查 online continuation 是否持续是主源而非短暂现象
+
+### Stage A 必做内容
+使用 online mainline 配置，进行一个明显长于 smoke、但明显短于 full run 的 short run。
+
+### Stage A 必须关注的指标
+按 epoch 或固定 interval 记录：
+
+#### 训练核心量
+- train_loss
+- val_loss
+- train_defect
+- val_defect
+- train_direct_teacher_error
+- val_direct_teacher_error
+- train_bridge_state_teacher_error
+- val_bridge_state_teacher_error
+- train_bridge_u_teacher_error
+- val_bridge_u_teacher_error
+- train_direct_bridge_gap
+- val_direct_bridge_gap
+
+#### online continuation 相关
+- continuation_sources
+- online_continuation_rate
+- cached_fallback_rate
+- teacher_rel_error_mean
+- exact_mask_hit_rate（若仍保留 exact gate）
+- alpha_online_mean
+- alpha_online_min
+- alpha_online_max
+- alpha saturation ratio（如果实现方便，请统计 hit alpha_min / alpha_max 的比例）
+
+#### warp 相关
+- q_phi
+- q_D
+- D_bar
+- K_bar
+- HF_bar
+- entropy_q_phi
+- KL(q_D || q_phi)
+- max(q_phi / q_base)
+- argmax_q_phi
+- stage
+- eta
+- beta
+
+#### 分区间统计
+必须分 noisy / mid / clean 三段，分别记录：
+- defect
+- direct teacher error
+- bridge state teacher error
+- bridge u teacher error
+- HF residual
+
+#### 训练代价
+- step time
+- epoch time
+- images/sec 或 samples/sec
+- max GPU memory
+- online trajectory generation time（如果可拆）
+- continuation extra time（如果可拆）
+
+### Stage A 升级到 Stage B 的判定标准
+你必须根据结果给出“是否进入更长实验”的判断，至少要回答：
+
+1. online continuation 是否持续占主导（不只是首个 epoch）
+2. bridge gap 是否在下降，而不是长期停滞
+3. q_phi 是否没有明显坍缩
+4. alpha_online 是否没有在 clean-end 大面积饱和
+5. 没有明显的 NaN、loss 发散、极端 throughput 崩坏
+
+---
+
+## Stage B — Mainline vs Baseline Controlled Comparison
+目的：
+回答 online continuation 主线到底有没有研究价值。
+
+### Stage B 必做对比
+至少做下面两组：
+
+#### B1. 当前 online mainline
+就是本轮已验证通过的 online continuation 主线。
+
+#### B2. 对照组：cached-style continuation 主线
+保持其他设置尽量一致，只把 continuation 主路径退回 cached-style / old fallback 主线。
+
+如果预算允许，再加：
+
+#### B3. online mainline but warp frozen
+用于区分“online continuation 的收益”和“warp 学习的收益”。
+
+### Stage B 必须比较的结果
+对每组都输出：
+
+#### few-step 生成质量
+- FID @ 1 step
+- FID @ 2 steps
+- FID @ 4 steps
+- FID @ 8 steps
+- 若预算允许，再加 16 steps
+
+#### 训练诊断
+- final continuation source 分布
+- final direct_bridge_gap
+- final entropy_q_phi
+- final KL(q_D || q_phi)
+- final teacher_rel_error_mean
+- alpha_online 统计
+
+#### 计算代价
+- total training wall-clock
+- avg step time
+- peak memory
+- eval latency（按 step count）
+
+#### 可视化
+- fixed seed sample grids @ 1/2/4/8 steps
+- q_phi vs q_D 曲线
+- D_bar/K_bar/HF_bar 曲线
+- continuation source 随训练变化曲线
+- alpha_online 随训练变化曲线
+
+### Stage B 研究判断
+你必须明确写出：
+- online mainline 是否比 cached baseline 更值得保留
+- 收益主要来自哪里：
+  - 更好的 bridge consistency
+  - 更好的 low-sigma detail
+  - 更合理的 warp
+  - 或只是训练噪声变化
+- 如果收益不显著，也要明确指出问题是：
+  - quality 没提升
+  - 训练太慢
+  - warp 学偏
+  - 还是 online continuation 其实没有实质改变 teacher-student mismatch
+
+---
+
+## Stage C — Full Run 主实验
+只有当 Stage A 和 Stage B 给出正面信号时，才进入 full run。
+
+### Stage C 目标
+- 跑当前 online mainline 的主体完整训练
+- 记录完整训练曲线
+- 给出最终 few-step performance 与训练代价结论
+
+### Stage C 必须输出
+#### 最终主表
+- FID @ 1/2/4/8/16
+- best checkpoint 和 last checkpoint 各自结果
+- train/eval latency
+- peak VRAM
+- total wall-clock
+
+#### 最终诊断表
+- continuation source 最终占比
+- bridge gap 最终值
+- online teacher rel error 最终值
+- q_phi entropy 最终值
+- q_phi / q_base 最大比值
+- alpha_online 最终统计
+- noisy / mid / clean 三段最终误差
+
+#### 最终图
+- 训练全过程 loss/defect 曲线
+- continuation source 随 epoch 变化
+- q_phi 与 q_D 随 epoch 变化
+- alpha_online 随 epoch 变化
+- 1/2/4/8/16 fixed-seed 样本网格
+
+### Stage C 的最终结论必须回答
+1. online mainline 能否作为正式主线继续保留？
+2. 它最明显的收益体现在哪个 step 区间？
+3. 它最明显的代价是什么？
+4. 下一轮应该继续优化：
+   - teacher continuation 几何
+   - warp density
+   - clean-end detail
+   - 还是 inference schedule
+
+---
+
+## 3. 实验分析重点（必须写进报告）
+你的实验报告不能只列数值，必须围绕以下分析展开。
+
+### A. Online continuation 的真实性
+即便 `continuation_sources.online=1.0`，也要解释：
+- 它是不是始终提供有用 teacher signal
+- 还是只是把 current trajectory anchor 重新包装了一遍
+
+重点看：
+- teacher_rel_error_mean
+- bridge_u_teacher_error
+- direct_bridge_gap
+- 与 baseline 的差异
+
+### B. Warp 是否真的“学到了”
+必须分析：
+- q_phi 是否只是向 clean end 偏
+- 还是与 D_bar / K_bar 的高值区一致
+- entropy 是否健康
+- q_phi/q_base 是否过尖
+
+### C. Warmup 是否真的修复了 old pathology
+重点分析：
+- warmup 期的 continuation source
+- eta 变化
+- bridge gap 变化
+- bridge-side teacher error 是否从早期就可学习
+
+### D. 质量与成本是否匹配
+必须把：
+- FID 改善
+- 训练变慢多少
+- 显存多多少
+- 是否值得继续投入
+放在一起分析
+
+---
+
+## 4. 你必须返回给我的材料
+本轮实验结束后，你必须给我一份结构化报告，而不是只说“跑完了”。
+
+### 必须输出的文档
+请生成一份完整实验报告，内容至少包括：
+1. 实验设置表
+2. Stage A/B/C 各阶段结果
+3. 主表（FID / latency / memory / wall-clock）
+4. 关键曲线图
+5. fixed-seed 样本网格
+6. 风险与结论
+7. 推荐下一步
+
+### 必须返回的核心原始材料
+至少包括：
+- 最终 train history（或其整理版）
+- 最终 eval summary
+- 各 step count 的 FID 结果
+- q_phi / q_D / D_bar / K_bar / HF_bar 数组
+- continuation source 统计
+- alpha_online 统计
+- fixed-seed sample grids
+- best checkpoint 与 last checkpoint 的对比结果
+
+---
+
+## 5. 你现在需要特别盯住的异常
+如果出现下面任何一种现象，必须在报告里单独列为 warning：
+
+1. `online_continuation_rate` 虽高，但 bridge 指标没有改善
+2. `q_phi` 快速坍缩到 clean end
+3. `alpha_online_max` 长期贴近上限，说明 clean-end 可能过强耦合
+4. 1 step 提升但 4/8 step 不升反降
+5. throughput 明显恶化但质量收益不明显
+6. best checkpoint 和 last checkpoint 差异过大，说明训练不稳
+
+---
+
+## 6. 重要限制
+- 这轮只做实验设计与执行，不做新方法开发
+- 不要加入新的 loss
+- 不要切换到另一个 teacher family
+- 不要改掉当前 online-mainline 核心逻辑
+- 如果你认为必须补充一个统计项，允许做最小日志补充，但要在报告里说明
+
+---
+
+## 7. 最终回答格式
+在 chat 里不要只说“已完成”。  
+请给出：
+
+1. 你实际执行了哪些阶段
+2. 每个阶段的结论
+3. 是否建议继续 full run
+4. 你最担心的两个风险是什么
+5. 你推荐的下一步研究方向是什么

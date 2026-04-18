@@ -185,6 +185,17 @@ find "$DGTD_V3_R4_ROOT/diag" -maxdepth 3 -type f | sort
 
 ### 4.4 Sample / Eval / Diag
 
-你当前口头反馈是“其他都通过”。  
-后续如果要形成更完整的实验记录，再补文件列表即可；本轮算法判断已经足够。
+当前已确认 sample / eval / diag 都通过。
 
+eval 结果：
+
+- `step_count=1`: `fid=446.6433`
+- `step_count=2`: `fid=419.2015`
+- `step_count=4`: `fid=419.2667`
+
+算法含义：
+
+- eval 闭环是通的
+- 1 步到 2 步有改善
+- 2 步到 4 步基本持平
+- 这些仍是 smoke 级 approximate FID，只能说明管线和趋势，不代表最终质量结论
