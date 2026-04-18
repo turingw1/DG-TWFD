@@ -1,30 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
-import sys
-
 from torch import nn
 
-
-def _flow_matching_image_roots() -> list[Path]:
-    root = Path(__file__).resolve().parents[3]
-    return [
-        root / "flow_matching" / "examples" / "image",
-        root / "public_repos" / "DGTW-code-base" / "flow_matching" / "examples" / "image",
-    ]
-
-
 def ensure_flow_matching_image_models_on_path() -> None:
-    for image_root in _flow_matching_image_roots():
-        if not image_root.exists():
-            continue
-        if str(image_root) not in sys.path:
-            sys.path.insert(0, str(image_root))
-        return
-    candidates = "\n".join(str(path) for path in _flow_matching_image_roots())
     raise ModuleNotFoundError(
-        "Could not locate flow_matching example image models. "
-        f"Tried:\n{candidates}"
+        "The official flow_matching image UNet is not vendored in this branch. "
+        "Use the tracked local explicit-map backbone instead of official_map_unet."
     )
 
 

@@ -33,9 +33,11 @@ def _dgtd_config(tmp_path: Path) -> dict:
         },
         "dataset": {"channels": 1, "image_size": 2, "name": "toy", "data_root": str(tmp_path)},
         "model": {
-            "family": "official_map_unet",
+            "family": "local_map_resnet",
             "hidden_channels": 32,
             "num_res_blocks": 1,
+            "time_embed_dim": 32,
+            "cond_dim": 32,
             "attention_resolutions": [2],
             "dropout": 0.0,
             "channel_mult": [1, 1],
@@ -95,6 +97,7 @@ def test_dgtd_config_loads() -> None:
     assert cfg["scheduler"]["timewarp"]["type"] == "dgtd_density"
     assert cfg["target"]["builder"] == "trajectory_shard"
     assert cfg["dgtd"]["disable_online_teacher"] is True
+    assert cfg["model"]["family"] == "local_map_resnet"
     assert cfg["dgtd"]["symmetric_residual"] is True
     assert cfg["dgtd"]["teacher_continuation_mode"] == "affine_fallback"
     assert cfg["dgtd"]["sigma_mode"] == "linear_1mt"

@@ -1,7 +1,9 @@
 model:
-  family: official_map_unet
+  family: local_map_resnet
   hidden_channels: 128
   num_res_blocks: 4
+  time_embed_dim: 64
+  cond_dim: 128
   attention_resolutions: [2]
   dropout: 0.3
   channel_mult: [2, 2, 2]

@@ -129,6 +129,22 @@ Fix:
   built, the code now fails fast with a clear online-teacher error instead of
   silently falling back to cache mode
 
+### 2.6 Tracked local map backbone replaces untracked external dependency
+
+Problem before:
+
+- the DGTD v3 config still defaulted to `official_map_unet`
+- that implementation depended on an external `flow_matching/examples/image`
+  code tree that is not tracked in this branch
+
+Fix:
+
+- `src/dgfm/models/map.py` now includes a tracked in-repo backbone
+  `local_map_resnet`
+- `configs/model/map_unet.yaml` now defaults to `model.family: local_map_resnet`
+- the old official path remains explicit, but it now raises a clear error if
+  requested without a vendored official implementation
+
 ## 3. Updated residual formula
 
 Define:
