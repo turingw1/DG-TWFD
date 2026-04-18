@@ -64,7 +64,7 @@ Current policy:
 | Group | EXP_TAG | EXP_VARIANT | FM_CONFIG | Activate | Purpose | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | E4 | e401a | `dgtd_v3_smoke` | `configs/experiment/dgtd_cifar10_v3_smoke.yaml` | `source scripts/experiments/activate_fm_cifar10.sh dgtd_v3_smoke e401a` | short-run online-mainline acceptance: verify training, checkpointing, online continuation source, sample, and eval all work end to end | ready |
-| E4 | e402a | `dgtd_v3` | `configs/experiment/dgtd_cifar10_v3.yaml` | `source scripts/experiments/activate_fm_cifar10.sh dgtd_v3 e402a` | primary full run: online-mainline DGTD v3 main convergence run and few-step quality curve | ready |
+| E4 | e402a | `dgtd_v3` | `configs/experiment/dgtd_cifar10_v3.yaml` | `source scripts/experiments/activate_fm_cifar10.sh dgtd_v3 e402a` | primary full run: online-mainline DGTD v3 main convergence run with higher-memory throughput-tuned training and few-step quality curve | ready |
 | E4 | e403a | `dgtd_cifar10_v3_ablation_no_warp` | `configs/experiment/dgtd_cifar10_v3_ablation_no_warp.yaml` | `source scripts/experiments/activate_fm_cifar10.sh dgtd_cifar10_v3_ablation_no_warp e403a` | ablation: remove learned warp while keeping current online-mainline teacher path | planned |
 | E4 | e404a | `dgtd_cifar10_v3_ablation_warp_no_hf` | `configs/experiment/dgtd_cifar10_v3_ablation_warp_no_hf.yaml` | `source scripts/experiments/activate_fm_cifar10.sh dgtd_cifar10_v3_ablation_warp_no_hf e404a` | ablation: keep warp but disable the HF-biased density contribution and metric emphasis path | planned |
 

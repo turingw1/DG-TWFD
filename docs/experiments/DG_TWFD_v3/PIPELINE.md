@@ -76,6 +76,13 @@ After activation, use only:
 9. Run full-run eval.
 10. Fill the selected row in `EXPERIMENT_LOG.md` and return all evidence.
 
+Current `e402a` default is tuned to raise GPU memory usage and throughput:
+
+- `train.batch_size=384`
+- `model.use_checkpoint=false`
+- `eval.fid_batch_size=256`
+- `eval.sample_batch_size=64`
+
 ## 5. Stable command families
 
 ### Train
