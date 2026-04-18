@@ -36,6 +36,34 @@ Return enough server evidence to verify:
 5. `train.jsonl` contains the new DGTD diagnostics
 6. diagnostics plot export succeeds
 
+## Important Constraint About Online Teacher
+
+This round can and should **prefer online teacher as the intended direction**,
+but the current DGTD v3 implementation is **not yet a pure online-teacher
+trainer**.
+
+Current code facts:
+
+- `DGTDTrainer.run()` still builds data through `build_cache_dataloaders(...)`
+  in [src/dgtd/train_dgtd.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dgtd/train_dgtd.py:587)
+- `build_cache_dataloaders(...)` always instantiates
+  `TrajectoryCacheDataset(...)` in [src/dgtd/cache.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dgtd/cache.py:218)
+- `TeacherAdapter.local_flow()` only uses the online path if the teacher object
+  implements `local_flow(...)`, checked at
+  [src/dgtd/teacher.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dgtd/teacher.py:71)
+- the current `DiffusersDDPMTeacher` does **not** implement `local_flow(...)`;
+  it implements trajectory sampling APIs instead, see
+  [src/dgfm/teachers/diffusers_ddpm.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dgfm/teachers/diffusers_ddpm.py:113)
+
+So the practical rule for this instruction file is:
+
+- we will explicitly enable online teacher during smoke to check that the
+  server can load it
+- but we still need a valid `target.shard_root` for the current DGTD v3 trainer
+
+If the project later lands a true online-teacher DGTD trainer path, this
+instruction file should be simplified accordingly.
+
 ## Naming For This Round
 
 To mirror the style in `EXP_LOG.md`, this smoke uses:
@@ -141,9 +169,49 @@ echo "MASTER_ADDR=$MASTER_ADDR"
 echo "MASTER_PORT=$MASTER_PORT"
 ```
 
-## 3. Trajectory Root Discovery And Validation
+## 3. Online Teacher Preflight
 
-If `TRAJ_ROOT` already exists, validate it with:
+Before the actual smoke run, confirm that the server can build and prepare the
+online teacher stack.
+
+Run:
+
+```bash
+cd "$PROJ"
+python - <<'PY'
+from dgfm.config import load_experiment_config
+from dgtd.teacher import build_teacher_adapter
+
+cfg = load_experiment_config(
+    "configs/experiment/dgtd_cifar10_v3_smoke.yaml",
+    overrides=[
+        "dgtd.disable_online_teacher=false",
+        "teacher.local_files_only=false",
+    ],
+)
+adapter = build_teacher_adapter(cfg)
+print("online_teacher_built", adapter.online_teacher is not None)
+print("teacher_type", type(adapter.online_teacher).__name__ if adapter.online_teacher is not None else None)
+adapter.prepare("cpu")
+print("online_teacher_prepare", "ok")
+PY
+```
+
+Pass condition:
+
+- `online_teacher_built True`
+- `online_teacher_prepare ok`
+
+If this step fails because weights are not cached and the server cannot
+download, return the traceback before continuing.
+
+## 4. Trajectory Root Validation
+
+Even though the long-term direction is online teacher, the current DGTD v3
+trainer still requires shard-backed dataloaders. So for this round, we only do
+a **minimal** shard-root check, not a long cache-discovery workflow.
+
+If the activated `TRAJ_ROOT` already exists, validate it with:
 
 ```bash
 if [ -d "$TRAJ_ROOT" ]; then
@@ -154,8 +222,8 @@ else
 fi
 ```
 
-If the default `TRAJ_ROOT` printed above does **not** exist, do this discovery
-step before continuing:
+If the activated `TRAJ_ROOT` does **not** exist, do this one discovery step and
+stop there if nothing valid is found:
 
 ```bash
 echo "==== teacher_traj candidates under $PROJ ===="
@@ -179,7 +247,7 @@ Pass condition:
 
 If you cannot resolve a valid `TRAJ_ROOT`, stop and return the outputs from this section.
 
-## 4. Entry-Point Import Check
+## 5. Entry-Point Import Check
 
 Before starting smoke, confirm the Python entrypoints import successfully in the
 actual server environment.
@@ -199,7 +267,7 @@ Pass condition:
 - all four commands print help
 - no import traceback appears
 
-## 5. Dedicated Smoke Root
+## 6. Dedicated Smoke Root
 
 Even though activation created `$RUN_ROOT` and `$METRIC_ROOT`, for this
 acceptance round we use a separate temp root so the smoke result is isolated and
@@ -215,7 +283,7 @@ mkdir -p "$DGTD_V3_R2_ROOT"
 echo "DGTD_V3_R2_ROOT=$DGTD_V3_R2_ROOT"
 ```
 
-## 6. Smoke Train
+## 7. Smoke Train
 
 Run the train smoke and capture stdout/stderr.
 
@@ -224,6 +292,8 @@ cd "$PROJ"
 python scripts/run_train.py \
   --config configs/experiment/dgtd_cifar10_v3_smoke.yaml \
   --run-root "$DGTD_V3_R2_ROOT" \
+  --set dgtd.disable_online_teacher=false \
+  --set teacher.local_files_only=false \
   --set target.shard_root="$TRAJ_ROOT" \
   2>&1 | tee "$DGTD_V3_R2_ROOT/train.stdout_stderr.txt"
 ```
@@ -249,7 +319,7 @@ Train pass condition:
 - `$DGTD_V3_R2_ROOT/checkpoints/last.pt` exists
 - `$DGTD_V3_R2_ROOT/logs/train.jsonl` exists
 
-## 7. Smoke Sample
+## 8. Smoke Sample
 
 Run sample from the saved `last.pt`.
 
@@ -279,7 +349,7 @@ Sample pass condition:
 
 all exist under `$DGTD_V3_R2_ROOT/sample`.
 
-## 8. Smoke Eval
+## 9. Smoke Eval
 
 Run eval from the same `last.pt`.
 
@@ -306,7 +376,7 @@ Eval pass condition:
 - some report or sample artifact is written under `$DGTD_V3_R2_ROOT/eval`
 - no Python traceback in `eval.stdout_stderr.txt`
 
-## 9. Diagnostics Export
+## 10. Diagnostics Export
 
 Export the DGTD diagnostics from the produced history file.
 
@@ -331,7 +401,7 @@ Expected outputs include:
 - `latest_bins.json`
 - usually several `.png` plots if matplotlib is available
 
-## 10. Structured Log Check
+## 11. Structured Log Check
 
 Run this small JSON check and paste the output back.
 
@@ -376,7 +446,7 @@ print("time_grid", last.get("time_grid"))
 PY
 ```
 
-## 11. What To Return
+## 12. What To Return
 
 Please return the following, in this order:
 
@@ -385,19 +455,20 @@ Please return the following, in this order:
 3. output from Section 2
 4. output from Section 3
 5. output from Section 4
-6. full stdout/stderr from:
+6. output from Section 5
+7. full stdout/stderr from:
    - `train.stdout_stderr.txt`
    - `sample.stdout_stderr.txt`
    - `eval.stdout_stderr.txt`
    - `diag.stdout_stderr.txt`
-7. `tail -n 5 /tmp/dgtd_v3_round2_smoke/logs/train.jsonl`
-8. file lists from:
+8. `tail -n 5 /tmp/dgtd_v3_round2_smoke/logs/train.jsonl`
+9. file lists from:
    - `sample`
    - `eval`
    - `diag`
-9. output from the structured log check in Section 10
+10. output from the structured log check in Section 11
 
-## 12. If Any Step Fails
+## 13. If Any Step Fails
 
 If any command fails, stop there and also return:
 
@@ -428,14 +499,14 @@ echo "==== smoke tree ===="
 find "$DGTD_V3_R2_ROOT" -maxdepth 4 | sort
 ```
 
-If the failure is before Section 6, also return:
+If the failure is before Section 7, also return:
 
 ```bash
 echo "==== activation output recheck ===="
 source scripts/experiments/activate_fm_cifar10.sh dgtd_v3_smoke round2_verify
 ```
 
-If the failure is specifically in Section 8 `eval`, also return:
+If the failure is specifically in Section 9 `eval`, also return:
 
 ```bash
 echo "==== TORCH_HOME files ===="
