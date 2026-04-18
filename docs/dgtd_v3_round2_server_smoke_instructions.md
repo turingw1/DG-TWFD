@@ -36,6 +36,17 @@ Return enough server evidence to verify:
 5. `train.jsonl` contains the new DGTD diagnostics
 6. diagnostics plot export succeeds
 
+Interpretation note:
+
+- `online_teacher_data=true` means the batch/trajectory source is online
+- `continuation_sources.online>0` would mean DGTD continuation itself is using a
+  true online `local_flow(...)`
+- with the current `DiffusersDDPMTeacher`, it is valid to observe
+  `online_teacher_data=true` together with
+  `continuation_sources.online=0.0` and non-zero
+  `cached_exact/cached_affine`, because continuation is still derived from the
+  online-generated trajectory rather than a dedicated online `local_flow`
+
 ## Important Constraint About Online Teacher
 
 This instruction file now assumes the preferred smoke path is the online-teacher
@@ -413,6 +424,14 @@ print("stage", last.get("stage"))
 print("time_grid", last.get("time_grid"))
 PY
 ```
+
+Interpret the output like this:
+
+- `online_teacher_data=true` in `train.jsonl` means the online teacher path is
+  active for batch/trajectory materialization
+- if `continuation_sources.online` stays `0.0`, that does **not** mean the
+  online teacher path failed; it means continuation still comes from
+  `cached_exact/cached_affine` on top of the online-generated trajectory
 
 ## 12. What To Return
 
