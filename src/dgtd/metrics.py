@@ -30,6 +30,17 @@ def _resolve_sigma(t_or_sigma: Tensor, sigma_fn=None) -> Tensor:
     return sigma.to(device=t_or_sigma.device, dtype=t_or_sigma.dtype)
 
 
+def lambda_hf_weight(
+    t_or_sigma: Tensor,
+    sigma_fn=None,
+    *,
+    lambda_hf_max: float = 0.1,
+    sigma_detail: float = 0.2,
+) -> Tensor:
+    sigma = _resolve_sigma(t_or_sigma, sigma_fn=sigma_fn)
+    return float(lambda_hf_max) * torch.exp(-(sigma.square()) / max(float(sigma_detail) ** 2, 1.0e-6))
+
+
 def metric_norm(
     R: Tensor,
     u: Tensor,
@@ -44,7 +55,12 @@ def metric_norm(
     if disable_hf_metric:
         return l2_term
     hf_term = high_frequency_norm(laplacian_filter(R))
-    lambda_hf = float(lambda_hf_max) * torch.exp(-(sigma.square()) / max(float(sigma_detail) ** 2, 1.0e-6))
+    lambda_hf = lambda_hf_weight(
+        u,
+        sigma_fn=sigma_fn,
+        lambda_hf_max=lambda_hf_max,
+        sigma_detail=sigma_detail,
+    )
     return l2_term + lambda_hf * hf_term
 
 

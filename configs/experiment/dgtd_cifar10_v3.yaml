@@ -50,6 +50,11 @@ eval:
   fid_batch_size: 128
 
 dgtd:
+  symmetric_residual: true
+  teacher_continuation_mode: affine_fallback
+  teacher_keep_cached_exact: true
+  sigma_mode: linear_1mt
+  sigma_max: 1.0
   base_density: logit_normal
   base_p_mean: -1.2
   base_p_std: 1.2
@@ -68,6 +73,10 @@ dgtd:
   min_snr_gamma: 5.0
   curvature_weight: 0.25
   hf_weight: 0.5
+  qd_curvature_weight: 0.25
+  qd_use_hf_bar: false
+  qd_hf_weight: 0.0
+  qd_ratio_cap: 0.0
   teacher_proximity_rtol: 0.05
   disable_warp: false
   disable_hf_metric: false

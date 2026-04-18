@@ -29,3 +29,5 @@ scheduler:
 dgtd:
   update_density_every: 1
   update_warp_every: 1
+  qd_use_hf_bar: false
+  qd_hf_weight: 0.0

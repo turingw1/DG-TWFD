@@ -7,7 +7,16 @@ from dgfm.distributed import DistributedContext
 from dgfm.evaluators import build_evaluator
 from dgfm.evaluators.common import load_timewarp_from_checkpoint, objective_mode
 from dgfm.trainers import build_trainer
-from dgtd import MonotoneDensityWarp, TrajectoryCacheDataset, build_mode_a_time_grid, interpolate_curvature, interpolate_state
+from dgtd import (
+    MonotoneDensityWarp,
+    TrajectoryCacheDataset,
+    build_mode_a_time_grid,
+    build_sigma_schedule,
+    interpolate_curvature,
+    interpolate_state,
+)
+from dgtd.defect import build_target_density
+from dgtd.teacher import CONTINUATION_SOURCE_CACHED_AFFINE, build_teacher_adapter
 from dgtd.train_dgtd import DGTDTrainer
 
 
@@ -67,7 +76,15 @@ def _dgtd_config(tmp_path: Path) -> dict:
         },
         "teacher": {"type": "none"},
         "eval": {"metrics": ["fid"]},
-        "dgtd": {"disable_online_teacher": True},
+        "dgtd": {
+            "disable_online_teacher": True,
+            "symmetric_residual": True,
+            "teacher_continuation_mode": "affine_fallback",
+            "sigma_mode": "linear_1mt",
+            "qd_use_hf_bar": False,
+            "qd_hf_weight": 0.0,
+            "qd_ratio_cap": 0.0,
+        },
     }
 
 
@@ -77,6 +94,10 @@ def test_dgtd_config_loads() -> None:
     assert cfg["scheduler"]["timewarp"]["type"] == "dgtd_density"
     assert cfg["target"]["builder"] == "trajectory_shard"
     assert cfg["dgtd"]["disable_online_teacher"] is True
+    assert cfg["dgtd"]["symmetric_residual"] is True
+    assert cfg["dgtd"]["teacher_continuation_mode"] == "affine_fallback"
+    assert cfg["dgtd"]["sigma_mode"] == "linear_1mt"
+    assert cfg["dgtd"]["qd_use_hf_bar"] is False
 
     no_warp = load_experiment_config("configs/experiment/dgtd_cifar10_v3_ablation_no_warp.yaml")
     assert no_warp["dgtd"]["disable_warp"] is True
@@ -147,3 +168,71 @@ def test_trajectory_cache_dataset_and_interpolation(tmp_path: Path) -> None:
     assert item["states"].shape == (3, 1, 2, 2)
     assert torch.allclose(x_mid, torch.full((1, 1, 2, 2), 0.5))
     assert k_mid.shape == (1,)
+
+
+def test_sigma_schedule_and_affine_teacher_fallback(tmp_path: Path) -> None:
+    root = tmp_path / "traj"
+    root.mkdir(parents=True)
+    sample = {
+        "t_grid": torch.tensor([0.0, 0.5, 1.0]),
+        "x_grid": torch.tensor(
+            [
+                [[[0.0, 0.0], [0.0, 0.0]]],
+                [[[1.0, 1.0], [1.0, 1.0]]],
+                [[[2.0, 2.0], [2.0, 2.0]]],
+            ]
+        ),
+    }
+    torch.save([sample], root / "toy.pt")
+    cfg = _dgtd_config(tmp_path)
+    schedule = build_sigma_schedule(cfg)
+    t = torch.tensor([0.25, 0.75])
+    sigma = schedule.sigma(t)
+    assert torch.allclose(sigma, torch.tensor([0.75, 0.25]), atol=1.0e-6)
+
+    adapter = build_teacher_adapter(cfg)
+    dataset = TrajectoryCacheDataset(cfg, split="train")
+    item = dataset[0]
+    s = torch.tensor([0.5])
+    u = torch.tensor([1.0])
+    z = torch.full((1, 1, 2, 2), 1.4, requires_grad=True)
+    teacher_info = adapter.local_flow(item, s, u, z)
+    assert teacher_info.continuation is not None
+    assert int(teacher_info.source_ids.item()) == CONTINUATION_SOURCE_CACHED_AFFINE
+    teacher_info.continuation.sum().backward()
+    assert z.grad is not None
+    assert torch.all(z.grad > 0)
+
+
+def test_target_density_can_disable_hf_bar_and_cap_ratio() -> None:
+    D_bar = torch.tensor([1.0, 3.0, 2.0, 1.0])
+    K_bar = torch.tensor([1.0, 1.0, 1.0, 1.0])
+    HF_bar = torch.tensor([100.0, 0.0, 0.0, 0.0])
+    q_base = torch.full((4,), 0.25)
+    q_no_hf = build_target_density(
+        D_bar,
+        K_bar,
+        HF_bar,
+        q_base,
+        beta=1.0,
+        eps=1.0e-6,
+        curvature_weight=0.25,
+        use_hf_bar=False,
+        hf_weight=0.0,
+        ratio_cap=0.0,
+    )
+    q_with_cap = build_target_density(
+        D_bar,
+        K_bar,
+        HF_bar,
+        q_base,
+        beta=1.0,
+        eps=1.0e-6,
+        curvature_weight=0.25,
+        use_hf_bar=False,
+        hf_weight=0.0,
+        ratio_cap=1.25,
+    )
+    assert torch.isclose(q_no_hf.sum(), torch.tensor(1.0))
+    assert torch.isclose(q_with_cap.sum(), torch.tensor(1.0))
+    assert float(torch.max(q_with_cap / q_base).item()) <= 1.25 + 1.0e-5

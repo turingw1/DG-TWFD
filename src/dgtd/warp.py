@@ -135,6 +135,10 @@ class MonotoneDensityWarp(nn.Module):
         q_D = q_D / torch.clamp(q_D.sum(), min=self.eps)
         return torch.sum(q_D * (torch.log(torch.clamp(q_D, min=self.eps)) - torch.log(torch.clamp(q_phi, min=self.eps))))
 
+    def entropy(self) -> Tensor:
+        q_phi = self.density()
+        return -(q_phi * torch.log(torch.clamp(q_phi, min=self.eps))).sum()
+
     def forward(self, t: Tensor) -> Tensor:
         return self.t_to_r(t)
 

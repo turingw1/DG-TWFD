@@ -8,13 +8,42 @@ from torch import Tensor
 from dgfm.teachers import build_teacher
 
 from .cache import interpolate_state
+from .sigma import SigmaSchedule, build_sigma_schedule
+
+
+CONTINUATION_SOURCE_NONE = 0
+CONTINUATION_SOURCE_ONLINE = 1
+CONTINUATION_SOURCE_CACHED_AFFINE = 2
+CONTINUATION_SOURCE_CACHED_EXACT = 3
+CONTINUATION_SOURCE_BOOTSTRAP = 4
+
+CONTINUATION_SOURCE_NAMES = {
+    CONTINUATION_SOURCE_NONE: "none",
+    CONTINUATION_SOURCE_ONLINE: "online",
+    CONTINUATION_SOURCE_CACHED_AFFINE: "cached_affine",
+    CONTINUATION_SOURCE_CACHED_EXACT: "cached_exact",
+    CONTINUATION_SOURCE_BOOTSTRAP: "bootstrap",
+}
+
+
+@dataclass(slots=True)
+class TeacherContinuation:
+    continuation: Tensor | None
+    source_ids: Tensor
+    teacher_s: Tensor | None = None
+    teacher_u: Tensor | None = None
+    rel_error: Tensor | None = None
+    alpha: Tensor | None = None
 
 
 @dataclass(slots=True)
 class TeacherAdapter:
     config: dict
+    sigma_schedule: SigmaSchedule
     online_teacher: object | None = None
     proximity_rtol: float = 0.05
+    continuation_mode: str = "affine_fallback"
+    keep_cached_exact: bool = True
 
     def prepare(self, device: torch.device) -> None:
         if self.online_teacher is not None and hasattr(self.online_teacher, "prepare"):
@@ -31,23 +60,61 @@ class TeacherAdapter:
         z: Tensor,
         *,
         extra: dict | None = None,
-    ) -> Tensor | None:
+    ) -> TeacherContinuation:
         del extra
+        source_none = torch.full(
+            (z.shape[0],),
+            CONTINUATION_SOURCE_NONE,
+            device=z.device,
+            dtype=torch.long,
+        )
+        if self.online_teacher is not None and hasattr(self.online_teacher, "local_flow"):
+            with torch.no_grad():
+                online = self.online_teacher.local_flow(s, u, z.detach())
+            if online is not None:
+                if not isinstance(online, Tensor):
+                    online = torch.as_tensor(online, device=z.device, dtype=z.dtype)
+                online = online.to(device=z.device, dtype=z.dtype).detach()
+                return TeacherContinuation(
+                    continuation=online,
+                    source_ids=torch.full_like(source_none, CONTINUATION_SOURCE_ONLINE),
+                )
         if traj is not None:
             x_s_cached = self.cached_state(traj, s).to(device=z.device, dtype=z.dtype)
             x_u_cached = self.cached_state(traj, u).to(device=z.device, dtype=z.dtype)
             rel = (z.detach() - x_s_cached).flatten(1).square().mean(dim=1)
             denom = torch.clamp(x_s_cached.flatten(1).square().mean(dim=1), min=1.0e-6)
-            near_mask = (rel / denom) <= float(self.proximity_rtol)
-            if bool(near_mask.all()):
-                return x_u_cached.detach()
-        if self.online_teacher is not None and hasattr(self.online_teacher, "local_flow"):
-            return self.online_teacher.local_flow(s, u, z)
-        return None
+            rel_error = rel / denom
+            exact_mask = rel_error <= float(self.proximity_rtol)
+            alpha = self.sigma_schedule.alpha(s, u).to(device=z.device, dtype=z.dtype)
+            if self.continuation_mode not in {"affine_fallback", "cached_affine"}:
+                cached_exact = x_u_cached.detach()
+                return TeacherContinuation(
+                    continuation=cached_exact,
+                    source_ids=torch.full_like(source_none, CONTINUATION_SOURCE_CACHED_EXACT),
+                    teacher_s=x_s_cached.detach(),
+                    teacher_u=x_u_cached.detach(),
+                    rel_error=rel_error.detach(),
+                    alpha=alpha.detach(),
+                )
+            affine = x_u_cached.detach() + alpha.view(-1, 1, 1, 1) * (z - x_s_cached.detach())
+            source_ids = torch.full_like(source_none, CONTINUATION_SOURCE_CACHED_AFFINE)
+            if self.keep_cached_exact and bool(exact_mask.any()):
+                affine = affine.clone()
+                affine[exact_mask] = x_u_cached.detach()[exact_mask]
+                source_ids[exact_mask] = CONTINUATION_SOURCE_CACHED_EXACT
+            return TeacherContinuation(
+                continuation=affine,
+                source_ids=source_ids,
+                teacher_s=x_s_cached.detach(),
+                teacher_u=x_u_cached.detach(),
+                rel_error=rel_error.detach(),
+                alpha=alpha.detach(),
+            )
+        return TeacherContinuation(continuation=None, source_ids=source_none)
 
     def sigma(self, t: Tensor) -> Tensor:
-        sigma_min = float(self.config.get("model", {}).get("sigma_min", 1.0e-3))
-        return torch.clamp(1.0 - t, min=sigma_min)
+        return self.sigma_schedule.sigma(t)
 
     def precondition(self, x: Tensor, t: Tensor) -> Tensor:
         del t
@@ -71,6 +138,9 @@ def build_teacher_adapter(config: dict) -> TeacherAdapter:
             online_teacher = None
     return TeacherAdapter(
         config=config,
+        sigma_schedule=build_sigma_schedule(config),
         online_teacher=online_teacher,
         proximity_rtol=float(dgtd_cfg.get("teacher_proximity_rtol", 0.05)),
+        continuation_mode=str(dgtd_cfg.get("teacher_continuation_mode", "affine_fallback")),
+        keep_cached_exact=bool(dgtd_cfg.get("teacher_keep_cached_exact", True)),
     )

@@ -25,7 +25,13 @@ from dgfm.utils import build_experiment_archive
 from .cache import build_cache_dataloaders, interpolate_curvature, interpolate_state
 from .defect import build_target_density, compute_dgtd_residual, compute_sample_defect, smooth_density, update_ema_bins
 from .metrics import edm_weight, high_frequency_norm, laplacian_filter, metric_norm, min_snr_weight
-from .teacher import build_teacher_adapter
+from .teacher import (
+    CONTINUATION_SOURCE_CACHED_AFFINE,
+    CONTINUATION_SOURCE_CACHED_EXACT,
+    CONTINUATION_SOURCE_BOOTSTRAP,
+    CONTINUATION_SOURCE_ONLINE,
+    build_teacher_adapter,
+)
 
 
 def _load_elapsed_history(history_path) -> tuple[int, float]:
@@ -154,6 +160,27 @@ def _stage_values(config: dict, *, global_step: int, total_steps: int) -> dict[s
     }
 
 
+def _per_sample_mse(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    return (x - y).flatten(1).square().mean(dim=1)
+
+
+def _region_masks(time_value: torch.Tensor) -> dict[str, torch.Tensor]:
+    noisy = time_value < (1.0 / 3.0)
+    mid = (time_value >= (1.0 / 3.0)) & (time_value < (2.0 / 3.0))
+    clean = time_value >= (2.0 / 3.0)
+    return {
+        "noisy": noisy,
+        "mid": mid,
+        "clean": clean,
+    }
+
+
+def _mean_or_zero(values: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+    if bool(mask.any()):
+        return values[mask].mean()
+    return torch.zeros((), device=values.device, dtype=values.dtype)
+
+
 @dataclass(slots=True)
 class DGTDTrainer:
     config: dict
@@ -212,16 +239,38 @@ class DGTDTrainer:
             "curvature": 0.0,
             "low_sigma_hf": 0.0,
             "omega": 0.0,
+            "direct_teacher_error": 0.0,
+            "bridge_teacher_error": 0.0,
+            "direct_bridge_gap": 0.0,
+            "teacher_rel_error": 0.0,
             "target_build_sec": 0.0,
             "forward_sec": 0.0,
             "warp_sec": 0.0,
             "samples_seen": 0.0,
             "batches_seen": 0.0,
             "warp_loss": 0.0,
+            "source_online": 0.0,
+            "source_cached_affine": 0.0,
+            "source_cached_exact": 0.0,
+            "source_bootstrap": 0.0,
+            "noisy_count": 0.0,
+            "mid_count": 0.0,
+            "clean_count": 0.0,
+            "noisy_defect": 0.0,
+            "mid_defect": 0.0,
+            "clean_defect": 0.0,
+            "noisy_hf": 0.0,
+            "mid_hf": 0.0,
+            "clean_hf": 0.0,
+            "noisy_endpoint_error": 0.0,
+            "mid_endpoint_error": 0.0,
+            "clean_endpoint_error": 0.0,
         }
         stage_name = "warmup"
         eta_value = 1.0
         beta_value = 0.0
+        mu_value = float(dgtd_cfg.get("ema_mu_warmup", 0.95))
+        flatten_mix_value = 0.0
         global_step = global_step_start
         ctx = torch.enable_grad if train else torch.no_grad
         with ctx():
@@ -234,6 +283,8 @@ class DGTDTrainer:
                 stage_name = str(stage["stage"])
                 eta_value = float(stage["eta"])
                 beta_value = float(stage["beta"])
+                mu_value = float(stage["mu"])
+                flatten_mix_value = float(stage["flatten_mix"])
                 t0 = time.perf_counter()
                 r_t, r_s, r_u = warp.sample_triplets(batch_size=batch_size, device=device)
                 if bool(dgtd_cfg.get("uniform_time", False)):
@@ -245,6 +296,7 @@ class DGTDTrainer:
                 if not torch.all(t < s) or not torch.all(s < u):
                     raise AssertionError("Current dgfm convention for DGTD requires t < s < u")
                 x_t = interpolate_state(batch, t)
+                x_s_teacher = interpolate_state(batch, s)
                 x_u_teacher = interpolate_state(batch, u)
                 curvature = interpolate_curvature(batch, u)
                 totals["target_build_sec"] += time.perf_counter() - t0
@@ -264,14 +316,35 @@ class DGTDTrainer:
                         extra=model_extra,
                     )
                     residual = residual_info["residual"]
-                    metric_value = metric_norm(
-                        residual,
-                        u,
-                        sigma_fn=teacher_adapter.sigma,
-                        lambda_hf_max=float(dgtd_cfg.get("lambda_hf_max", 0.1)),
-                        sigma_detail=float(dgtd_cfg.get("sigma_detail", 0.2)),
-                        disable_hf_metric=bool(dgtd_cfg.get("disable_hf_metric", False)),
-                    )
+                    if bool(dgtd_cfg.get("symmetric_residual", True)):
+                        direct_residual = residual_info["x_u_direct"] - residual_info["x_u_cont"].detach()
+                        bridge_residual = residual_info["x_u_cont"] - residual_info["x_u_direct"].detach()
+                        metric_direct = metric_norm(
+                            direct_residual,
+                            u,
+                            sigma_fn=teacher_adapter.sigma,
+                            lambda_hf_max=float(dgtd_cfg.get("lambda_hf_max", 0.1)),
+                            sigma_detail=float(dgtd_cfg.get("sigma_detail", 0.2)),
+                            disable_hf_metric=bool(dgtd_cfg.get("disable_hf_metric", False)),
+                        )
+                        metric_bridge = metric_norm(
+                            bridge_residual,
+                            u,
+                            sigma_fn=teacher_adapter.sigma,
+                            lambda_hf_max=float(dgtd_cfg.get("lambda_hf_max", 0.1)),
+                            sigma_detail=float(dgtd_cfg.get("sigma_detail", 0.2)),
+                            disable_hf_metric=bool(dgtd_cfg.get("disable_hf_metric", False)),
+                        )
+                        metric_value = 0.5 * (metric_direct + metric_bridge)
+                    else:
+                        metric_value = metric_norm(
+                            residual,
+                            u,
+                            sigma_fn=teacher_adapter.sigma,
+                            lambda_hf_max=float(dgtd_cfg.get("lambda_hf_max", 0.1)),
+                            sigma_detail=float(dgtd_cfg.get("sigma_detail", 0.2)),
+                            disable_hf_metric=bool(dgtd_cfg.get("disable_hf_metric", False)),
+                        )
                     p_corr = warp.density_at(t) if not bool(dgtd_cfg.get("uniform_time", False)) else torch.ones_like(t)
                     omega = edm_weight(
                         u,
@@ -300,6 +373,13 @@ class DGTDTrainer:
                     metric_value.detach(),
                 )
                 hf_values = high_frequency_norm(laplacian_filter(residual.detach()))
+                direct_teacher_error = _per_sample_mse(residual_info["x_u_direct"].detach(), x_u_teacher)
+                bridge_teacher_error = _per_sample_mse(residual_info["x_s_pred"].detach(), x_s_teacher)
+                direct_bridge_gap = _per_sample_mse(residual_info["x_u_direct"].detach(), residual_info["x_u_cont"].detach())
+                teacher_rel_error = residual_info["teacher_rel_error"]
+                if teacher_rel_error is None:
+                    teacher_rel_error = torch.zeros_like(direct_teacher_error)
+                source_ids = residual_info["source_ids"]
                 bin_ids = _bin_ids_from_time(u.detach(), num_bins=num_bins)
                 ids, values = _global_bin_means(bin_ids, sample_defect, num_bins=num_bins, device=device, ctx=self.dist_ctx)
                 if ids.numel() > 0:
@@ -321,13 +401,16 @@ class DGTDTrainer:
                             self.q_base,
                             beta_value,
                             1.0e-6,
-                            curvature_weight=float(dgtd_cfg.get("curvature_weight", 0.25)),
-                            hf_weight=float(dgtd_cfg.get("hf_weight", 0.5)),
+                            curvature_weight=float(
+                                dgtd_cfg.get("qd_curvature_weight", dgtd_cfg.get("curvature_weight", 0.25))
+                            ),
+                            use_hf_bar=bool(dgtd_cfg.get("qd_use_hf_bar", True)),
+                            hf_weight=float(dgtd_cfg.get("qd_hf_weight", dgtd_cfg.get("hf_weight", 0.5))),
+                            ratio_cap=float(dgtd_cfg.get("qd_ratio_cap", 0.0)),
                         )
                         q_target = smooth_density(q_target)
-                        flatten_mix = float(stage["flatten_mix"])
-                        if flatten_mix > 0.0:
-                            q_target = (1.0 - flatten_mix) * q_target + flatten_mix * self.q_base
+                        if flatten_mix_value > 0.0:
+                            q_target = (1.0 - flatten_mix_value) * q_target + flatten_mix_value * self.q_base
                             q_target = q_target / torch.clamp(q_target.sum(), min=1.0e-6)
                         self.q_target = q_target.detach()
                     if not bool(dgtd_cfg.get("disable_warp", False)):
@@ -350,8 +433,25 @@ class DGTDTrainer:
                 totals["curvature"] += float(curvature.mean().item())
                 totals["low_sigma_hf"] += float(low_sigma_hf.item())
                 totals["omega"] += float(omega.mean().item())
+                totals["direct_teacher_error"] += float(direct_teacher_error.mean().item())
+                totals["bridge_teacher_error"] += float(bridge_teacher_error.mean().item())
+                totals["direct_bridge_gap"] += float(direct_bridge_gap.mean().item())
+                totals["teacher_rel_error"] += float(teacher_rel_error.mean().item())
                 totals["samples_seen"] += float(batch_size)
                 totals["batches_seen"] += 1.0
+                totals["source_online"] += float((source_ids == CONTINUATION_SOURCE_ONLINE).sum().item())
+                totals["source_cached_affine"] += float((source_ids == CONTINUATION_SOURCE_CACHED_AFFINE).sum().item())
+                totals["source_cached_exact"] += float((source_ids == CONTINUATION_SOURCE_CACHED_EXACT).sum().item())
+                totals["source_bootstrap"] += float((source_ids == CONTINUATION_SOURCE_BOOTSTRAP).sum().item())
+                region_masks = _region_masks(u.detach())
+                for region_name, mask in region_masks.items():
+                    count = float(mask.sum().item())
+                    totals[f"{region_name}_count"] += count
+                    if count <= 0.0:
+                        continue
+                    totals[f"{region_name}_defect"] += float(sample_defect[mask].sum().item())
+                    totals[f"{region_name}_hf"] += float(hf_values[mask].sum().item())
+                    totals[f"{region_name}_endpoint_error"] += float(direct_teacher_error[mask].sum().item())
                 if train:
                     global_step += 1
         denom = max(1.0, totals["batches_seen"])
@@ -362,6 +462,10 @@ class DGTDTrainer:
             "curvature": totals["curvature"] / denom,
             "low_sigma_hf": totals["low_sigma_hf"] / denom,
             "omega": totals["omega"] / denom,
+            "direct_teacher_error": totals["direct_teacher_error"] / denom,
+            "bridge_teacher_error": totals["bridge_teacher_error"] / denom,
+            "direct_bridge_gap": totals["direct_bridge_gap"] / denom,
+            "teacher_rel_error": totals["teacher_rel_error"] / denom,
             "target_build_sec": totals["target_build_sec"],
             "forward_sec": totals["forward_sec"],
             "warp_sec": totals["warp_sec"],
@@ -370,14 +474,78 @@ class DGTDTrainer:
             "batches_seen": totals["batches_seen"],
             "eta": eta_value,
             "beta": beta_value,
+            "mu": mu_value,
+            "flatten_mix": flatten_mix_value,
+            "source_online": totals["source_online"],
+            "source_cached_affine": totals["source_cached_affine"],
+            "source_cached_exact": totals["source_cached_exact"],
+            "source_bootstrap": totals["source_bootstrap"],
+            "noisy_count": totals["noisy_count"],
+            "mid_count": totals["mid_count"],
+            "clean_count": totals["clean_count"],
+            "noisy_defect": totals["noisy_defect"],
+            "mid_defect": totals["mid_defect"],
+            "clean_defect": totals["clean_defect"],
+            "noisy_hf": totals["noisy_hf"],
+            "mid_hf": totals["mid_hf"],
+            "clean_hf": totals["clean_hf"],
+            "noisy_endpoint_error": totals["noisy_endpoint_error"],
+            "mid_endpoint_error": totals["mid_endpoint_error"],
+            "clean_endpoint_error": totals["clean_endpoint_error"],
         }
         payload = reduce_float_dict(
             payload,
             device=device,
             ctx=self.dist_ctx,
-            mean_keys=["loss", "defect", "hf", "curvature", "low_sigma_hf", "omega", "warp_loss", "eta", "beta"],
-            sum_keys=["samples_seen", "batches_seen", "target_build_sec", "forward_sec", "warp_sec"],
+            mean_keys=[
+                "loss",
+                "defect",
+                "hf",
+                "curvature",
+                "low_sigma_hf",
+                "omega",
+                "warp_loss",
+                "eta",
+                "beta",
+                "mu",
+                "flatten_mix",
+                "direct_teacher_error",
+                "bridge_teacher_error",
+                "direct_bridge_gap",
+                "teacher_rel_error",
+            ],
+            sum_keys=[
+                "samples_seen",
+                "batches_seen",
+                "target_build_sec",
+                "forward_sec",
+                "warp_sec",
+                "source_online",
+                "source_cached_affine",
+                "source_cached_exact",
+                "source_bootstrap",
+                "noisy_count",
+                "mid_count",
+                "clean_count",
+                "noisy_defect",
+                "mid_defect",
+                "clean_defect",
+                "noisy_hf",
+                "mid_hf",
+                "clean_hf",
+                "noisy_endpoint_error",
+                "mid_endpoint_error",
+                "clean_endpoint_error",
+            ],
         )
+        samples_seen = max(float(payload["samples_seen"]), 1.0)
+        for source_name in ("online", "cached_affine", "cached_exact", "bootstrap"):
+            payload[f"source_ratio_{source_name}"] = payload[f"source_{source_name}"] / samples_seen
+        for region_name in ("noisy", "mid", "clean"):
+            count = max(float(payload[f"{region_name}_count"]), 1.0)
+            payload[f"{region_name}_defect"] = payload[f"{region_name}_defect"] / count
+            payload[f"{region_name}_hf"] = payload[f"{region_name}_hf"] / count
+            payload[f"{region_name}_endpoint_error"] = payload[f"{region_name}_endpoint_error"] / count
         grid = build_runtime_time_grid(
             config=self.config,
             step_count=int(self.config.get("eval", {}).get("default_sample_steps", 16)),
@@ -385,15 +553,30 @@ class DGTDTrainer:
             dtype=torch.float32,
             timewarp=warp,
         )
+        q_phi = warp.density().detach()
+        q_target = self.q_target.detach()
+        q_base = self.q_base.detach()
+        entropy_q_phi = float((-(q_phi * torch.log(torch.clamp(q_phi, min=1.0e-6))).sum()).item())
+        kl_qD_qphi = float(warp.kl_to_target_density(q_target).detach().item())
+        max_qphi_over_qbase = float(torch.max(q_phi / torch.clamp(q_base, min=1.0e-6)).item())
+        argmax_qphi = int(torch.argmax(q_phi).item())
         payload.update(
             {
                 "stage": stage_name,
-                "q_phi": [float(item) for item in warp.density().detach().cpu().tolist()],
-                "q_D": [float(item) for item in self.q_target.detach().cpu().tolist()],
+                "q_phi": [float(item) for item in q_phi.cpu().tolist()],
+                "q_D": [float(item) for item in q_target.cpu().tolist()],
                 "D_bar": [float(item) for item in self.stats["D"]["bar"].detach().cpu().tolist()],
                 "K_bar": [float(item) for item in self.stats["K"]["bar"].detach().cpu().tolist()],
                 "HF_bar": [float(item) for item in self.stats["HF"]["bar"].detach().cpu().tolist()],
                 "time_grid": summarize_time_grid(grid)["time_grid"],
+                "entropy_q_phi": entropy_q_phi,
+                "kl_qD_qphi": kl_qD_qphi,
+                "max_qphi_over_qbase": max_qphi_over_qbase,
+                "argmax_q_phi": argmax_qphi,
+                "continuation_sources": {
+                    source_name: float(payload[f"source_ratio_{source_name}"])
+                    for source_name in ("online", "cached_affine", "cached_exact", "bootstrap")
+                },
             }
         )
         return payload, global_step
@@ -493,7 +676,6 @@ class DGTDTrainer:
             total_elapsed_sec += elapsed
             completed_epochs += 1
             avg_epoch_sec = total_elapsed_sec / max(completed_epochs, 1)
-            remaining_epochs = max(epochs - (epoch + 1), 0)
             payload = {
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                 "epoch": epoch,
@@ -503,10 +685,22 @@ class DGTDTrainer:
                 "val_defect": val_stats["defect"],
                 "train_low_sigma_hf": train_stats["low_sigma_hf"],
                 "val_low_sigma_hf": val_stats["low_sigma_hf"],
+                "train_direct_teacher_error": train_stats["direct_teacher_error"],
+                "val_direct_teacher_error": val_stats["direct_teacher_error"],
+                "train_bridge_teacher_error": train_stats["bridge_teacher_error"],
+                "val_bridge_teacher_error": val_stats["bridge_teacher_error"],
+                "train_direct_bridge_gap": train_stats["direct_bridge_gap"],
+                "val_direct_bridge_gap": val_stats["direct_bridge_gap"],
+                "train_teacher_rel_error": train_stats["teacher_rel_error"],
+                "val_teacher_rel_error": val_stats["teacher_rel_error"],
                 "train_target_build_sec": train_stats["target_build_sec"],
                 "train_forward_sec": train_stats["forward_sec"],
                 "train_warp_sec": train_stats["warp_sec"],
                 "train_warp_loss": train_stats["warp_loss"],
+                "entropy_q_phi": train_stats["entropy_q_phi"],
+                "kl_qD_qphi": train_stats["kl_qD_qphi"],
+                "max_qphi_over_qbase": train_stats["max_qphi_over_qbase"],
+                "argmax_q_phi": train_stats["argmax_q_phi"],
                 "q_phi": train_stats["q_phi"],
                 "q_D": train_stats["q_D"],
                 "D_bar": train_stats["D_bar"],
@@ -515,7 +709,19 @@ class DGTDTrainer:
                 "time_grid": train_stats["time_grid"],
                 "eta": train_stats["eta"],
                 "beta": train_stats["beta"],
+                "mu": train_stats["mu"],
+                "flatten_mix": train_stats["flatten_mix"],
                 "stage": train_stats["stage"],
+                "continuation_sources": train_stats["continuation_sources"],
+                "train_noisy_defect": train_stats["noisy_defect"],
+                "train_mid_defect": train_stats["mid_defect"],
+                "train_clean_defect": train_stats["clean_defect"],
+                "train_noisy_hf": train_stats["noisy_hf"],
+                "train_mid_hf": train_stats["mid_hf"],
+                "train_clean_hf": train_stats["clean_hf"],
+                "train_noisy_endpoint_error": train_stats["noisy_endpoint_error"],
+                "train_mid_endpoint_error": train_stats["mid_endpoint_error"],
+                "train_clean_endpoint_error": train_stats["clean_endpoint_error"],
                 "elapsed_sec": elapsed,
                 "epoch_sec_avg": avg_epoch_sec,
                 "global_step": global_step,
@@ -557,6 +763,7 @@ class DGTDTrainer:
                     f"val_loss={val_stats['loss']:.6f} defect={train_stats['defect']:.6f} "
                     f"low_sigma_hf={train_stats['low_sigma_hf']:.6f} stage={train_stats['stage']} "
                     f"eta={train_stats['eta']:.4f} beta={train_stats['beta']:.4f} "
+                    f"kl_qD_qphi={train_stats['kl_qD_qphi']:.6f} "
                     f"elapsed_sec={elapsed:.2f}",
                     flush=True,
                 )
@@ -571,6 +778,9 @@ class DGTDTrainer:
                                 "K_bar": train_stats["K_bar"],
                                 "HF_bar": train_stats["HF_bar"],
                                 "time_grid": train_stats["time_grid"],
+                                "continuation_sources": train_stats["continuation_sources"],
+                                "entropy_q_phi": train_stats["entropy_q_phi"],
+                                "kl_qD_qphi": train_stats["kl_qD_qphi"],
                             },
                             sort_keys=True,
                         ),
