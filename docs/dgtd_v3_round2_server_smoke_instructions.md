@@ -6,13 +6,24 @@ This document is the server-side acceptance checklist for commit:
 
 Use this document on the server only.
 
-Per the preserved workflow in:
+It is intentionally more detailed than the compact smoke block in
+[docs/experiments/DG_TWFD_v3/DEVELOPMENT_VALIDATION.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/DG_TWFD_v3/DEVELOPMENT_VALIDATION.md),
+because this round may start from a shell that does **not** already have:
+
+- `PROJ`
+- `TRAJ_ROOT`
+- `RUN_ROOT`
+- `METRIC_ROOT`
+- the correct conda environment
+
+This workflow follows the preserved server rules in:
 
 - [docs/experiments/map_branch/HANDOFF_2026-04-16.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/HANDOFF_2026-04-16.md)
 - [docs/experiments/map_branch/ENVIRONMENT.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/ENVIRONMENT.md)
-- [docs/experiments/DG_TWFD_v3/DEVELOPMENT_VALIDATION.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/DG_TWFD_v3/DEVELOPMENT_VALIDATION.md)
+- [docs/experiments/map_branch/A100_PIPELINE.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/A100_PIPELINE.md)
+- [docs/experiments/map_branch/EXP_LOG.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/EXP_LOG.md)
 
-local runtime results do **not** count as acceptance evidence for this branch.
+Runtime evidence for this branch must come from the server, not from the local machine.
 
 ## Goal
 
@@ -25,52 +36,191 @@ Return enough server evidence to verify:
 5. `train.jsonl` contains the new DGTD diagnostics
 6. diagnostics plot export succeeds
 
-## 0. Server Session Setup
+## Naming For This Round
 
-Run these first and paste the outputs back.
+To mirror the style in `EXP_LOG.md`, this smoke uses:
+
+- `EXP_VARIANT=dgtd_v3_smoke`
+- `EXP_TAG=round2_verify`
+
+Activation command:
 
 ```bash
-cd /data2/yl7622/Zhengwei/DG-TWFD
+source scripts/experiments/activate_fm_cifar10.sh dgtd_v3_smoke round2_verify
+```
+
+This is a smoke / verification run, not a formal experiment campaign row.
+Using `--set target.shard_root=...` is acceptable here because the goal is
+acceptance debugging, not final experiment logging.
+
+## 0. Server Bootstrap
+
+Run this block first, exactly in order.
+
+```bash
+export PROJ=/data2/yl7622/Zhengwei/DG-TWFD
+cd "$PROJ"
+
 source /data2/yl7622/anaconda/etc/profile.d/conda.sh
-conda activate /data2/yl7622/Zhengwei/DG-TWFD/.conda_envs/dgfm_map
+
+if [ -d "$PROJ/.conda_envs/dgfm_map" ]; then
+  conda activate "$PROJ/.conda_envs/dgfm_map"
+else
+  echo "Missing conda env at $PROJ/.conda_envs/dgfm_map"
+  echo "If needed, create it with:"
+  echo "  cd $PROJ"
+  echo "  bash scripts/experiments/create_map_branch_env.sh dgfm_map"
+  exit 1
+fi
+```
+
+Then paste back:
+
+```bash
+pwd
+which python
+python -V
+conda info --envs | sed -n '1,20p'
+```
+
+## 1. Repo And Commit Check
+
+Run:
+
+```bash
+cd "$PROJ"
 
 git branch --show-current
 git rev-parse HEAD
 git show --stat --oneline --no-patch 054351e
+git show --stat --oneline --no-patch 4f99df6
+```
 
+Expected:
+
+- branch should be the DGTD v3 working branch you are using for this round
+- `054351e` should exist
+- `4f99df6` should exist because it adds the verification docs
+
+## 2. Activation And Variable Setup
+
+This is the key step that creates the server-local variable set described in
+`ENVIRONMENT.md` and used consistently in `EXP_LOG.md`.
+
+Run:
+
+```bash
+cd "$PROJ"
 source scripts/experiments/activate_fm_cifar10.sh dgtd_v3_smoke round2_verify
+```
 
+Then immediately print the key variables:
+
+```bash
+echo "PROJ=$PROJ"
+echo "FM_CONFIG=$FM_CONFIG"
+echo "EXP_VARIANT=$EXP_VARIANT"
+echo "EXP_TAG=$EXP_TAG"
+echo "FM_EXP=$FM_EXP"
+echo "RUN_ROOT=$RUN_ROOT"
+echo "CKPT_DIR=$CKPT_DIR"
+echo "LOG_ROOT=$LOG_ROOT"
+echo "METRIC_ROOT=$METRIC_ROOT"
+echo "SAMPLE_ROOT=$SAMPLE_ROOT"
+echo "DATA_ROOT=$DATA_ROOT"
+echo "REF_ROOT=$REF_ROOT"
 echo "TRAJ_ROOT=$TRAJ_ROOT"
-find "$TRAJ_ROOT" -maxdepth 2 | head -n 20
+echo "TORCH_HOME=$TORCH_HOME"
+echo "HF_HOME=$HF_HOME"
+echo "TRAIN_CUDA_VISIBLE_DEVICES=$TRAIN_CUDA_VISIBLE_DEVICES"
+echo "INFER_CUDA_VISIBLE_DEVICES=$INFER_CUDA_VISIBLE_DEVICES"
+echo "NNODES=$NNODES"
+echo "NODE_RANK=$NODE_RANK"
+echo "NPROC_PER_NODE=$NPROC_PER_NODE"
+echo "MASTER_ADDR=$MASTER_ADDR"
+echo "MASTER_PORT=$MASTER_PORT"
+```
 
-python scripts/run_train.py --help | head -n 20
-python scripts/run_sample_dgtd.py --help | head -n 20
-python scripts/run_eval.py --help | head -n 20
+## 3. Trajectory Root Discovery And Validation
+
+If `TRAJ_ROOT` already exists, validate it with:
+
+```bash
+if [ -d "$TRAJ_ROOT" ]; then
+  echo "Resolved TRAJ_ROOT exists"
+  find "$TRAJ_ROOT" -maxdepth 2 | head -n 30
+else
+  echo "Resolved TRAJ_ROOT does not exist: $TRAJ_ROOT"
+fi
+```
+
+If the default `TRAJ_ROOT` printed above does **not** exist, do this discovery
+step before continuing:
+
+```bash
+echo "==== teacher_traj candidates under $PROJ ===="
+find "$PROJ" -maxdepth 4 -type d \( -name 'teacher_traj' -o -name 'cifar10_ddpm128_p33' \) | sort
+```
+
+If you find the correct cache root manually, export it in the current shell:
+
+```bash
+export TRAJ_ROOT=/actual/path/to/the/cifar10_teacher_cache
+echo "TRAJ_ROOT=$TRAJ_ROOT"
+find "$TRAJ_ROOT" -maxdepth 2 | head -n 30
 ```
 
 Pass condition:
 
-- conda env activates
-- target cache is visible
-- the three entrypoints import and print help
+- `TRAJ_ROOT` exists
+- it contains either:
+  - `train/` and `val/`, or
+  - flat shard files
 
-## 1. Clean Smoke Root
+If you cannot resolve a valid `TRAJ_ROOT`, stop and return the outputs from this section.
 
-Use a dedicated temporary root for this verification round.
+## 4. Entry-Point Import Check
+
+Before starting smoke, confirm the Python entrypoints import successfully in the
+actual server environment.
+
+Run:
+
+```bash
+cd "$PROJ"
+python scripts/run_train.py --help | head -n 20
+python scripts/run_sample_dgtd.py --help | head -n 20
+python scripts/run_eval.py --help | head -n 20
+python scripts/plot_dgtd_diagnostics.py --help | head -n 20
+```
+
+Pass condition:
+
+- all four commands print help
+- no import traceback appears
+
+## 5. Dedicated Smoke Root
+
+Even though activation created `$RUN_ROOT` and `$METRIC_ROOT`, for this
+acceptance round we use a separate temp root so the smoke result is isolated and
+easy to inspect.
+
+Run:
 
 ```bash
 export DGTD_V3_R2_ROOT=/tmp/dgtd_v3_round2_smoke
 rm -rf "$DGTD_V3_R2_ROOT"
 mkdir -p "$DGTD_V3_R2_ROOT"
+
+echo "DGTD_V3_R2_ROOT=$DGTD_V3_R2_ROOT"
 ```
 
-If you do not want to remove an existing root, replace the path with another empty temp directory.
+## 6. Smoke Train
 
-## 2. Smoke Train
-
-Run the train smoke exactly once and capture stdout/stderr.
+Run the train smoke and capture stdout/stderr.
 
 ```bash
+cd "$PROJ"
 python scripts/run_train.py \
   --config configs/experiment/dgtd_cifar10_v3_smoke.yaml \
   --run-root "$DGTD_V3_R2_ROOT" \
@@ -81,6 +231,9 @@ python scripts/run_train.py \
 Immediately after train finishes, run:
 
 ```bash
+echo "==== smoke root tree ===="
+find "$DGTD_V3_R2_ROOT" -maxdepth 4 | sort
+
 echo "==== checkpoints ===="
 find "$DGTD_V3_R2_ROOT/checkpoints" -maxdepth 2 -type f | sort
 
@@ -91,11 +244,17 @@ echo "==== tail train.jsonl ===="
 tail -n 5 "$DGTD_V3_R2_ROOT/logs/train.jsonl"
 ```
 
-## 3. Smoke Sample
+Train pass condition:
+
+- `$DGTD_V3_R2_ROOT/checkpoints/last.pt` exists
+- `$DGTD_V3_R2_ROOT/logs/train.jsonl` exists
+
+## 7. Smoke Sample
 
 Run sample from the saved `last.pt`.
 
 ```bash
+cd "$PROJ"
 python scripts/run_sample_dgtd.py \
   --config configs/experiment/dgtd_cifar10_v3_smoke.yaml \
   --checkpoint "$DGTD_V3_R2_ROOT/checkpoints/last.pt" \
@@ -112,11 +271,20 @@ echo "==== sample files ===="
 find "$DGTD_V3_R2_ROOT/sample" -maxdepth 2 -type f | sort
 ```
 
-## 4. Smoke Eval
+Sample pass condition:
+
+- `samples.pt`
+- `time_grid.pt`
+- `grid.png`
+
+all exist under `$DGTD_V3_R2_ROOT/sample`.
+
+## 8. Smoke Eval
 
 Run eval from the same `last.pt`.
 
 ```bash
+cd "$PROJ"
 python scripts/run_eval.py \
   --config configs/experiment/dgtd_cifar10_v3_smoke.yaml \
   --checkpoint "$DGTD_V3_R2_ROOT/checkpoints/last.pt" \
@@ -133,11 +301,17 @@ echo "==== eval files ===="
 find "$DGTD_V3_R2_ROOT/eval" -maxdepth 4 -type f | sort
 ```
 
-## 5. Diagnostics Export
+Eval pass condition:
 
-Export the DGTD diagnostic plots from the produced history file.
+- some report or sample artifact is written under `$DGTD_V3_R2_ROOT/eval`
+- no Python traceback in `eval.stdout_stderr.txt`
+
+## 9. Diagnostics Export
+
+Export the DGTD diagnostics from the produced history file.
 
 ```bash
+cd "$PROJ"
 python scripts/plot_dgtd_diagnostics.py \
   --history "$DGTD_V3_R2_ROOT/logs/train.jsonl" \
   --output-dir "$DGTD_V3_R2_ROOT/diag" \
@@ -151,7 +325,13 @@ echo "==== diag files ===="
 find "$DGTD_V3_R2_ROOT/diag" -maxdepth 2 -type f | sort
 ```
 
-## 6. Structured Log Check
+Expected outputs include:
+
+- `summary.json`
+- `latest_bins.json`
+- usually several `.png` plots if matplotlib is available
+
+## 10. Structured Log Check
 
 Run this small JSON check and paste the output back.
 
@@ -196,24 +376,28 @@ print("time_grid", last.get("time_grid"))
 PY
 ```
 
-## 7. What To Return
+## 11. What To Return
 
 Please return the following, in this order:
 
-1. output of the setup block in Section 0
-2. full stdout/stderr from:
+1. output from Section 0
+2. output from Section 1
+3. output from Section 2
+4. output from Section 3
+5. output from Section 4
+6. full stdout/stderr from:
    - `train.stdout_stderr.txt`
    - `sample.stdout_stderr.txt`
    - `eval.stdout_stderr.txt`
    - `diag.stdout_stderr.txt`
-3. `tail -n 5 /tmp/dgtd_v3_round2_smoke/logs/train.jsonl`
-4. file lists from:
+7. `tail -n 5 /tmp/dgtd_v3_round2_smoke/logs/train.jsonl`
+8. file lists from:
    - `sample`
    - `eval`
    - `diag`
-5. output of the structured log check in Section 6
+9. output from the structured log check in Section 10
 
-## 8. If Any Step Fails
+## 12. If Any Step Fails
 
 If any command fails, stop there and also return:
 
@@ -227,8 +411,13 @@ python -V
 
 echo "==== env roots ===="
 echo "PROJ=$PROJ"
-echo "TRAJ_ROOT=$TRAJ_ROOT"
+echo "FM_CONFIG=$FM_CONFIG"
 echo "RUN_ROOT=$RUN_ROOT"
+echo "CKPT_DIR=$CKPT_DIR"
+echo "LOG_ROOT=$LOG_ROOT"
+echo "METRIC_ROOT=$METRIC_ROOT"
+echo "SAMPLE_ROOT=$SAMPLE_ROOT"
+echo "TRAJ_ROOT=$TRAJ_ROOT"
 echo "TORCH_HOME=$TORCH_HOME"
 echo "HF_HOME=$HF_HOME"
 
@@ -239,10 +428,20 @@ echo "==== smoke tree ===="
 find "$DGTD_V3_R2_ROOT" -maxdepth 4 | sort
 ```
 
-If the failure is during `eval`, also return:
+If the failure is before Section 6, also return:
 
 ```bash
+echo "==== activation output recheck ===="
+source scripts/experiments/activate_fm_cifar10.sh dgtd_v3_smoke round2_verify
+```
+
+If the failure is specifically in Section 8 `eval`, also return:
+
+```bash
+echo "==== TORCH_HOME files ===="
 find "$TORCH_HOME" -maxdepth 4 -type f | sort | head -n 100
+
+echo "==== HF_HOME files ===="
 find "$HF_HOME" -maxdepth 4 -type f | sort | head -n 100
 ```
 
@@ -250,6 +449,7 @@ That will give enough information to separate:
 
 - code bug
 - cache/path problem
+- missing trajectory root
 - checkpoint schema issue
 - missing FID weights
 - CUDA / driver / NCCL issue
