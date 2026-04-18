@@ -122,6 +122,18 @@ def test_dgtd_dispatch_uses_map_mode_and_trainer(tmp_path: Path) -> None:
     assert evaluator.__class__.__name__ == "MapEvaluationRunner"
 
 
+def test_dgtd_trainer_init_stats_with_slots(tmp_path: Path) -> None:
+    cfg = _dgtd_config(tmp_path)
+    roots = resolve_run_roots(tmp_path / "run")
+    trainer = DGTDTrainer(config=cfg, roots=roots, dist_ctx=DistributedContext(enabled=False))
+    trainer._init_stats(num_bins=8, device=torch.device("cpu"))
+    assert set(trainer.stats.keys()) == {"D", "K", "HF"}
+    assert trainer.q_base is not None
+    assert trainer.q_target is not None
+    assert trainer.q_base.shape == (8,)
+    assert torch.allclose(trainer.q_base, trainer.q_target)
+
+
 def test_dgtd_warp_roundtrip_and_triplets() -> None:
     warp = MonotoneDensityWarp(num_bins=16, init="logit_normal")
     t = torch.linspace(0.0, 1.0, steps=17)

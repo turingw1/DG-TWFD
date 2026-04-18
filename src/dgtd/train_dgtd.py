@@ -222,6 +222,9 @@ class DGTDTrainer:
     roots: RunRoots
     dist_ctx: DistributedContext
     archive: object | None = field(init=False, default=None)
+    stats: dict[str, dict[str, torch.Tensor]] = field(init=False, default_factory=dict)
+    q_base: torch.Tensor | None = field(init=False, default=None)
+    q_target: torch.Tensor | None = field(init=False, default=None)
 
     def prepare(self) -> None:
         self.roots.checkpoint_dir.mkdir(parents=True, exist_ok=True)
