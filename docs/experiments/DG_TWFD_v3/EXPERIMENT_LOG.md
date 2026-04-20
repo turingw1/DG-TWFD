@@ -67,6 +67,7 @@ Current policy:
 | E4 | e402a | `dgtd_v3` | `configs/experiment/dgtd_cifar10_v3.yaml` | `source scripts/experiments/activate_fm_cifar10.sh dgtd_v3 e402a` | primary full run: online-mainline DGTD v3 main convergence run with higher-memory throughput-tuned training and few-step quality curve | ready |
 | E4 | e403a | `dgtd_cifar10_v3_ablation_no_warp` | `configs/experiment/dgtd_cifar10_v3_ablation_no_warp.yaml` | `source scripts/experiments/activate_fm_cifar10.sh dgtd_cifar10_v3_ablation_no_warp e403a` | ablation: remove learned warp while keeping current online-mainline teacher path | planned |
 | E4 | e404a | `dgtd_cifar10_v3_ablation_warp_no_hf` | `configs/experiment/dgtd_cifar10_v3_ablation_warp_no_hf.yaml` | `source scripts/experiments/activate_fm_cifar10.sh dgtd_cifar10_v3_ablation_warp_no_hf e404a` | ablation: keep warp but disable the HF-biased density contribution and metric emphasis path | planned |
+| B0 | edm001 | `edm_cifar10_public_eval` | `configs/experiment/edm_cifar10_public_eval.yaml` | `source scripts/experiments/activate_fm_cifar10.sh edm_cifar10_public_eval edm001` | public EDM CIFAR-10 teacher/baseline inference and official FID with selectable sampler steps; uses NVLabs public EDM checkpoint by default | ready |
 
 ## Execution order
 
@@ -74,6 +75,58 @@ Current policy:
 2. Launch `e402a` only after `e401a` shows nonzero `continuation_sources.online`
    and valid train/sample/eval outputs.
 3. Use `e403a` and `e404a` only if the main full run needs controlled ablations.
+
+## Public EDM CIFAR-10 baseline
+
+This baseline has no training stage. Activation sets the normal experiment
+variables plus:
+
+- `EDM_CIFAR10_NETWORK`
+  - default:
+    `https://nvlabs-fi-cdn.nvidia.com/edm/pretrained/edm-cifar10-32x32-cond-vp.pkl`
+- `EDM_CIFAR10_FID_REF`
+  - default:
+    `https://nvlabs-fi-cdn.nvidia.com/edm/fid-refs/cifar10-32x32.npz`
+- `DNNLIB_CACHE_DIR`
+  - default: `$TORCH_HOME/dnnlib`
+
+Activate:
+
+```bash
+source scripts/experiments/activate_fm_cifar10.sh edm_cifar10_public_eval edm001
+```
+
+Run inference and FID for any step list:
+
+```bash
+CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_edm_cifar10_eval.py \
+  --config $FM_CONFIG \
+  --sample-root $SAMPLE_ROOT \
+  --eval-root $METRIC_ROOT \
+  --steps 1 2 4 8 18 \
+  2>&1 | tee $METRIC_ROOT/edm_eval.stdout_stderr.txt
+```
+
+For a quick metric smoke, reduce sample count:
+
+```bash
+CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_edm_cifar10_eval.py \
+  --config $FM_CONFIG \
+  --sample-root $SAMPLE_ROOT \
+  --eval-root $METRIC_ROOT \
+  --steps 18 \
+  --num-samples 1024 \
+  --batch 64 \
+  2>&1 | tee $METRIC_ROOT/edm_eval_smoke.stdout_stderr.txt
+```
+
+Return:
+
+- `$METRIC_ROOT/edm_eval.stdout_stderr.txt`
+- `$METRIC_ROOT/reports/summary.json`
+- `$METRIC_ROOT/reports/summary.csv`
+- each `$METRIC_ROOT/steps{K}/metrics.json`
+- sample file listing under `$SAMPLE_ROOT/steps{K}/images`
 
 ## Return fields for each experiment
 

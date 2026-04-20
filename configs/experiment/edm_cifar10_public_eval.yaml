@@ -1,0 +1,24 @@
+base: configs/base.yaml
+includes:
+  - dataset/cifar10
+
+experiment:
+  name: edm_cifar10_public_eval
+
+train:
+  objective: external_edm_eval
+
+eval:
+  metrics: [fid]
+  step_counts: [1, 2, 4, 8, 18]
+  num_fid_samples: 50000
+  fid_batch_size: 64
+  sample_batch_size: 64
+  fixed_seed: 42
+  edm:
+    network: ${EDM_CIFAR10_NETWORK:-https://nvlabs-fi-cdn.nvidia.com/edm/pretrained/edm-cifar10-32x32-cond-vp.pkl}
+    fid_ref: ${EDM_CIFAR10_FID_REF:-https://nvlabs-fi-cdn.nvidia.com/edm/fid-refs/cifar10-32x32.npz}
+    nproc_per_node: ${EDM_NPROC_PER_NODE:-1}
+    generate_subdirs: true
+    seeds_start: 0
+    sampler: edm

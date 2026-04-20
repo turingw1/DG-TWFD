@@ -38,6 +38,10 @@ case "${variant}" in
     export FM_CONFIG="configs/experiment/dgtd_cifar10_v3_smoke.yaml"
     exp_prefix="dgtd_cifar10_v3_smoke"
     ;;
+  edm_cifar10_public_eval)
+    export FM_CONFIG="configs/experiment/edm_cifar10_public_eval.yaml"
+    exp_prefix="edm_cifar10_public_eval"
+    ;;
   stable)
     export FM_CONFIG="configs/experiment/fm_cifar10_stable.yaml"
     exp_prefix="fm_cifar10_stable"
@@ -88,6 +92,10 @@ unset ARCHIVE_ROOT
 unset DGFM_ARCHIVE_ROOT
 export TORCH_CACHE_ROOT="${TORCH_CACHE_ROOT:-${PROJ}/.torch}"
 export TORCH_HOME="${TORCH_HOME:-${TORCH_CACHE_ROOT}}"
+export DNNLIB_CACHE_DIR="${DNNLIB_CACHE_DIR:-${TORCH_HOME}/dnnlib}"
+export EDM_CIFAR10_NETWORK="${EDM_CIFAR10_NETWORK:-https://nvlabs-fi-cdn.nvidia.com/edm/pretrained/edm-cifar10-32x32-cond-vp.pkl}"
+export EDM_CIFAR10_FID_REF="${EDM_CIFAR10_FID_REF:-https://nvlabs-fi-cdn.nvidia.com/edm/fid-refs/cifar10-32x32.npz}"
+export EDM_NPROC_PER_NODE="${EDM_NPROC_PER_NODE:-1}"
 export TRAIN_CUDA_VISIBLE_DEVICES="${TRAIN_CUDA_VISIBLE_DEVICES:-0,1}"
 export INFER_CUDA_VISIBLE_DEVICES="${INFER_CUDA_VISIBLE_DEVICES:-0}"
 export NNODES="${NNODES:-1}"
@@ -97,7 +105,7 @@ export MASTER_ADDR="${MASTER_ADDR:-127.0.0.1}"
 export MASTER_PORT="${MASTER_PORT:-29500}"
 mkdir -p "${DATA_ROOT}" "${RUNS_ROOT}" "${EVAL_ROOT}" "${REF_ROOT}" 2>/dev/null || true
 mkdir -p "${CKPT_DIR}" "${SAMPLE_ROOT}" "${LOG_ROOT}" "${METRIC_ROOT}" 2>/dev/null || true
-mkdir -p "${TORCH_HOME}" "${HF_HUB_CACHE}" 2>/dev/null || true
+mkdir -p "${TORCH_HOME}" "${HF_HUB_CACHE}" "${DNNLIB_CACHE_DIR}" 2>/dev/null || true
 
 echo "Activated dgfm experiment"
 echo "  PROJ=${PROJ}"
@@ -123,6 +131,10 @@ echo "  HF_HUB_OFFLINE=${HF_HUB_OFFLINE}"
 echo "  TRANSFORMERS_OFFLINE=${TRANSFORMERS_OFFLINE}"
 echo "  PYTORCH_CUDA_ALLOC_CONF=${PYTORCH_CUDA_ALLOC_CONF}"
 echo "  TORCH_HOME=${TORCH_HOME}"
+echo "  DNNLIB_CACHE_DIR=${DNNLIB_CACHE_DIR}"
+echo "  EDM_CIFAR10_NETWORK=${EDM_CIFAR10_NETWORK}"
+echo "  EDM_CIFAR10_FID_REF=${EDM_CIFAR10_FID_REF}"
+echo "  EDM_NPROC_PER_NODE=${EDM_NPROC_PER_NODE}"
 echo "  TRAIN_CUDA_VISIBLE_DEVICES=${TRAIN_CUDA_VISIBLE_DEVICES}"
 echo "  INFER_CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES}"
 echo "  NNODES=${NNODES}"
