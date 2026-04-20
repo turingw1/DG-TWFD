@@ -148,7 +148,7 @@ CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_sample_dgt
   --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
   --output-dir $SAMPLE_ROOT/steps8 \
-  --steps 8 \
+  --steps 64 \
   --num-samples 64 \
   --fixed-seed 42 \
   2>&1 | tee $SAMPLE_ROOT/steps8.stdout_stderr.txt
