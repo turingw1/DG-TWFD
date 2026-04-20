@@ -107,7 +107,7 @@ CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_edm_cifar1
   2>&1 | tee $METRIC_ROOT/edm_eval.stdout_stderr.txt
 ```
 
-For a quick metric smoke, reduce sample count:
+For a quick sample-only smoke, generate a small visual subset and skip FID:
 
 ```bash
 CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_edm_cifar10_eval.py \
@@ -115,9 +115,39 @@ CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_edm_cifar1
   --sample-root $SAMPLE_ROOT \
   --eval-root $METRIC_ROOT \
   --steps 18 \
-  --num-samples 1024 \
+  --num-samples 64 \
   --batch 64 \
-  2>&1 | tee $METRIC_ROOT/edm_eval_smoke.stdout_stderr.txt
+  --skip-fid \
+  2>&1 | tee $METRIC_ROOT/edm_sample64_steps18.stdout_stderr.txt
+```
+
+For a quick sample + FID plumbing smoke, reduce sample count. This verifies the
+sample/eval path but is not comparable to the paper FID because official EDM
+FID uses 50,000 generated images:
+
+```bash
+CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_edm_cifar10_eval.py \
+  --config $FM_CONFIG \
+  --sample-root $SAMPLE_ROOT \
+  --eval-root $METRIC_ROOT \
+  --steps 18 \
+  --num-samples 512 \
+  --batch 64 \
+  2>&1 | tee $METRIC_ROOT/edm_eval512_steps18.stdout_stderr.txt
+```
+
+For the paper-comparable CIFAR-10 EDM baseline, use `--steps 18`, which is
+NFE 35 under the Heun EDM sampler, and keep 50,000 images:
+
+```bash
+CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_edm_cifar10_eval.py \
+  --config $FM_CONFIG \
+  --sample-root $SAMPLE_ROOT \
+  --eval-root $METRIC_ROOT \
+  --steps 18 \
+  --num-samples 50000 \
+  --batch 64 \
+  2>&1 | tee $METRIC_ROOT/edm_eval50000_steps18.stdout_stderr.txt
 ```
 
 Return:
