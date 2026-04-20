@@ -4,6 +4,7 @@ teacher:
   name_or_path: google/ddpm-cifar10-32
   target_type: trajectory
   local_files_only: false
+  clean_input_range: unit
   solver: ddim
   num_inference_steps: 128
   retain_num_points: 33

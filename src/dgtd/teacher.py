@@ -68,10 +68,15 @@ class TeacherAdapter:
         cond: Tensor | None = None,
         device: torch.device,
     ) -> dict[str, Tensor]:
-        if self.online_teacher is None or not hasattr(self.online_teacher, "sample_trajectory_from_x0"):
+        if self.online_teacher is None:
             raise RuntimeError("Online teacher trajectory sampling is not available")
         u_grid = self.online_u_grid(device=device, dtype=x_0.dtype)
-        traj = self.online_teacher.sample_trajectory_from_x0(x_0=x_0, u_grid=u_grid, device=device)
+        if hasattr(self.online_teacher, "sample_trajectory_from_clean"):
+            traj = self.online_teacher.sample_trajectory_from_clean(x_clean=x_0, u_grid=u_grid, device=device)
+        elif hasattr(self.online_teacher, "sample_trajectory_from_x0"):
+            traj = self.online_teacher.sample_trajectory_from_x0(x_0=x_0, u_grid=u_grid, device=device)
+        else:
+            raise RuntimeError("Online teacher trajectory sampling is not available")
         return build_trajectory_payload(
             times=traj.t_grid,
             states=traj.x_grid,

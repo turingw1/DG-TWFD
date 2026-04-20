@@ -415,11 +415,17 @@ def _diagnoses(
                 or str(teacher_cfg.get("backend", "")).lower() in {"diffusers_ddpm", "ddpm", "diffusers"}
             )
         ):
-            diagnoses.append(
-                "high-priority code audit flag: online teacher data uses dataloader images as the first trajectory state; "
-                "DiffusersDDPMTeacher.sample_trajectory_from_x0 currently rolls that input from u=0/noisy to u=1/clean. "
-                "If the input is a clean dataset image, the model can learn a self-consistent but sampling-invalid trajectory."
-            )
+            if teacher_cfg.get("clean_input_range") is None:
+                diagnoses.append(
+                    "high-priority code audit flag: online teacher data appears to use dataloader images, but "
+                    "teacher.clean_input_range is not set. Verify that clean images are forward-noised before "
+                    "building the u=0 -> u=1 trajectory."
+                )
+            else:
+                diagnoses.append(
+                    "online teacher is configured for clean-image input. Verify endpoint stats: u=0 should be "
+                    "noise-like and u=1 should be image-like, not identical to the dataloader image at u=0."
+                )
 
     if not diagnoses:
         diagnoses.append("no obvious blocker detected from available logs; provide samples/eval metrics for stronger diagnosis.")

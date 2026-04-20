@@ -17,8 +17,9 @@ from dgtd import (
     interpolate_state,
 )
 from dgtd.defect import build_target_density, compute_dgtd_residual
-from dgtd.teacher import CONTINUATION_SOURCE_CACHED_AFFINE, CONTINUATION_SOURCE_ONLINE, build_teacher_adapter
+from dgtd.teacher import CONTINUATION_SOURCE_CACHED_AFFINE, CONTINUATION_SOURCE_ONLINE, TeacherAdapter, build_teacher_adapter
 from dgtd.train_dgtd import DGTDTrainer, select_dgtd_dataloaders
+from dgfm.teachers.diffusers_ddpm import DiffusersDDPMTeacher, TeacherTrajectoryBatch
 
 
 def _dgtd_config(tmp_path: Path) -> dict:
@@ -313,6 +314,60 @@ def test_online_teacher_materialization_and_loader_selection(tmp_path: Path, mon
     assert seen["image"] == 1
     assert seen["cache"] == 0
     assert set(loaders.keys()) == {"train", "val"}
+
+
+class _CleanAwareTeacher:
+    def __init__(self) -> None:
+        self.clean_called = False
+        self.x0_called = False
+
+    def sample_trajectory_from_clean(self, x_clean, u_grid, device):
+        self.clean_called = True
+        u_grid = torch.sort(u_grid.float()).values.to(device)
+        states = []
+        for u in u_grid:
+            states.append((2.0 * x_clean.to(device) - 1.0 + u).detach())
+        return TeacherTrajectoryBatch(t_grid=u_grid.detach().cpu(), x_grid=torch.stack(states, dim=1).detach().cpu())
+
+    def sample_trajectory_from_x0(self, x_0, u_grid, device):
+        self.x0_called = True
+        return TeacherTrajectoryBatch(t_grid=u_grid.detach().cpu(), x_grid=x_0[:, None].detach().cpu())
+
+
+def test_online_teacher_prefers_clean_image_trajectory_api(tmp_path: Path) -> None:
+    cfg = _dgtd_config(tmp_path)
+    teacher = _CleanAwareTeacher()
+    adapter = TeacherAdapter(config=cfg, sigma_schedule=build_sigma_schedule(cfg), online_teacher=teacher)
+    x_clean = torch.full((2, 1, 2, 2), 0.75)
+    traj = adapter.online_trajectory_from_x0(x_clean, device=torch.device("cpu"))
+    assert teacher.clean_called is True
+    assert teacher.x0_called is False
+    assert torch.allclose(traj["states"][:, 0], torch.full((2, 1, 2, 2), 0.5))
+
+
+class _AddNoiseScheduler:
+    def __init__(self) -> None:
+        self.timesteps = torch.tensor([999], dtype=torch.long)
+        self.clean_seen = None
+
+    def add_noise(self, clean, noise, timesteps):
+        self.clean_seen = clean.detach().clone()
+        return noise
+
+
+def test_diffusers_teacher_clean_input_is_mapped_to_teacher_range() -> None:
+    cfg = {
+        "teacher": {"clean_input_range": "unit", "x0_std": 1.0},
+        "dataset": {"channels": 1, "image_size": 1},
+    }
+    teacher = DiffusersDDPMTeacher(cfg)
+    scheduler = _AddNoiseScheduler()
+    teacher.scheduler = scheduler
+    x_clean = torch.tensor([[[[0.0, 0.5, 1.0]]]])
+    noisy = teacher._noisy_start_from_clean(x_clean)
+    assert noisy.shape == x_clean.shape
+    assert scheduler.clean_seen is not None
+    assert torch.allclose(scheduler.clean_seen, torch.tensor([[[[-1.0, 0.0, 1.0]]]]))
 
 
 def test_online_teacher_selection_fails_fast_when_teacher_missing(tmp_path: Path) -> None:

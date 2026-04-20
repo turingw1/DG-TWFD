@@ -83,6 +83,24 @@ class DiffusersDDPMTeacher:
             device=device,
         ) * float(self.teacher_cfg.get("x0_std", 1.0))
 
+    def _clean_to_teacher_range(self, x_clean: Tensor) -> Tensor:
+        input_range = str(self.teacher_cfg.get("clean_input_range", "unit"))
+        if input_range == "unit":
+            return torch.clamp(x_clean, 0.0, 1.0) * 2.0 - 1.0
+        if input_range == "minus_one_one":
+            return torch.clamp(x_clean, -1.0, 1.0)
+        raise ValueError(f"Unsupported teacher.clean_input_range: {input_range}")
+
+    def _noisy_start_from_clean(self, x_clean: Tensor) -> Tensor:
+        assert self.scheduler is not None
+        clean = self._clean_to_teacher_range(x_clean).to(device=x_clean.device)
+        noise = torch.randn_like(clean) * float(self.teacher_cfg.get("x0_std", 1.0))
+        timesteps = self.scheduler.timesteps.to(clean.device)
+        start_timestep = timesteps[0].expand(clean.shape[0])
+        if not hasattr(self.scheduler, "add_noise"):
+            raise RuntimeError("Diffusers scheduler must provide add_noise() for clean-image online trajectories")
+        return self.scheduler.add_noise(clean, noise, start_timestep)
+
     def _noise_time_to_inference_index(self, tau: float) -> int:
         assert self.scheduler is not None
         total = int(self.scheduler.config.num_train_timesteps) - 1
@@ -148,3 +166,15 @@ class DiffusersDDPMTeacher:
             t_grid=u_grid.detach().cpu(),
             x_grid=x_grid.detach().cpu(),
         )
+
+    @torch.no_grad()
+    def sample_trajectory_from_clean(
+        self,
+        x_clean: Tensor,
+        u_grid: Tensor,
+        device: torch.device | str,
+    ) -> TeacherTrajectoryBatch:
+        device = torch.device(device)
+        self.prepare(device)
+        x_start = self._noisy_start_from_clean(x_clean.to(device=device))
+        return self.sample_trajectory_from_x0(x_0=x_start, u_grid=u_grid, device=device)
