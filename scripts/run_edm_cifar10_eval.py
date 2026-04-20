@@ -73,6 +73,8 @@ def _run_and_tee(command: list[str], *, cwd: Path, env: dict[str, str], log_path
 
 
 def _torchrun_command(nproc_per_node: int, script: Path, args: list[str]) -> list[str]:
+    if int(nproc_per_node) <= 1:
+        return [sys.executable, str(script), *args]
     return [
         sys.executable,
         "-m",
