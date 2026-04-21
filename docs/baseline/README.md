@@ -75,10 +75,10 @@ To quickly train an ImageNet64 CTM checkpoint without the GAN stage, use:
 
 ```bash
 conda activate ctm
-export REPO_ROOT=/path/to/DG-TWFD
-export IM64_TEACHER=/path/to/edm_imagenet64_ema.pt
-export IM64_DATA_DIR=/path/to/ILSVRC2012/train
-export IM64_OUT=/path/to/output/CTM_DSM
+export REPO_ROOT=/data2/yl7622/Zhengwei/DG-TWFD
+export IM64_TEACHER=/data2/yl7622/Zhengwei/DG-TWFD/author_ckpt/edm_imagenet64_ema.pt
+export IM64_DATA_DIR=/data2/yl7622/Zhengwei/DG-TWFD/author_ckpt/ILSVRC2012/train
+export IM64_OUT=/data2/yl7622/Zhengwei/output/CTM_DSM
 
 export TRAIN_STEPS=10000
 export SAVE_INTERVAL=1000
