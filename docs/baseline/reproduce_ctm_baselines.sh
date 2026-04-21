@@ -186,6 +186,9 @@ main() {
   need_python_module scipy
   need_python_module torch
   need_python_module torchvision
+  if [[ "$RUN_IM64" == "1" ]]; then
+    need_python_module flash_attn
+  fi
   if [[ "$RUN_EVAL" == "1" && "$RUN_IM64" == "1" ]]; then
     need_python_module tensorflow
   fi

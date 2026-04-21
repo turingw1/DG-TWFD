@@ -51,14 +51,15 @@ sampling. The minimum modules used by the baseline script are:
 
 ```bash
 python -m pip install blobfile mpi4py numpy scipy torch torchvision
+python -m pip install flash-attn --no-build-isolation
 python -m pip install "tensorflow[and-cuda]"
 ```
 
 If your server already provides CUDA-enabled PyTorch through conda or a cluster
 module, keep that PyTorch install and only add missing packages such as
-`blobfile`, `mpi4py`, and `tensorflow`. ImageNet64 training may also require
-`flash-attn` and `xformers`, but the sampling script only checks the modules it
-imports directly.
+`blobfile`, `mpi4py`, `flash-attn`, and `tensorflow`. ImageNet64 imports
+`flash_attn` at module load time, so it is required even when only sampling.
+ImageNet64 training may also require `xformers`.
 
 The script launches one independent `mpiexec -n 1` process per GPU. This is
 intentional: the upstream sampling scripts only save samples from rank 0, so a
