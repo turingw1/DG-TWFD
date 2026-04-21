@@ -16,15 +16,15 @@ cards. The script generates and evaluates 1, 2, 4, and 8 step CTM samples.
 Set these paths before running:
 
 ```bash
-export REPO_ROOT=/path/to/DG-TWFD
+export REPO_ROOT=/data2/yl7622/Zhengwei/DG-TWFD
 
-export CIFAR_CKPT=/path/to/cifar10_ctm_checkpoint.pt
-export CIFAR_REF=/path/to/cifar10-32x32.npz
-export CIFAR_OUT=/path/to/output/cifar10
+export CIFAR_CKPT=/data2/yl7622/Zhengwei/cifar10_ctm_checkpoint.pt
+export CIFAR_REF=/data2/yl7622/Zhengwei/cifar10-32x32.npz
+export CIFAR_OUT=/data2/yl7622/Zhengwei/output/cifar10
 
-export IM64_CKPT=/path/to/imagenet64_ctm_checkpoint.pt
-export IM64_REF=/path/to/VIRTUAL_imagenet64_labeled.npz
-export IM64_OUT=/path/to/output/imagenet64
+export IM64_CKPT=/data2/yl7622/Zhengwei/DG-TWFD/ct_imagenet64.pt
+export IM64_REF=/data2/yl7622/Zhengwei/DG-TWFD/VIRTUAL_imagenet64_labeled.npz
+export IM64_OUT=/data2/yl7622/Zhengwei/output/imagenet64
 ```
 
 Optional controls:
@@ -34,7 +34,7 @@ export STEPS="1 2 4 8"
 export TOTAL_SAMPLES=50000
 export CIFAR_BATCH=1000
 export IM64_BATCH=250
-export RUN_CIFAR=1
+export RUN_CIFAR=0
 export RUN_IM64=1
 export RUN_EVAL=1
 ```
@@ -50,7 +50,7 @@ The script launches one independent `mpiexec -n 1` process per GPU. This is
 intentional: the upstream sampling scripts only save samples from rank 0, so a
 single `mpiexec -n 2` job would waste the second GPU instead of writing twice as
 many samples.
-
+https://drive.usercontent.google.com/download?id=1GQW-iHMpDWQyC2L3LD2m7S2AyHscS4Sp&export=download&authuser=0&confirm=t&uuid=854a8ee3-1385-4c0f-ab0b-d45b2acd0e01&at=ALBwUgloNvAAwbRKIhSpdwLC9sXm:1776790262136
 ## Outputs
 
 For each step, generated samples are written under the CTM script's automatic
