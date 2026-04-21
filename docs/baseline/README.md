@@ -41,6 +41,24 @@ export RUN_EVAL=1
 
 ## Run
 
+For the current ImageNet64-only conda path, use:
+
+```bash
+conda activate ctm
+export REPO_ROOT=/path/to/DG-TWFD
+export IM64_CKPT=/path/to/imagenet64_ctm_checkpoint.pt
+export IM64_REF=/path/to/VIRTUAL_imagenet64_labeled.npz
+export IM64_OUT=/path/to/output/imagenet64
+bash docs/baseline/reproduce_ctm_imagenet64_conda.sh
+```
+
+This path forces `--attention_type=legacy` and the local `refs/ctm/code` import
+now falls back when `flash_attn` or `xformers` is absent. It is slower than
+flash attention but avoids the CUDA toolkit and wheel compatibility issues that
+make conda-only reproduction fragile.
+
+The older combined CIFAR10/ImageNet64 helper is still available:
+
 ```bash
 conda activate consistency
 bash docs/baseline/reproduce_ctm_baselines.sh
