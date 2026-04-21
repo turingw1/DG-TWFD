@@ -18,12 +18,12 @@ Set these paths before running:
 ```bash
 export REPO_ROOT=/data2/yl7622/Zhengwei/DG-TWFD
 
-export CIFAR_CKPT=/data2/yl7622/Zhengwei/cifar10_ctm_checkpoint.pt
+export CIFAR_CKPT=/data2/yl7622/Zhengwei/DG-TWFD/author_ckpt/cifar10_ctm_checkpoint.pt
 export CIFAR_REF=/data2/yl7622/Zhengwei/cifar10-32x32.npz
 export CIFAR_OUT=/data2/yl7622/Zhengwei/output/cifar10
 
-export IM64_CKPT=/data2/yl7622/Zhengwei/DG-TWFD/ct_imagenet64.pt
-export IM64_REF=/data2/yl7622/Zhengwei/DG-TWFD/VIRTUAL_imagenet64_labeled.npz
+export IM64_CKPT=/data2/yl7622/Zhengwei/DG-TWFD/author_ckpt/ct_imagenet64.pt
+export IM64_REF=/data2/yl7622/Zhengwei/DG-TWFD/author_ckpt/VIRTUAL_imagenet64_labeled.npz
 export IM64_OUT=/data2/yl7622/Zhengwei/output/imagenet64
 ```
 
