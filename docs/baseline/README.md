@@ -46,6 +46,20 @@ conda activate consistency
 bash docs/baseline/reproduce_ctm_baselines.sh
 ```
 
+If the environment is missing runtime dependencies, install them before
+sampling. The minimum modules used by the baseline script are:
+
+```bash
+python -m pip install blobfile mpi4py numpy scipy torch torchvision
+python -m pip install "tensorflow[and-cuda]"
+```
+
+If your server already provides CUDA-enabled PyTorch through conda or a cluster
+module, keep that PyTorch install and only add missing packages such as
+`blobfile`, `mpi4py`, and `tensorflow`. ImageNet64 training may also require
+`flash-attn` and `xformers`, but the sampling script only checks the modules it
+imports directly.
+
 The script launches one independent `mpiexec -n 1` process per GPU. This is
 intentional: the upstream sampling scripts only save samples from rank 0, so a
 single `mpiexec -n 2` job would waste the second GPU instead of writing twice as

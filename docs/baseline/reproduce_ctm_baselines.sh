@@ -21,6 +21,21 @@ IM64_BATCH="${IM64_BATCH:-250}"
 CIFAR_OUT="${CIFAR_OUT:-$REPO_ROOT/runs/baseline/ctm_cifar10}"
 IM64_OUT="${IM64_OUT:-$REPO_ROOT/runs/baseline/ctm_imagenet64}"
 
+need_python_module() {
+  local module="$1"
+  python - "$module" <<'PY'
+import importlib
+import sys
+
+module = sys.argv[1]
+try:
+    importlib.import_module(module)
+except Exception as exc:
+    print(f"Missing Python module {module}: {exc}", file=sys.stderr)
+    sys.exit(2)
+PY
+}
+
 need_file() {
   local name="$1"
   local path="$2"
@@ -101,6 +116,7 @@ run_two_gpu_sampling() {
   mkdir -p "$out_root"
   echo "Sampling step=$steps into $(sample_dir "$out_root" "$ckpt" "$steps")"
 
+  local pids=()
   for gpu in $(seq 0 "$((NUM_GPUS - 1))"); do
     (
       cd "$workdir"
@@ -117,8 +133,20 @@ run_two_gpu_sampling() {
         --stochastic_seed=True \
         --use_MPI=True
     ) &
+    pids+=("$!")
   done
-  wait
+
+  local status=0
+  local pid
+  for pid in "${pids[@]}"; do
+    if ! wait "$pid"; then
+      status=1
+    fi
+  done
+  if [[ "$status" != "0" ]]; then
+    echo "Sampling failed for step=$steps. Evaluation was not started." >&2
+    exit "$status"
+  fi
 }
 
 eval_cifar() {
@@ -152,6 +180,15 @@ main() {
   need_dir "CTM CIFAR10 repo" "$CTM_CIFAR_DIR"
   need_dir "CTM ImageNet64 code dir" "$CTM_IM64_DIR"
   command -v mpiexec >/dev/null
+  need_python_module blobfile
+  need_python_module mpi4py
+  need_python_module numpy
+  need_python_module scipy
+  need_python_module torch
+  need_python_module torchvision
+  if [[ "$RUN_EVAL" == "1" && "$RUN_IM64" == "1" ]]; then
+    need_python_module tensorflow
+  fi
 
   if [[ "$RUN_CIFAR" == "1" ]]; then
     need_file "CIFAR_CKPT" "${CIFAR_CKPT:-}"
