@@ -69,6 +69,40 @@ conda activate consistency
 bash docs/baseline/reproduce_ctm_baselines.sh
 ```
 
+## Train CTM+DSM Without GAN
+
+To quickly train an ImageNet64 CTM checkpoint without the GAN stage, use:
+
+```bash
+conda activate ctm
+export REPO_ROOT=/path/to/DG-TWFD
+export IM64_TEACHER=/path/to/edm_imagenet64_ema.pt
+export IM64_DATA_DIR=/path/to/ILSVRC2012/train
+export IM64_OUT=/path/to/output/CTM_DSM
+
+export TRAIN_STEPS=10000
+export SAVE_INTERVAL=1000
+export GLOBAL_BATCH_SIZE=128
+export MICROBATCH=8
+export LR=0.00004
+
+bash docs/baseline/train_ctm_imagenet64_dsm_conda.sh
+```
+
+This explicitly sets `--gan_training=False` and `--diffusion_training=True`.
+It also sets `--eval_interval=-1` and `--save_check_period=-1` by default, so
+training does not spend time sampling/evaluating during the run. Checkpoints are
+saved by `--save_interval` and at the end of training:
+
+```text
+model010000.pt
+ema_0.999_010000.pt
+ema_0.9999_010000.pt
+ema_0.9999432189950708_010000.pt
+opt010000.pt
+target_model010000.pt
+```
+
 If the environment is missing runtime dependencies, install them before
 sampling. The minimum modules used by the baseline script are:
 
