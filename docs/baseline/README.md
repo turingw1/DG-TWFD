@@ -71,13 +71,46 @@ bash docs/baseline/reproduce_ctm_baselines.sh
 
 ## Train CTM+DSM Without GAN
 
+Store ImageNet64 data outside `/data2` if that filesystem is short on space.
+On the current server, use `/data/yl7662/Zhengwei` as the dataset root:
+
+```bash
+export SERVER_ROOT=/data/yl7662/Zhengwei
+export IM64_DATA_ROOT=$SERVER_ROOT/datasets/imagenet64
+export KAGGLE_CONFIG_DIR=$SERVER_ROOT/.kaggle
+
+mkdir -p "$IM64_DATA_ROOT" "$KAGGLE_CONFIG_DIR"
+chmod 700 "$KAGGLE_CONFIG_DIR"
+```
+
+Place `kaggle.json` under `$KAGGLE_CONFIG_DIR/kaggle.json`, then download and
+unzip the dataset:
+
+```bash
+python -m pip install kaggle
+kaggle datasets download -d wangzilin20078/imagenet64 --unzip -p "$IM64_DATA_ROOT"
+```
+
+After unzip, inspect the layout and set `IM64_DATA_DIR` to the directory that
+contains the training images or class subdirectories:
+
+```bash
+find "$IM64_DATA_ROOT" -maxdepth 3 -type d | head -40
+find "$IM64_DATA_ROOT" -maxdepth 3 -type f | head -20
+
+# Common choices, depending on the unzip layout:
+export IM64_DATA_DIR=$IM64_DATA_ROOT/train
+# or:
+# export IM64_DATA_DIR=$IM64_DATA_ROOT
+```
+
 To quickly train an ImageNet64 CTM checkpoint without the GAN stage, use:
 
 ```bash
 conda activate ctm
 export REPO_ROOT=/data2/yl7622/Zhengwei/DG-TWFD
 export IM64_TEACHER=/data2/yl7622/Zhengwei/DG-TWFD/author_ckpt/edm_imagenet64_ema.pt
-export IM64_DATA_DIR=/data2/yl7622/Zhengwei/DG-TWFD/author_ckpt/ILSVRC2012/train
+export IM64_DATA_DIR=/data/yl7662/Zhengwei/datasets/imagenet64/train
 export IM64_OUT=/data2/yl7622/Zhengwei/output/CTM_DSM
 
 export TRAIN_STEPS=10000
