@@ -48,6 +48,35 @@ except Exception as exc:
 PY
 }
 
+validate_ctm_checkpoint() {
+  python - "$IM64_CKPT" <<'PY'
+import sys
+import torch
+
+path = sys.argv[1]
+state = torch.load(path, map_location="cpu")
+if isinstance(state, dict) and "state_dict" in state and isinstance(state["state_dict"], dict):
+    state = state["state_dict"]
+if not isinstance(state, dict):
+    print(f"Checkpoint is not a state_dict: {path}", file=sys.stderr)
+    sys.exit(2)
+
+required = [
+    "time_embed_s.0.weight",
+    "time_embed_s.2.weight",
+    "middle_block.0.emb_layers_s.1.weight",
+]
+missing = [key for key in required if key not in state]
+if missing:
+    print("IM64_CKPT does not look like a CTM ImageNet64 checkpoint.", file=sys.stderr)
+    print(f"Path: {path}", file=sys.stderr)
+    print("Missing CTM-specific keys:", ", ".join(missing), file=sys.stderr)
+    print("Use an ImageNet64 CTM checkpoint such as an ema_0.999_XXXXXX.pt file.", file=sys.stderr)
+    print("Do not use edm_imagenet64_ema.pt or cd_imagenet64_lpips.pt with this CTM runner.", file=sys.stderr)
+    sys.exit(2)
+PY
+}
+
 sample_count_per_gpu() {
   python - "$TOTAL_SAMPLES" "$NUM_GPUS" <<'PY'
 import math
@@ -170,6 +199,7 @@ main() {
   if [[ "$RUN_EVAL" == "1" ]]; then
     need_python_module tensorflow
   fi
+  validate_ctm_checkpoint
 
   for steps in $STEPS; do
     if [[ "$RUN_SAMPLE" == "1" ]]; then

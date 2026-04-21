@@ -52,6 +52,11 @@ export IM64_OUT=/path/to/output/imagenet64
 bash docs/baseline/reproduce_ctm_imagenet64_conda.sh
 ```
 
+`IM64_CKPT` must be an ImageNet64 CTM checkpoint, typically named like
+`ema_0.999_XXXXXX.pt`. Do not point this runner at `edm_imagenet64_ema.pt` or
+`cd_imagenet64_lpips.pt`; those checkpoints do not contain the CTM-specific
+`time_embed_s` and `emb_layers_s` weights required by `--training_mode=ctm`.
+
 This path forces `--attention_type=legacy` and the local `refs/ctm/code` import
 now falls back when `flash_attn` or `xformers` is absent. It is slower than
 flash attention but avoids the CUDA toolkit and wheel compatibility issues that
