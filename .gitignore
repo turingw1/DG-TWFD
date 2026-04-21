@@ -15,10 +15,12 @@ __pycache__/
 .venv/
 venv/
 env/
+.conda_envs/
 
 # IDE/editor files
 .vscode/
 .idea/
+.DS_Store
 *.swp
 *.swo
 
@@ -31,6 +33,9 @@ dist/
 artifacts/
 checkpoints/
 checkpoints_*/
+datasets/
+eval/
+runs/
 vis_out/
 
 # Teacher trajectory shards and large tensors
@@ -43,3 +48,6 @@ wandb/
 tensorboard/
 outputs/
 public_repos/
+refs/
+.hf_home/
+.torch/

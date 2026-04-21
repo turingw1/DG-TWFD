@@ -4,7 +4,7 @@
 
 This document defines the stable server-side execution flow for online-mainline
 DGTD v3. Select an experiment from
-[EXPERIMENT_LOG.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/DG_TWFD_v3/EXPERIMENT_LOG.md),
+[EXPERIMENT_LOG.md](../../../docs/experiments/DG_TWFD_v3/EXPERIMENT_LOG.md),
 activate it once, then run the unified command families below.
 
 ## 2. Environment
@@ -25,7 +25,7 @@ logic below.
 ## 3. Activate experiment
 
 Pick one row from
-[EXPERIMENT_LOG.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/DG_TWFD_v3/EXPERIMENT_LOG.md)
+[EXPERIMENT_LOG.md](../../../docs/experiments/DG_TWFD_v3/EXPERIMENT_LOG.md)
 and source it once.
 
 ### Short run

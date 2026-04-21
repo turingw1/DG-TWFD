@@ -7,10 +7,10 @@ Rules:
 
 - every formal run must map to one committed config under `configs/experiment/`
 - activate experiments only through
-  [activate_fm_cifar10.sh](/home/gzwlinux/vscode/gitProject/DG-TWFD/scripts/experiments/activate_fm_cifar10.sh)
+  [activate_fm_cifar10.sh](../../../scripts/experiments/activate_fm_cifar10.sh)
 - do not use `--set` in formal runs
 - use the stable command families from
-  [PIPELINE.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/DG_TWFD_v3/PIPELINE.md)
+  [PIPELINE.md](../../../docs/experiments/DG_TWFD_v3/PIPELINE.md)
 - `EXP_LOG.md` defines the run identity, config choice, and experiment-specific
   purpose
 - `PIPELINE.md` defines the concrete train / sample / eval execution steps

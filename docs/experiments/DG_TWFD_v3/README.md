@@ -1,7 +1,7 @@
 # DG_TWFD_v3
 
-This directory is the branch-facing documentation entry for the `DG_TWFD_v3`
-reconstruction.
+This directory is the branch-facing documentation entry for the active
+`DG_TWFD_v3` implementation.
 
 ## Scope
 
@@ -12,7 +12,8 @@ reconstruction.
 - active time warp:
   - `scheduler.timewarp.type=dgtd_density`
 - active teacher source:
-  - offline trajectory cache under `target.shard_root`
+  - online teacher data and online trajectory anchors
+  - cached trajectory continuation only as fallback
 - preserved infrastructure:
   - dataset loading
   - distributed/server workflow
@@ -20,41 +21,43 @@ reconstruction.
 
 ## Reading order
 
-1. [reconstruction_v3.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/DG_TWFD_v3/reconstruction_v3.md)
-2. [CHECKLIST.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/DG_TWFD_v3/CHECKLIST.md)
-3. [DEVELOPMENT_VALIDATION.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/DG_TWFD_v3/DEVELOPMENT_VALIDATION.md)
-4. [../map_branch/HANDOFF_2026-04-16.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/HANDOFF_2026-04-16.md)
-5. [../map_branch/baseline/current_losses.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/baseline/current_losses.md)
-6. [../map_branch/teacher/teacher_entry.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/teacher/teacher_entry.md)
-7. [../map_branch/teacher/cache_schema.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/teacher/cache_schema.md)
-8. [../map_branch/A100_PIPELINE.md](/home/gzwlinux/vscode/gitProject/DG-TWFD/docs/experiments/map_branch/A100_PIPELINE.md)
+1. [../../ACTIVE_CONTEXT.md](../../ACTIVE_CONTEXT.md)
+2. [HANDOFF_2026-04-20.md](HANDOFF_2026-04-20.md)
+3. [PIPELINE.md](PIPELINE.md)
+4. [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md)
+5. [PAPER_EXPERIMENT_TARGETS.md](PAPER_EXPERIMENT_TARGETS.md)
+6. [ARCHITECTURE_AND_IMPLEMENTATION.md](ARCHITECTURE_AND_IMPLEMENTATION.md)
 
 ## Documentation roles
 
-- `CHECKLIST.md`:
-  - tracks completion state
-  - stays concise and result-oriented
-- `DEVELOPMENT_VALIDATION.md`:
-  - contains smoke commands and temporary deployment checks
-  - is allowed to be noisy and iterative
-- final `EXP_LOG` and final pipeline docs:
-  - should not absorb temporary smoke/debug content
-  - should record only accepted commands, measured results, and decisions
+- `HANDOFF_2026-04-20.md`:
+  - current project state, rules, and implementation lineage
+- `PIPELINE.md`:
+  - stable server command families after experiment activation
+- `EXPERIMENT_LOG.md`:
+  - accepted experiment rows, tags, commands, and return fields
+- `PAPER_EXPERIMENT_TARGETS.md`:
+  - paper-facing experiment tables and baseline data plan
+- `ARCHITECTURE_AND_IMPLEMENTATION.md`:
+  - implementation details for the active DGTD stack
+
+Archived context lives under `docs/archive/context_noise_2026-04-21/` and is
+not part of the default reading set.
 
 ## Active code entrypoints
 
 - trainer:
-  - [src/dgtd/train_dgtd.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dgtd/train_dgtd.py)
+  - [../../../src/dgtd/train_dgtd.py](../../../src/dgtd/train_dgtd.py)
 - warp:
-  - [src/dgtd/warp.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dgtd/warp.py)
+  - [../../../src/dgtd/warp.py](../../../src/dgtd/warp.py)
 - defect:
-  - [src/dgtd/defect.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dgtd/defect.py)
+  - [../../../src/dgtd/defect.py](../../../src/dgtd/defect.py)
 - cache:
-  - [src/dgtd/cache.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dgtd/cache.py)
+  - [../../../src/dgtd/cache.py](../../../src/dgtd/cache.py)
 - sampling:
-  - [src/dgtd/sample_dgtd.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dgtd/sample_dgtd.py)
+  - [../../../src/dgtd/sample_dgtd.py](../../../src/dgtd/sample_dgtd.py)
 - eval dispatch:
-  - [src/dgfm/evaluators/common.py](/home/gzwlinux/vscode/gitProject/DG-TWFD/src/dgfm/evaluators/common.py)
+  - [../../../src/dgfm/evaluators/common.py](../../../src/dgfm/evaluators/common.py)
 
 ## Active commands
 
