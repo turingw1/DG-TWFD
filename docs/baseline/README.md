@@ -76,7 +76,7 @@ short on space. On the current server, use `/homes/yl7622/Zhengwei` as the
 dataset root:
 
 ```bash
-export SERVER_ROOT=/homes/yl7622/Zhengwei
+export SERVER_ROOT=/data2/yl7622/Zhengwei
 export IM64_DATA_ROOT=$SERVER_ROOT/datasets/imagenet64
 export KAGGLE_CONFIG_DIR=$SERVER_ROOT/.kaggle
 
