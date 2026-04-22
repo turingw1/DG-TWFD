@@ -2,19 +2,18 @@
 set -euo pipefail
 
 # Train an ImageNet64 CTM+DSM checkpoint without GAN using the conda runtime.
-# Required:
-#   IM64_TEACHER=/path/to/edm_imagenet64_ema.pt
-#   IM64_DATA_DIR=/path/to/ILSVRC2012/train
-# Optional:
-#   IM64_REF=/path/to/VIRTUAL_imagenet64_labeled.npz
-#   IM64_OUT=/path/to/output/CTM_DSM
+# Defaults match the current server layout and can be overridden with env vars.
 
 REPO_ROOT="${REPO_ROOT:-$(pwd)}"
 CTM_IM64_DIR="${CTM_IM64_DIR:-$REPO_ROOT/refs/ctm/code}"
+SERVER_HOME_ROOT="${SERVER_HOME_ROOT:-/homes/yl7622/Zhengwei}"
+SERVER_PROJECT_ROOT="${SERVER_PROJECT_ROOT:-/data2/yl7622/Zhengwei}"
 
 NUM_GPUS="${NUM_GPUS:-2}"
-IM64_OUT="${IM64_OUT:-$REPO_ROOT/runs/baseline/ctm_imagenet64_dsm}"
-IM64_REF="${IM64_REF:-}"
+IM64_TEACHER="${IM64_TEACHER:-$REPO_ROOT/author_ckpt/edm_imagenet64_ema.pt}"
+IM64_REF="${IM64_REF:-$REPO_ROOT/author_ckpt/VIRTUAL_imagenet64_labeled.npz}"
+IM64_DATA_DIR="${IM64_DATA_DIR:-$SERVER_HOME_ROOT/datasets/imagenet64/train}"
+IM64_OUT="${IM64_OUT:-$SERVER_PROJECT_ROOT/output/CTM_DSM}"
 RESUME_CHECKPOINT="${RESUME_CHECKPOINT:-}"
 
 TRAIN_STEPS="${TRAIN_STEPS:-10000}"
@@ -86,13 +85,11 @@ main() {
   mkdir -p "$IM64_OUT"
   echo "Training ImageNet64 CTM+DSM without GAN"
   echo "Output: $IM64_OUT"
+  echo "Teacher: $IM64_TEACHER"
+  echo "Reference stats: $IM64_REF"
+  echo "Data: $IM64_DATA_DIR"
   echo "Steps: $TRAIN_STEPS, save_interval: $SAVE_INTERVAL"
   echo "Global batch: $GLOBAL_BATCH_SIZE, microbatch: $MICROBATCH, lr: $LR"
-
-  local ref_flags=()
-  if [[ -n "$IM64_REF" ]]; then
-    ref_flags+=(--ref_path "$IM64_REF")
-  fi
 
   local resume_flags=()
   if [[ -n "$RESUME_CHECKPOINT" ]]; then
@@ -108,6 +105,7 @@ main() {
       --num_classes=1000 \
       --teacher_model_path "$IM64_TEACHER" \
       --data_dir "$IM64_DATA_DIR" \
+      --ref_path "$IM64_REF" \
       --out_dir "$IM64_OUT" \
       --training_mode=ctm \
       --gan_training=False \
@@ -128,7 +126,6 @@ main() {
       --ema_rate "$EMA_RATE" \
       --use_MPI=True \
       --num_workers "$NUM_WORKERS" \
-      "${ref_flags[@]}" \
       "${resume_flags[@]}"
   )
 
