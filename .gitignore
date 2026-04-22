@@ -48,6 +48,8 @@ wandb/
 tensorboard/
 outputs/
 public_repos/
-refs/
+refs/*
+!refs/ctm/
+!refs/ctm-cifar10/
 .hf_home/
 .torch/
