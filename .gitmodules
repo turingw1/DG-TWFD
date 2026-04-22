@@ -1,0 +1,6 @@
+[submodule "refs/ctm"]
+	url = https://github.com/turingw1/ctm.git
+	path = refs/ctm
+[submodule "refs/ctm-cifar10"]
+	path = refs/ctm-cifar10
+	url = https://github.com/turingw1/ctm-cifar10.git
