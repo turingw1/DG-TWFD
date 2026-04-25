@@ -1,0 +1,8 @@
+base: configs/experiment/dgtd_cifar10_v3_probe_fast_teacher.yaml
+
+experiment:
+  name: dgtd_cifar10_v3_probe_fast_teacher_no_warp
+
+dgtd:
+  disable_warp: true
+  uniform_time: true

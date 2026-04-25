@@ -763,10 +763,15 @@ class DGTDTrainer:
             if ckpt.get("scaler") is not None and scaler.is_enabled():
                 scaler.load_state_dict(ckpt["scaler"])
 
-        epochs = int(self.config["train"].get("epochs", 1))
+        train_cfg = self.config["train"]
+        epochs = int(train_cfg.get("epochs", 1))
         history_path = self.roots.log_dir / "train.jsonl"
         completed_epochs, total_elapsed_sec = _load_elapsed_history(history_path)
-        total_steps = epochs * max(1, len(dataloaders["train"]))
+        train_batches_per_epoch = max(1, len(dataloaders["train"]))
+        max_train_batches = int(train_cfg.get("max_train_batches", 0) or 0)
+        if max_train_batches > 0:
+            train_batches_per_epoch = min(train_batches_per_epoch, max_train_batches)
+        total_steps = epochs * train_batches_per_epoch
         for epoch in range(start_epoch, epochs):
             set_dataloader_epoch(dataloaders["train"], epoch)
             set_dataloader_epoch(dataloaders["val"], epoch)

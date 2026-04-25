@@ -45,3 +45,39 @@ Then inspect the relevant code/config files directly.
 - Diagnostic config: `configs/experiment/dgtd_cifar10_v3_diag.yaml`
 - Teacher endpoint diagnostic: `scripts/diagnose_teacher_endpoints.py`
 - Run analysis gate: `scripts/analyze_dgtd_run.py`
+
+## Latest Empirical State
+
+As of 2026-04-26, the DGTD v3 result-first loop is functional but the mainline
+is not yet producing usable CIFAR-10 samples.
+
+- `e405b` fast-teacher warped probe:
+  - config: `configs/experiment/dgtd_cifar10_v3_probe_fast_teacher.yaml`
+  - run: `runs/dgtd_cifar10_v3_probe_fast_teacher_e405b`
+  - eval: `eval/dgtd_cifar10_v3_probe_fast_teacher_e405b`
+  - best approximate FID@512: `373.26` at 2 steps
+  - gate failure: `sample_not_noise_like`
+- `e406a` fast-teacher no-warp control:
+  - config: `configs/experiment/dgtd_cifar10_v3_probe_fast_teacher_no_warp.yaml`
+  - run: `runs/dgtd_cifar10_v3_probe_fast_teacher_no_warp_e406a`
+  - eval: `eval/dgtd_cifar10_v3_probe_fast_teacher_no_warp_e406a`
+  - best approximate FID@512: `386.56` at 2 steps
+  - gate failure: `sample_not_noise_like`
+- `e407a` stronger endpoint-anchor long probe:
+  - config: `configs/experiment/dgtd_cifar10_v3_probe_anchor1_long.yaml`
+  - run: `runs/dgtd_cifar10_v3_probe_anchor1_long_e407a`
+  - eval: `eval/dgtd_cifar10_v3_probe_anchor1_long_e407a`
+  - best approximate FID@1024: `427.45` at 8 steps
+  - gate failure: `sample_not_noise_like`
+
+Operational conclusions:
+
+- Do not launch `e402a` full training yet.
+- The previous short-budget scheduler stayed in warmup because trainer
+  `total_steps` ignored `train.max_train_batches`; this is fixed in
+  `src/dgtd/train_dgtd.py`.
+- Online teacher endpoint order is correct and online continuation is dominant.
+- Learned warp is stable and slightly better than no-warp, but it is not the
+  current bottleneck.
+- Current failure is objective/data-coverage level: training losses and defects
+  improve while pure-noise rollout samples remain noise-like.

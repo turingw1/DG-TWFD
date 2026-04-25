@@ -1,0 +1,18 @@
+base: configs/experiment/dgtd_cifar10_v3_probe_fast_teacher.yaml
+
+experiment:
+  name: dgtd_cifar10_v3_probe_anchor1_long
+
+train:
+  epochs: 10
+  batch_size: 128
+  max_train_batches: 32
+  max_val_batches: 8
+
+eval:
+  num_fid_samples: 1024
+  fid_batch_size: 64
+  sample_batch_size: 64
+
+dgtd:
+  endpoint_anchor_weight: 1.0
