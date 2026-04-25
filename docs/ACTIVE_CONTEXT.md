@@ -105,6 +105,15 @@ EDM-first continuous-teacher evidence:
   - eval: `eval/edm_cifar10_public_eval_e501ref`
   - official-protocol FID@1024 for sampler steps `1/2/4/8`:
     `679.611 / 473.607 / 115.246 / 33.0675`
+- `e502a` extended continuation:
+  - run: `runs/edm_first_cifar10_warp_e502a`
+  - eval: `eval/edm_first_cifar10_warp_e502a`
+  - resumed from `e501a` best, batch size 128, stopped after the step-5000
+    checkpoint for evaluation
+  - approx FID@2048 learned warp for `1/2/4/8` steps:
+    `337.45 / 151.78 / 56.76 / 35.67`
+  - approx FID@2048 identity clock for `1/2/4/8` steps:
+    `337.45 / 140.76 / 54.24 / 26.89`
 
 Current algorithm judgement:
 
@@ -114,5 +123,7 @@ Current algorithm judgement:
 - EDM-first is now the main path because continuous sigma transitions produce
   usable samples immediately and let time warp operate on a meaningful
   continuous domain.
-- Time warp remains mandatory: it helps at 2 and 4 steps, is slightly worse at
-  8 steps, and should be upgraded into a step-budget-aware schedule component.
+- Time warp remains mandatory, but the current passive defect-density warp is
+  not yet the right mechanism: it helped `e501a` at 2/4 steps, but `e502a`
+  identity-clock eval beat learned warp at 2/4/8 steps. Upgrade it into a
+  step-budget-aware schedule component.

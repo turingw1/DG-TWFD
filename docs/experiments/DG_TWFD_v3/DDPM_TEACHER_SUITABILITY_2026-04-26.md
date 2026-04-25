@@ -64,6 +64,8 @@ density from normalized defect.
 | `e500c` | 20-step smoke, learned warp | 128 | clear non-noise CIFAR-like samples; approx FID improves with steps |
 | `e501a` | 2000-step EDM-first learned-warp train | 1024 | approx FID `339.01/106.23/53.83/39.46` at `1/2/4/8` steps |
 | `e501a-identity` | same checkpoint, identity clock | 1024 | approx FID `339.01/124.48/61.10/38.84` at `1/2/4/8` steps |
+| `e502a` | continued from `e501a` best, batch 128, stopped at step 5000 checkpoint | 2048 | learned-warp approx FID `337.45/151.78/56.76/35.67` at `1/2/4/8` steps |
+| `e502a-identity` | same `e502a` checkpoint, identity clock | 2048 | approx FID `337.45/140.76/54.24/26.89` at `1/2/4/8` steps |
 | `e501ref` | official EDM checkpoint, official sampler/protocol | 1024 | FID `679.611/473.607/115.246/33.0675` at `1/2/4/8` sampler steps |
 
 The official EDM reference uses a different sampler and official FID reference,
@@ -74,18 +76,25 @@ comparison with the torch-fidelity student metrics.
 
 Time warp should stay in the final architecture.
 
-Current learned warp is already useful at low step counts:
+In the first `e501a` checkpoint, learned warp was useful at low step counts:
 
 - 2 steps: learned warp `106.23` vs identity `124.48`
 - 4 steps: learned warp `53.83` vs identity `61.10`
 
-At 8 steps it is slightly worse than identity:
+At 8 steps it was slightly worse than identity:
 
 - 8 steps: learned warp `39.46` vs identity `38.84`
 
-This means the current warp is not yet globally optimal, but it is not a failed
-component. The next warp work should make the warp step-budget-aware and
-schedule-aware instead of only learning a passive defect density.
+The continued `e502a` checkpoint made the limitation clearer:
+
+- 2 steps: learned warp `151.78` vs identity `140.76`
+- 4 steps: learned warp `56.76` vs identity `54.24`
+- 8 steps: learned warp `35.67` vs identity `26.89`
+
+This means time warp should remain in the architecture, but the current
+passive defect-density warp is not robust enough. The next warp implementation
+should be step-budget-aware and schedule-search-like, closer in spirit to an
+OSS/AYS schedule layer over the EDM explicit map.
 
 ## Plan Change
 
@@ -110,6 +119,9 @@ Primary evidence paths:
 - learned-warp eval: `eval/edm_first_cifar10_warp_e501a`
 - identity-clock eval: `eval/edm_first_cifar10_identity_e501a`
 - official EDM reference: `eval/edm_cifar10_public_eval_e501ref`
+- extended run: `runs/edm_first_cifar10_warp_e502a`
+- extended learned-warp eval: `eval/edm_first_cifar10_warp_e502a`
+- extended identity-clock eval: `eval/edm_first_cifar10_identity_e502a`
 
 Critical checkpoint and summaries are backed up under:
 

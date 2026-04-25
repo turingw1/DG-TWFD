@@ -1,0 +1,33 @@
+experiment:
+  name: cifar10_edm_map_identity_eval_2048
+
+paths:
+  data_root: ${DATA_ROOT:-datasets}/cifar10
+  network: ${EDM_CIFAR10_NETWORK:-https://nvlabs-fi-cdn.nvidia.com/edm/pretrained/edm-cifar10-32x32-cond-vp.pkl}
+  fid_stats: ${DATA_ROOT:-datasets}/cifar10/.dgfm_cache/fid_stats_cifar10_test_32_torch_fidelity_inceptionv3_2048.npz
+
+runtime:
+  device: cuda
+  amp: false
+  seed: 42
+
+teacher:
+  use_fp16: true
+
+train:
+  sigma_min: 0.002
+  sigma_max: 80.0
+  rho: 7.0
+
+timewarp:
+  enabled: false
+  num_bins: 32
+  init: uniform
+
+eval:
+  steps: [1, 2, 4, 8]
+  num_fid_samples: 2048
+  fid_batch_size: 64
+  sample_batch_size: 64
+  fixed_grid_size: 64
+  fixed_seed: 42

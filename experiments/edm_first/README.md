@@ -66,6 +66,15 @@ bash experiments/edm_first/scripts/launch_all.sh \
   edm_first_cifar10_warp_e501a
 ```
 
+Extended continuation:
+
+```bash
+bash experiments/edm_first/scripts/launch_train.sh \
+  experiments/edm_first/configs/cifar10_edm_map_warp_8h_b128.yaml \
+  edm_first_cifar10_warp_e502a \
+  runs/edm_first_cifar10_warp_e501a/checkpoints/best.pt
+```
+
 Outputs:
 
 - training run: `runs/<tag>`
@@ -99,3 +108,30 @@ Identity-clock eval on the same checkpoint:
 
 Current verdict: learned time warp helps low-step schedules, but the 8-step
 schedule needs a step-budget-aware warp objective.
+
+`edm_first_cifar10_warp_e502a` resumed from the `e501a` best checkpoint with
+batch size 128. GPU memory use was about 64.7GB on A100 80GB. It was stopped
+after the step-5000 checkpoint to evaluate before spending the full 8-hour
+budget.
+
+Learned-warp eval, 2048 samples:
+
+| Steps | Approx FID |
+| --- | ---: |
+| 1 | 337.45 |
+| 2 | 151.78 |
+| 4 | 56.76 |
+| 8 | 35.67 |
+
+Identity-clock eval on the same checkpoint, 2048 samples:
+
+| Steps | Approx FID |
+| --- | ---: |
+| 1 | 337.45 |
+| 2 | 140.76 |
+| 4 | 54.24 |
+| 8 | 26.89 |
+
+Updated verdict: the continuous EDM map is viable, but the current learned warp
+is not robust. Keep time warp in the architecture, but replace the passive
+defect-density schedule with a step-budget-aware schedule objective.

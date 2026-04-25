@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import signal
 import shutil
 import time
 from pathlib import Path
@@ -127,8 +128,17 @@ def main() -> None:
     history_path = log_dir / "train.jsonl"
     start_time = time.time()
     last_log = {}
+    stop_requested = {"value": False}
+
+    def _request_stop(_signum, _frame) -> None:
+        stop_requested["value"] = True
+
+    signal.signal(signal.SIGINT, _request_stop)
+    signal.signal(signal.SIGTERM, _request_stop)
 
     for step in range(start_step + 1, max_steps + 1):
+        if stop_requested["value"]:
+            break
         if max_seconds > 0.0 and time.time() - start_time >= max_seconds:
             break
         try:
@@ -224,7 +234,7 @@ def main() -> None:
                 flush=True,
             )
 
-        should_save = step % save_every == 0 or step == max_steps
+        should_save = step % save_every == 0 or step == max_steps or stop_requested["value"]
         if should_save:
             ckpt = {
                 "step": step,
