@@ -12,6 +12,7 @@ from dgfm.models import build_map_model
 from dgfm.paths import build_path
 from dgfm.schedulers import TimeWarpMonotone
 from dgfm.targets import build_target_builder
+from dgtd.sample_dgtd import load_time_grid_from_schedule, save_schedule, search_oss_time_grid
 
 
 def _map_config() -> dict:
@@ -163,3 +164,31 @@ def test_load_timewarp_from_checkpoint_restores_learned_state(tmp_path) -> None:
     linear = torch.linspace(0.0, 1.0, steps=5)
     warped = restored(linear)
     assert not torch.allclose(warped, linear)
+
+
+def test_oss_schedule_search_exports_valid_grid(tmp_path) -> None:
+    x_search = torch.zeros(3, 1, 2, 2)
+    time_grid, payload = search_oss_time_grid(
+        model=_ToyMap(),
+        x_search=x_search,
+        step_count=2,
+        reference_steps=4,
+        cost_batch_size=2,
+    )
+    assert payload["status"] == "ok"
+    assert payload["step_count"] == 2
+    assert time_grid.shape == (3,)
+    assert torch.all(time_grid[1:] >= time_grid[:-1])
+    assert time_grid[0].item() == pytest.approx(0.0)
+    assert time_grid[-1].item() == pytest.approx(1.0)
+
+    schedule_path = tmp_path / "oss_schedule_steps2.json"
+    save_schedule(payload, schedule_path)
+    restored, restored_payload = load_time_grid_from_schedule(
+        schedule_path,
+        step_count=2,
+        device=torch.device("cpu"),
+        dtype=torch.float32,
+    )
+    assert restored_payload["mode"] == "oss_schedule_search"
+    assert torch.allclose(restored, time_grid.cpu(), atol=1e-6)

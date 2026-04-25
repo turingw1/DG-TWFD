@@ -75,6 +75,53 @@ class EvaluationRunner:
         configured = int(eval_cfg.get("fixed_grid_batch_size", 0) or 0)
         return configured if configured > 0 else sample_batch_size
 
+    def _schedule_path_for_step(self, step_count: int) -> Path | None:
+        eval_cfg = self._eval_cfg()
+        explicit = eval_cfg.get("time_grid_json")
+        if explicit:
+            return Path(str(explicit))
+        schedule_dir = eval_cfg.get("time_grid_dir")
+        if not schedule_dir:
+            return None
+        root = Path(str(schedule_dir))
+        candidates = [
+            root / f"oss_schedule_steps{step_count}.json",
+            root / f"schedule_steps{step_count}.json",
+            root / f"steps{step_count}.json",
+        ]
+        for path in candidates:
+            if path.exists():
+                return path
+        return None
+
+    def _runtime_time_grid(
+        self,
+        *,
+        step_count: int,
+        device: torch.device,
+        dtype: torch.dtype,
+        timewarp,
+    ) -> tuple[torch.Tensor, str, str | None]:
+        schedule_path = self._schedule_path_for_step(step_count)
+        if schedule_path is not None:
+            from dgtd.sample_dgtd import load_time_grid_from_schedule
+
+            time_grid, _ = load_time_grid_from_schedule(
+                schedule_path,
+                step_count=step_count,
+                device=device,
+                dtype=dtype,
+            )
+            return time_grid, "json_schedule", str(schedule_path)
+        time_grid = build_runtime_time_grid(
+            config=self.config,
+            step_count=step_count,
+            device=device,
+            dtype=dtype,
+            timewarp=timewarp,
+        )
+        return time_grid, "default", None
+
     def _save_fixed_grid(
         self,
         model,
@@ -84,6 +131,7 @@ class EvaluationRunner:
         step_dir: Path,
         solver_method: str,
         sample_batch_size: int,
+        time_grid: torch.Tensor,
     ) -> dict:
         eval_cfg = self._eval_cfg()
         fixed_seed = int(eval_cfg.get("fixed_seed", 42))
@@ -100,6 +148,7 @@ class EvaluationRunner:
             x_init=noise,
             step_count=step_count,
             method=solver_method,
+            time_grid=time_grid,
             timewarp=timewarp,
             max_batch_size=self._fixed_grid_batch_size(sample_batch_size),
             move_to_cpu=True,
@@ -149,6 +198,12 @@ class EvaluationRunner:
             step_dir.mkdir(parents=True, exist_ok=True)
             t0 = time.time()
             nfe = solver_nfe(step_count=step_count, method=solver_method, mode=mode)
+            time_grid, time_grid_source, schedule_path = self._runtime_time_grid(
+                step_count=step_count,
+                device=device,
+                dtype=torch.float32,
+                timewarp=timewarp,
+            )
 
             def sample_fn(batch_size: int) -> torch.Tensor:
                 noise = torch.randn(batch_size, channels, image_size, image_size, device=device)
@@ -160,6 +215,7 @@ class EvaluationRunner:
                         x_init=noise,
                         step_count=step_count,
                         method=solver_method,
+                        time_grid=time_grid,
                         timewarp=timewarp,
                         max_batch_size=sample_batch_size,
                         extra={"label": labels} if labels is not None else None,
@@ -182,16 +238,10 @@ class EvaluationRunner:
                 step_dir=step_dir,
                 solver_method=solver_method,
                 sample_batch_size=sample_batch_size,
+                time_grid=time_grid,
             )
             elapsed = time.time() - t0
             save_stats(step_dir / "generated_stats.npz", fake_stats)
-            time_grid = build_runtime_time_grid(
-                config=self.config,
-                step_count=step_count,
-                device=device,
-                dtype=torch.float32,
-                timewarp=timewarp,
-            )
             record = {
                 "step_count": step_count,
                 "integration_steps": step_count,
@@ -211,6 +261,8 @@ class EvaluationRunner:
                 "elapsed_sec": elapsed,
                 "samples_per_sec": fid_samples / max(elapsed, 1.0e-8),
                 "timewarp_enabled": timewarp is not None,
+                "time_grid_source": time_grid_source,
+                "time_grid_json": schedule_path,
                 **summarize_time_grid(time_grid),
                 **grid_meta,
             }

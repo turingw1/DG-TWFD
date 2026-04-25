@@ -1,0 +1,19 @@
+base: configs/experiment/dgtd_cifar10_v3.yaml
+
+experiment:
+  name: dgtd_cifar10_v3_oss_baseline
+
+eval:
+  step_counts: [2, 4, 8]
+  num_fid_samples: 512
+  fid_batch_size: 64
+  sample_batch_size: 64
+  fixed_grid_size: 64
+  fixed_grid_batch_size: 64
+  dump_image_count: 64
+
+oss:
+  reference_steps: 32
+  search_batch_size: 256
+  search_cost_batch_size: 64
+  cost: student_rollout_state_mse

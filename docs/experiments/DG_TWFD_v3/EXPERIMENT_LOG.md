@@ -64,17 +64,30 @@ Current policy:
 | Group | EXP_TAG | EXP_VARIANT | FM_CONFIG | Activate | Purpose | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | E4 | e401a | `dgtd_v3_smoke` | `configs/experiment/dgtd_cifar10_v3_smoke.yaml` | `source scripts/experiments/activate_fm_cifar10.sh dgtd_v3_smoke e401a` | short-run online-mainline acceptance: verify training, checkpointing, online continuation source, sample, and eval all work end to end | ready |
+| E4 | e401b | `dgtd_v3_diag` | `configs/experiment/dgtd_cifar10_v3_diag.yaml` | `source scripts/experiments/activate_fm_cifar10.sh dgtd_v3_diag e401b` | fixed-budget diagnostic loop: 3 epochs, max 200 train batches, max 50 val batches, 512-sample eval, endpoint teacher report, gate analysis for `1 2 4 8` | ready |
 | E4 | e402a | `dgtd_v3` | `configs/experiment/dgtd_cifar10_v3.yaml` | `source scripts/experiments/activate_fm_cifar10.sh dgtd_v3 e402a` | primary full run: online-mainline DGTD v3 main convergence run with higher-memory throughput-tuned training and few-step quality curve | ready |
-| E4 | e403a | `dgtd_cifar10_v3_ablation_no_warp` | `configs/experiment/dgtd_cifar10_v3_ablation_no_warp.yaml` | `source scripts/experiments/activate_fm_cifar10.sh dgtd_cifar10_v3_ablation_no_warp e403a` | ablation: remove learned warp while keeping current online-mainline teacher path | planned |
-| E4 | e404a | `dgtd_cifar10_v3_ablation_warp_no_hf` | `configs/experiment/dgtd_cifar10_v3_ablation_warp_no_hf.yaml` | `source scripts/experiments/activate_fm_cifar10.sh dgtd_cifar10_v3_ablation_warp_no_hf e404a` | ablation: keep warp but disable the HF-biased density contribution and metric emphasis path | planned |
+| E4 | e403a | `dgtd_cifar10_v3_ablation_no_warp_diag` | `configs/experiment/dgtd_cifar10_v3_ablation_no_warp_diag.yaml` | `source scripts/experiments/activate_fm_cifar10.sh dgtd_cifar10_v3_ablation_no_warp_diag e403a` | Module D diagnostic ablation: same diag budget with learned warp disabled | ready |
+| E4 | e403a | `dgtd_cifar10_v3_ablation_no_warp` | `configs/experiment/dgtd_cifar10_v3_ablation_no_warp.yaml` | `source scripts/experiments/activate_fm_cifar10.sh dgtd_cifar10_v3_ablation_no_warp e403a` | Module D full ablation: remove learned warp while keeping online-mainline teacher path | planned |
+| E4 | e404a | `dgtd_cifar10_v3_ablation_warp_no_hf_diag` | `configs/experiment/dgtd_cifar10_v3_ablation_warp_no_hf_diag.yaml` | `source scripts/experiments/activate_fm_cifar10.sh dgtd_cifar10_v3_ablation_warp_no_hf_diag e404a` | Module E diagnostic ablation: same diag budget with HF path disabled | ready |
+| E4 | e404a | `dgtd_cifar10_v3_ablation_warp_no_hf` | `configs/experiment/dgtd_cifar10_v3_ablation_warp_no_hf.yaml` | `source scripts/experiments/activate_fm_cifar10.sh dgtd_cifar10_v3_ablation_warp_no_hf e404a` | Module E full ablation: keep warp but disable the HF-biased density contribution and metric emphasis path | planned |
+| E4 | oss001 | `dgtd_v3_oss_baseline` | `configs/experiment/dgtd_cifar10_v3_oss_baseline.yaml` | `source scripts/experiments/activate_fm_cifar10.sh dgtd_v3_oss_baseline oss001` | post-checkpoint optimal-steps baseline: search global schedules for steps `2 4 8`, compare OSS schedule vs learned-warp schedule on the same usable checkpoint | blocked until usable checkpoint |
 | B0 | edm001 | `edm_cifar10_public_eval` | `configs/experiment/edm_cifar10_public_eval.yaml` | `source scripts/experiments/activate_fm_cifar10.sh edm_cifar10_public_eval edm001` | public EDM CIFAR-10 teacher/baseline inference and official FID with selectable sampler steps; uses NVLabs public EDM checkpoint by default | ready |
 
 ## Execution order
 
-1. Run `e401a` first and confirm the online-mainline path is stable.
-2. Launch `e402a` only after `e401a` shows nonzero `continuation_sources.online`
-   and valid train/sample/eval outputs.
-3. Use `e403a` and `e404a` only if the main full run needs controlled ablations.
+1. Gate 0: run `e401a` smoke only to validate train/checkpoint/sample/eval plumbing.
+2. Gate 1: run `e401b` diag and collect `train.jsonl`, sample grids, 512-sample eval,
+   teacher endpoint JSON, and `analysis_report.md/json`.
+3. Gate 2: launch `e402a` only if `e401b` passes the diagnostic gate or has a
+   documented, non-algorithmic failure.
+4. If `e401b` fails, fix one module at a time and rerun the same diag budget
+   with the same seed and step list.
+5. Run `e403a` no-warp only when `q_phi` collapse or step-curve regression is
+   the active hypothesis.
+6. Run `e404a` no-HF only after image structure appears but texture/detail is
+   the active hypothesis.
+7. Run `oss001` only after `e402a` or a later checkpoint produces non-noise
+   samples; it is a schedule baseline, not a rescue path for an invalid model.
 
 ## Public EDM CIFAR-10 baseline
 
@@ -182,6 +195,12 @@ For every formal run, return:
   - `$METRIC_ROOT/reports/summary.json`
   - `$METRIC_ROOT/reports/summary.csv`
   - each `steps{K}/metrics.json`
+- diagnostic evidence:
+  - `$RUN_ROOT/teacher_endpoint_report.json`
+  - `$RUN_ROOT/analysis_report.md`
+  - `$RUN_ROOT/analysis_report.json`
+  - `gate_verdict.status`, `gate_verdict.failed`, and `gate_verdict.unknown`
+  - for `oss001`, all `oss_schedule_steps{K}.json` files and OSS/default comparison summaries
 
 ## Primary decision fields
 
@@ -199,6 +218,9 @@ current names:
 - `train_bridge_state_teacher_error`
 - `train_bridge_u_teacher_error`
 - `train_teacher_rel_error_mean`
+- `train_noisy_endpoint_error`
+- `train_endpoint_anchor_loss`
+- `val_endpoint_anchor_loss`
 - `alpha_online_mean`
 - `alpha_online_min`
 - `alpha_online_max`

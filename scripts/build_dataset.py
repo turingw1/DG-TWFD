@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 from torchvision import datasets, transforms
@@ -35,6 +36,8 @@ def main() -> None:
             print(f"cifar10 not found at {data_root}", flush=True)
             print("manual mode: place `cifar-10-batches-py/` under the data root, or rerun with `--download`.", flush=True)
             return
+        if cifar10_url := os.environ.get("CIFAR10_URL"):
+            datasets.CIFAR10.url = cifar10_url
         transform = transforms.ToTensor()
         datasets.CIFAR10(root=data_root, train=True, download=True, transform=transform)
         datasets.CIFAR10(root=data_root, train=False, download=True, transform=transform)

@@ -2,13 +2,18 @@
 
 set -euo pipefail
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "${ROOT_DIR}/scripts/server/network_profiles.sh"
+dg_twfd_net_heavy
+
 ENV_NAME="${1:-dgfm_map}"
-ENV_ROOT="${2:-/data2/yl7622/Zhengwei/DG-TWFD/.conda_envs}"
+ENV_ROOT="${2:-${ROOT_DIR}/.conda_envs}"
 ENV_PREFIX="${ENV_ROOT}/${ENV_NAME}"
 
 echo "Creating conda environment:"
 echo "  name:   ${ENV_NAME}"
 echo "  prefix: ${ENV_PREFIX}"
+dg_twfd_net_status
 
 mkdir -p "${ENV_ROOT}"
 conda create -p "${ENV_PREFIX}" python=3.10 -y
@@ -35,7 +40,7 @@ python -m pip install \
   pillow \
   pytest
 
-python -m pip install -e .
+python -m pip install -e "${ROOT_DIR}"
 
 echo
 echo "Environment ready:"

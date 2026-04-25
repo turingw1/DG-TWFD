@@ -26,6 +26,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fid-samples", type=int, default=None, help="Override eval.num_fid_samples")
     parser.add_argument("--fid-batch-size", type=int, default=None, help="Override eval.fid_batch_size")
     parser.add_argument("--sample-batch-size", type=int, default=None, help="Override eval.sample_batch_size")
+    parser.add_argument("--time-grid-json", default=None, help="Optional schedule JSON for a single step-count eval")
+    parser.add_argument("--time-grid-dir", default=None, help="Directory containing oss_schedule_steps{K}.json files")
     parser.add_argument("--set", action="append", default=[], help="Config override in key=value form")
     return parser.parse_args()
 
@@ -40,6 +42,10 @@ def main() -> None:
         overrides.append(f"eval.fid_batch_size={args.fid_batch_size}")
     if args.sample_batch_size is not None:
         overrides.append(f"eval.sample_batch_size={args.sample_batch_size}")
+    if args.time_grid_json is not None:
+        overrides.append(f"eval.time_grid_json={args.time_grid_json}")
+    if args.time_grid_dir is not None:
+        overrides.append(f"eval.time_grid_dir={args.time_grid_dir}")
     config = load_experiment_config(args.config, overrides=overrides)
     runtime_cfg = config.get("runtime", {})
     if torch.cuda.is_available() and bool(runtime_cfg.get("tf32", True)):

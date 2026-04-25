@@ -36,6 +36,12 @@ def _load_json(path: Path) -> Any:
         return json.load(handle)
 
 
+def _load_optional_json(path: Path | None) -> Any | None:
+    if path is None or not path.exists():
+        return None
+    return _load_json(path)
+
+
 def _load_jsonl(path: Path) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as handle:
@@ -269,6 +275,142 @@ def _checkpoint_keys(checkpoint: Path | None) -> dict[str, Any]:
     }
 
 
+def _gate_bool(value: bool | None) -> str:
+    if value is None:
+        return "unknown"
+    return "pass" if value else "fail"
+
+
+def _teacher_endpoint_gate(report: dict[str, Any] | None) -> tuple[bool | None, list[str]]:
+    if not isinstance(report, dict):
+        return None, ["teacher endpoint report missing"]
+    verdict = report.get("verdict")
+    if not isinstance(verdict, dict):
+        return None, ["teacher endpoint report has no verdict"]
+    messages = []
+    if not bool(verdict.get("u0_is_not_clean_input", False)):
+        messages.append("teacher u0 appears too close to clean input")
+    if not bool(verdict.get("u1_closer_to_clean_than_u0", False)):
+        messages.append("teacher u1 is not closer to clean input than u0")
+    if not bool(verdict.get("endpoint_order_ok", False)):
+        messages.append("teacher endpoint time order is invalid")
+    return bool(verdict.get("pass", False)), messages
+
+
+def _step_curve_gate(eval_info: dict[str, Any]) -> tuple[bool | None, list[str]]:
+    fids = _step_fid_table(eval_info)
+    if len(fids) < 2:
+        return None, ["step FID table missing or too short"]
+    values = [fid for _, fid in fids]
+    messages = []
+    for (prev_step, prev_fid), (next_step, next_fid) in zip(fids, fids[1:]):
+        if next_fid > prev_fid * 1.10:
+            messages.append(f"FID worsens by >10% from steps{prev_step} to steps{next_step}")
+    if values[-1] > values[0] * 1.05:
+        messages.append("final step FID is >5% worse than first step FID")
+    return not messages, messages
+
+
+def _q_phi_gate(rows: list[dict[str, Any]], config: dict[str, Any] | None) -> tuple[bool | None, list[str]]:
+    if not rows:
+        return None, ["training rows missing"]
+    last = rows[-1]
+    q_phi = last.get("q_phi")
+    if not isinstance(q_phi, list) or not q_phi:
+        return None, ["q_phi missing from train log"]
+    entropy = _to_float(last.get("entropy_q_phi"))
+    max_ratio = _to_float(last.get("max_qphi_over_qbase"))
+    num_bins = len(q_phi)
+    min_entropy = 0.5 * math.log(max(num_bins, 2))
+    ratio_cap = 10.0
+    if config is not None:
+        ratio_cap = float(config.get("dgtd", {}).get("gate_max_qphi_over_qbase", ratio_cap))
+        min_entropy = float(config.get("dgtd", {}).get("gate_min_entropy_q_phi", min_entropy))
+    messages = []
+    if entropy is not None and entropy < min_entropy:
+        messages.append(f"entropy_q_phi={entropy:.4g} below gate {min_entropy:.4g}")
+    if max_ratio is not None and max_ratio > ratio_cap:
+        messages.append(f"max_qphi_over_qbase={max_ratio:.4g} above gate {ratio_cap:.4g}")
+    return not messages, messages
+
+
+def _sample_gate(sample_info: dict[str, Any]) -> tuple[bool | None, list[str]]:
+    if not sample_info.get("available"):
+        return None, ["sample tensor stats missing"]
+    corr_h = _to_float(sample_info.get("neighbor_corr_h"))
+    corr_v = _to_float(sample_info.get("neighbor_corr_v"))
+    saturation = _to_float(sample_info.get("saturation_0_1"))
+    messages = []
+    if corr_h is None or corr_v is None:
+        messages.append("neighbor correlation unavailable")
+    elif max(corr_h, corr_v) < 0.15:
+        messages.append("neighbor correlation below 0.15; samples are likely noise-like")
+    if saturation is not None and saturation > 0.95:
+        messages.append("sample saturation above 0.95")
+    return not messages, messages
+
+
+def _online_continuation_gate(rows: list[dict[str, Any]]) -> tuple[bool | None, list[str]]:
+    if not rows:
+        return None, ["training rows missing"]
+    last = rows[-1]
+    online_rate = _to_float(last.get("online_continuation_rate"))
+    fallback_rate = _to_float(last.get("cached_fallback_rate"))
+    messages = []
+    if online_rate is None:
+        return None, ["online_continuation_rate missing"]
+    if online_rate < 0.9:
+        messages.append(f"online_continuation_rate={online_rate:.4g} below 0.9")
+    if fallback_rate is not None and fallback_rate > 0.1:
+        messages.append(f"cached_fallback_rate={fallback_rate:.4g} above 0.1")
+    return not messages, messages
+
+
+def _gate_verdict(
+    rows: list[dict[str, Any]],
+    train_info: dict[str, Any],
+    eval_info: dict[str, Any],
+    sample_info: dict[str, Any],
+    checkpoint_info: dict[str, Any],
+    config: dict[str, Any] | None,
+    teacher_endpoint_report: dict[str, Any] | None,
+) -> dict[str, Any]:
+    del train_info
+    checks: dict[str, dict[str, Any]] = {}
+    for name, result in {
+        "teacher_endpoint_ok": _teacher_endpoint_gate(teacher_endpoint_report),
+        "online_continuation_primary": _online_continuation_gate(rows),
+        "sample_not_noise_like": _sample_gate(sample_info),
+        "q_phi_not_collapsed": _q_phi_gate(rows, config),
+        "step_curve_not_regressive": _step_curve_gate(eval_info),
+        "checkpoint_readable": (bool(checkpoint_info.get("available")), [] if checkpoint_info.get("available") else ["checkpoint missing or unreadable"]),
+    }.items():
+        passed, messages = result
+        checks[name] = {
+            "status": _gate_bool(passed),
+            "pass": passed,
+            "messages": messages,
+        }
+    failed = [name for name, item in checks.items() if item["pass"] is False]
+    unknown = [name for name, item in checks.items() if item["pass"] is None]
+    if failed:
+        status = "fail"
+        next_action = "Do not launch full run; patch the failed module and rerun the same diagnostic budget."
+    elif unknown:
+        status = "incomplete"
+        next_action = "Collect missing diagnostics before deciding on a full run."
+    else:
+        status = "pass"
+        next_action = "Diagnostic gate passed; full run can be considered."
+    return {
+        "status": status,
+        "failed": failed,
+        "unknown": unknown,
+        "checks": checks,
+        "next_action": next_action,
+    }
+
+
 def _training_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
     keys = [
         "train_loss",
@@ -285,6 +427,8 @@ def _training_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "val_bridge_u_teacher_error",
         "train_noisy_endpoint_error",
         "val_noisy_endpoint_error",
+        "train_endpoint_anchor_loss",
+        "val_endpoint_anchor_loss",
         "entropy_q_phi",
         "kl_qD_qphi",
         "max_qphi_over_qbase",
@@ -330,6 +474,8 @@ def _row_excerpt(row: dict[str, Any] | None) -> dict[str, Any] | None:
         "val_bridge_u_teacher_error",
         "train_noisy_endpoint_error",
         "val_noisy_endpoint_error",
+        "train_endpoint_anchor_loss",
+        "val_endpoint_anchor_loss",
         "train_teacher_rel_error_mean",
         "val_teacher_rel_error_mean",
         "eta",
@@ -439,6 +585,7 @@ def _markdown_report(
     eval_info: dict[str, Any],
     sample_info: dict[str, Any],
     checkpoint_info: dict[str, Any],
+    gate_verdict: dict[str, Any],
     diagnoses: list[str],
 ) -> str:
     rows = []
@@ -456,6 +603,17 @@ def _markdown_report(
     for item in diagnoses:
         rows.append(f"- {item}")
     rows.append("")
+    rows.append("## Gate Verdict")
+    rows.append("")
+    rows.append(f"- `status`: `{gate_verdict.get('status')}`")
+    rows.append(f"- `failed`: `{gate_verdict.get('failed')}`")
+    rows.append(f"- `unknown`: `{gate_verdict.get('unknown')}`")
+    rows.append(f"- `next_action`: {gate_verdict.get('next_action')}")
+    checks = gate_verdict.get("checks", {})
+    if isinstance(checks, dict):
+        for name, item in checks.items():
+            rows.append(f"- `{name}`: {item.get('status')} `{item.get('messages')}`")
+    rows.append("")
     rows.append("## Training Trends")
     rows.append("")
     rows.append(f"- `num_rows`: {train_info.get('num_rows')}")
@@ -472,6 +630,8 @@ def _markdown_report(
         "val_direct_bridge_gap",
         "train_noisy_endpoint_error",
         "val_noisy_endpoint_error",
+        "train_endpoint_anchor_loss",
+        "val_endpoint_anchor_loss",
         "train_online_teacher_traj_sec",
         "train_target_build_sec",
         "train_forward_sec",
@@ -528,6 +688,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sample-root", default=None, help="Explicit sample root.")
     parser.add_argument("--checkpoint", default=None, help="Optional checkpoint to inspect key structure.")
     parser.add_argument("--config", default=None, help="Optional resolved or experiment config for static diagnosis.")
+    parser.add_argument("--teacher-endpoint-report", default=None, help="Optional JSON from scripts/diagnose_teacher_endpoints.py.")
     parser.add_argument("--output", default=None, help="Markdown report path. Defaults to stdout.")
     parser.add_argument("--json-output", default=None, help="Optional machine-readable JSON output path.")
     return parser.parse_args()
@@ -553,6 +714,16 @@ def main() -> None:
     eval_info = _eval_summary(eval_root)
     sample_info = _sample_tensor_stats(sample_root)
     checkpoint_info = _checkpoint_keys(checkpoint)
+    teacher_endpoint_report = _load_optional_json(Path(args.teacher_endpoint_report)) if args.teacher_endpoint_report else None
+    gate_verdict = _gate_verdict(
+        rows,
+        train_info,
+        eval_info,
+        sample_info,
+        checkpoint_info,
+        config,
+        teacher_endpoint_report,
+    )
     diagnoses = _diagnoses(rows, train_info, eval_info, sample_info, config)
     report = _markdown_report(
         log_path=log_path,
@@ -560,6 +731,7 @@ def main() -> None:
         eval_info=eval_info,
         sample_info=sample_info,
         checkpoint_info=checkpoint_info,
+        gate_verdict=gate_verdict,
         diagnoses=diagnoses,
     )
 
@@ -569,6 +741,8 @@ def main() -> None:
         "eval": eval_info,
         "sample": sample_info,
         "checkpoint": checkpoint_info,
+        "teacher_endpoint": teacher_endpoint_report,
+        "gate_verdict": gate_verdict,
         "diagnoses": diagnoses,
     }
     if args.json_output:

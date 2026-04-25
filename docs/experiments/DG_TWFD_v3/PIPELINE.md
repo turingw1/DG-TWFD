@@ -9,17 +9,24 @@ activate it once, then run the unified command families below.
 
 ## 2. Environment
 
-If the server environment already exists:
+On the current workspace/cache/temp server:
 
 ```bash
-cd /data2/yl7622/Zhengwei/DG-TWFD
-source /data2/yl7622/anaconda/etc/profile.d/conda.sh
-conda activate /data2/yl7622/Zhengwei/DG-TWFD/.conda_envs/dgfm_map
+cd /home/ma-user/workspace/Zhengwei/DG-TWFD
+source scripts/server/activate_a100_runtime.sh
+source "$(conda info --base)/etc/profile.d/conda.sh"
+conda activate /home/ma-user/workspace/Zhengwei/DG-TWFD/.conda_envs/dg_twfd_a100
+export PYTHONPATH="$PWD/src:$PWD/refs/edm:${PYTHONPATH:-}"
 git checkout DG_TWFD_v3
 git pull --ff-only
 ```
 
-If the local path differs, adapt only the shell path prefix, not the experiment
+`activate_a100_runtime.sh` applies the `proxy` network profile by default. Use
+`bash scripts/server/run_network_profile.sh heavy ...` for dataset/model/package
+downloads.
+
+If the repo path differs on another machine, adapt only the path prefix or
+source an equivalent runtime activation script. Do not change the experiment
 logic below.
 
 ## 3. Activate experiment
@@ -34,6 +41,12 @@ and source it once.
 source scripts/experiments/activate_fm_cifar10.sh dgtd_v3_smoke e401a
 ```
 
+### Diagnostic run
+
+```bash
+source scripts/experiments/activate_fm_cifar10.sh dgtd_v3_diag e401b
+```
+
 ### Full run
 
 ```bash
@@ -43,7 +56,9 @@ source scripts/experiments/activate_fm_cifar10.sh dgtd_v3 e402a
 ### Optional ablations
 
 ```bash
+source scripts/experiments/activate_fm_cifar10.sh dgtd_cifar10_v3_ablation_no_warp_diag e403a
 source scripts/experiments/activate_fm_cifar10.sh dgtd_cifar10_v3_ablation_no_warp e403a
+source scripts/experiments/activate_fm_cifar10.sh dgtd_cifar10_v3_ablation_warp_no_hf_diag e404a
 source scripts/experiments/activate_fm_cifar10.sh dgtd_cifar10_v3_ablation_warp_no_hf e404a
 ```
 
@@ -65,16 +80,13 @@ After activation, use only:
 
 ## 4. Recommended execution order
 
-1. Activate `e401a`.
-2. Run short-run train.
-3. Run short-run sample.
-4. Run short-run eval.
-5. Check online continuation source, checkpoint outputs, and core diagnostics.
-6. Activate `e402a`.
-7. Run full-run train.
-8. Run full-run sample.
-9. Run full-run eval.
-10. Fill the selected row in `EXPERIMENT_LOG.md` and return all evidence.
+1. Gate 0: activate `e401a`, then run train/sample/eval only to verify plumbing.
+2. Gate 1: activate `e401b`, then run teacher endpoint diagnosis, train, sample,
+   eval, and analysis.
+3. Gate 2: launch `e402a` only if `e401b` passes the diagnostic gate.
+4. If Gate 1 fails, change one module, rerun the same diag budget, and compare
+   against the previous `analysis_report.json`.
+5. Defer `oss001` until a checkpoint generates non-noise samples.
 
 Current `e402a` default is tuned to raise GPU memory usage and throughput:
 
@@ -124,6 +136,18 @@ CUDA_VISIBLE_DEVICES=${TRAIN_CUDA_VISIBLE_DEVICES} torchrun \
   2>&1 | tee $RUN_ROOT/train_resume.stdout_stderr.txt
 ```
 
+### Teacher Endpoint Diagnosis
+
+Run this before the diagnostic training job and keep the JSON under `RUN_ROOT`.
+
+```bash
+CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/diagnose_teacher_endpoints.py \
+  --config $FM_CONFIG \
+  --output $RUN_ROOT/teacher_endpoint_report.json \
+  --batch-size 8 \
+  2>&1 | tee $RUN_ROOT/teacher_endpoint_report.stdout_stderr.txt
+```
+
 ### Sample
 
 Use this to export fixed-seed sample grids and tensors.
@@ -148,7 +172,7 @@ CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_sample_dgt
   --config $FM_CONFIG \
   --checkpoint $CKPT_DIR/best.pt \
   --output-dir $SAMPLE_ROOT/steps8 \
-  --steps 64 \
+  --steps 8 \
   --num-samples 64 \
   --fixed-seed 42 \
   2>&1 | tee $SAMPLE_ROOT/steps8.stdout_stderr.txt
@@ -180,6 +204,62 @@ CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_eval.py \
   2>&1 | tee $METRIC_ROOT/eval.stdout_stderr.txt
 ```
 
+Diagnostic default:
+
+```bash
+CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_eval.py \
+  --config $FM_CONFIG \
+  --checkpoint $CKPT_DIR/last.pt \
+  --eval-root $METRIC_ROOT \
+  --steps 1 2 4 8 \
+  2>&1 | tee $METRIC_ROOT/eval.stdout_stderr.txt
+```
+
+### Analysis
+
+Run this after sample and eval. The gate output decides whether a full run is
+allowed.
+
+```bash
+python scripts/analyze_dgtd_run.py \
+  --run-root $RUN_ROOT \
+  --eval-root $METRIC_ROOT \
+  --config $FM_CONFIG \
+  --teacher-endpoint-report $RUN_ROOT/teacher_endpoint_report.json \
+  --output $RUN_ROOT/analysis_report.md \
+  --json-output $RUN_ROOT/analysis_report.json
+```
+
+### OSS Baseline
+
+Use only after a usable checkpoint exists. Generate schedules first, then
+evaluate the same checkpoint with the generated grids.
+
+```bash
+source scripts/experiments/activate_fm_cifar10.sh dgtd_v3_oss_baseline oss001
+mkdir -p $RUN_ROOT/oss_schedules
+for steps in 2 4 8; do
+  CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_sample_dgtd.py \
+    --config $FM_CONFIG \
+    --checkpoint /path/to/usable/best.pt \
+    --output-dir $SAMPLE_ROOT/oss_steps${steps} \
+    --mode mode_b_oss \
+    --steps ${steps} \
+    --num-samples 64 \
+    --schedule-json $RUN_ROOT/oss_schedules/oss_schedule_steps${steps}.json \
+    --reference-steps 32 \
+    --search-batch-size 256 \
+    --search-cost-batch-size 64 \
+    --fixed-seed 42
+done
+CUDA_VISIBLE_DEVICES=${INFER_CUDA_VISIBLE_DEVICES} python scripts/run_eval.py \
+  --config $FM_CONFIG \
+  --checkpoint /path/to/usable/best.pt \
+  --eval-root $METRIC_ROOT/oss \
+  --steps 2 4 8 \
+  --time-grid-dir $RUN_ROOT/oss_schedules
+```
+
 ## 6. What to check before launching full run
 
 Confirm all of the following on the short run:
@@ -187,10 +267,14 @@ Confirm all of the following on the short run:
 - `continuation_sources.online` is nonzero and is the dominant source
 - `online_continuation_rate` is nonzero
 - `cached_fallback_rate` is not dominating
+- `teacher_endpoint_report.json` passes: `u0` not clean input, `u1` closer to
+  clean input than `u0`, endpoint time order is valid
 - `best.pt` and `last.pt` exist
 - `$LOG_ROOT/train.jsonl` contains the DGTD diagnostics fields
 - sample and eval both complete and write outputs
 - there is no traceback, NaN, or obvious `q_phi` collapse
+- `analysis_report.json.gate_verdict.status` is `pass` or any failure is
+  explicitly classified as a plumbing problem
 
 ## 7. What to return after each stage
 
@@ -203,19 +287,35 @@ Return:
 - `find $CKPT_DIR -maxdepth 2 -type f | sort`
 - `find $SAMPLE_ROOT -maxdepth 3 -type f | sort`
 - `find $METRIC_ROOT -maxdepth 4 -type f | sort`
-- one compact summary of:
-  - `continuation_sources`
-  - `online_continuation_rate`
-  - `cached_fallback_rate`
-  - `train_direct_teacher_error`
-  - `train_direct_bridge_gap`
-  - `train_bridge_state_teacher_error`
-  - `train_bridge_u_teacher_error`
-  - `train_teacher_rel_error_mean`
-  - `alpha_online_mean/min/max`
-  - `eta`, `beta`, `stage`
-  - `entropy_q_phi`
-  - `kl_qD_qphi`
+- one compact summary of `continuation_sources`, `online_continuation_rate`,
+  `cached_fallback_rate`, `train_direct_teacher_error`,
+  `train_direct_bridge_gap`, `train_bridge_state_teacher_error`,
+  `train_bridge_u_teacher_error`, `train_teacher_rel_error_mean`,
+  `alpha_online_mean/min/max`, `eta`, `beta`, `stage`, `entropy_q_phi`, and
+  `kl_qD_qphi`
+
+### After diagnostic run
+
+Return:
+
+- `$RUN_ROOT/teacher_endpoint_report.json`
+- `$RUN_ROOT/analysis_report.md`
+- `$RUN_ROOT/analysis_report.json`
+- `gate_verdict.status`, `gate_verdict.failed`, and `gate_verdict.unknown`
+- sample grid paths and eval summary paths for steps `1 2 4 8`
+
+After meaningful log/doc/code updates, refresh the small crash-recovery
+metadata:
+
+```bash
+bash scripts/server/snapshot_recovery_state.sh
+```
+
+For a git-backed checkpoint after reviewing the diff:
+
+```bash
+DG_TWFD_COMMIT_MESSAGE="checkpoint: <short description>" bash scripts/server/git_checkpoint.sh --commit-push
+```
 
 ### After full run
 

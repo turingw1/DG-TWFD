@@ -8,15 +8,22 @@ REFS_DIR="${1:-${ROOT}/refs}"
 mkdir -p "${REFS_DIR}"
 
 repos=(
-  "Min-SNR-Diffusion-Training|https://github.com/TiankaiHang/Min-SNR-Diffusion-Training"
-  "OptimalSteps|https://github.com/bebebe666/OptimalSteps"
-  "Rectified-Diffusion|https://github.com/G-U-N/Rectified-Diffusion"
-  "conditional-flow-matching|https://github.com/atong01/conditional-flow-matching"
-  "ctm-cifar10|https://github.com/Kim-Dongjun/ctm-cifar10.git"
-  "edm|https://github.com/NVlabs/edm"
+  "flow_matching|https://github.com/facebookresearch/flow_matching.git"
+  "consistency_models|https://github.com/openai/consistency_models.git"
+  "min_snr|https://github.com/TiankaiHang/Min-SNR-Diffusion-Training.git"
+  "optimalsteps|https://github.com/bebebe666/OptimalSteps.git"
+  "rectified_diffusion|https://github.com/G-U-N/Rectified-Diffusion.git"
+  "edm|https://github.com/turingw1/edm.git"
 )
 
 echo "Reference repo target: ${REFS_DIR}"
+
+if [[ -f "${ROOT}/.gitmodules" ]]; then
+  echo
+  echo "==> tracked submodules: syncing"
+  git -C "${ROOT}" submodule sync --recursive
+  git -C "${ROOT}" submodule update --init --recursive refs/ctm refs/ctm-cifar10
+fi
 
 for item in "${repos[@]}"; do
   name="${item%%|*}"

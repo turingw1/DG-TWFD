@@ -13,6 +13,7 @@ historical context:
 3. `docs/experiments/DG_TWFD_v3/EXPERIMENT_LOG.md`
 4. `docs/experiments/DG_TWFD_v3/PAPER_EXPERIMENT_TARGETS.md`
 5. `docs/experiments/DG_TWFD_v3/ARCHITECTURE_AND_IMPLEMENTATION.md`
+6. `docs/experiments/DG_TWFD_v3/NETWORK_AND_RECOVERY.md`
 
 Then inspect the relevant code/config files directly.
 
@@ -20,8 +21,15 @@ Then inspect the relevant code/config files directly.
 
 - Formal training, sampling, and evaluation happen on the server.
 - Local work is for code edits, documentation edits, and lightweight checks.
+- Use the repo network profiles: local proxy for normal outbound work, and the
+  heavy-download profile for datasets, models, and package installs.
+- After meaningful workspace edits, push to git and refresh the small recovery
+  snapshot under `/temp/Zhengwei/DG-TWFD-recovery`.
 - Ignore untracked local reference folders by default, especially `refs/`.
-- Do not read `docs/archive/` unless a specific historical question requires it.
+- Do not read `docs/archive/` unless a specific historical or baseline
+  reproduction question requires it.
+- Archived low-signal docs under `docs/archive/low_signal_2026-04-25/` are not
+  part of the active development context.
 
 ## Active Code Anchors
 
@@ -34,3 +42,6 @@ Then inspect the relevant code/config files directly.
 - Eval dispatch: `src/dgfm/evaluators/common.py`
 - Main config: `configs/experiment/dgtd_cifar10_v3.yaml`
 - Smoke config: `configs/experiment/dgtd_cifar10_v3_smoke.yaml`
+- Diagnostic config: `configs/experiment/dgtd_cifar10_v3_diag.yaml`
+- Teacher endpoint diagnostic: `scripts/diagnose_teacher_endpoints.py`
+- Run analysis gate: `scripts/analyze_dgtd_run.py`

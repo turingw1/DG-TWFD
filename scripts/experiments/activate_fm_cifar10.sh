@@ -6,6 +6,12 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   exit 1
 fi
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if [[ -f "${ROOT_DIR}/scripts/server/network_profiles.sh" ]]; then
+  source "${ROOT_DIR}/scripts/server/network_profiles.sh"
+  dg_twfd_net_apply "${DG_TWFD_NETWORK_PROFILE:-proxy}"
+fi
+
 variant="${1:-baseline}"
 tag="${2:-v1}"
 
@@ -38,6 +44,14 @@ case "${variant}" in
     export FM_CONFIG="configs/experiment/dgtd_cifar10_v3_smoke.yaml"
     exp_prefix="dgtd_cifar10_v3_smoke"
     ;;
+  dgtd_v3_diag)
+    export FM_CONFIG="configs/experiment/dgtd_cifar10_v3_diag.yaml"
+    exp_prefix="dgtd_cifar10_v3_diag"
+    ;;
+  dgtd_v3_oss_baseline)
+    export FM_CONFIG="configs/experiment/dgtd_cifar10_v3_oss_baseline.yaml"
+    exp_prefix="dgtd_cifar10_v3_oss_baseline"
+    ;;
   edm_cifar10_public_eval)
     export FM_CONFIG="configs/experiment/edm_cifar10_public_eval.yaml"
     exp_prefix="edm_cifar10_public_eval"
@@ -53,17 +67,18 @@ case "${variant}" in
       exp_prefix="${variant}"
     else
       echo "Unknown FM variant: ${variant}" >&2
-      echo "Expected one of: baseline map_branch map_branch_quick map_branch_timewarp_probe map_branch_timewarp_smoke dgtd_v3 dgtd_v3_smoke stable or any config stem under configs/experiment/" >&2
+      echo "Expected one of: baseline map_branch map_branch_quick map_branch_timewarp_probe map_branch_timewarp_smoke dgtd_v3 dgtd_v3_smoke dgtd_v3_diag dgtd_v3_oss_baseline stable or any config stem under configs/experiment/" >&2
       return 1
     fi
     ;;
 esac
 
-export PROJ="${PROJ:-/data2/yl7622/Zhengwei/DG-TWFD}"
+export PROJ="${PROJ:-$ROOT_DIR}"
 export ENV_NAME="${ENV_NAME:-consistency}"
 export DATA_ROOT="${DATA_ROOT:-${PROJ}/datasets}"
 export RUNS_ROOT="${RUNS_ROOT:-${PROJ}/runs}"
 export EVAL_ROOT="${EVAL_ROOT:-${PROJ}/eval}"
+export RESULTS_ROOT="${RESULTS_ROOT:-${PROJ}/results}"
 export REF_ROOT="${REF_ROOT:-${PROJ}/refs}"
 export TRAJ_ROOT="${TRAJ_ROOT:-${PROJ}/teacher_traj/cifar10_ddpm128_p33}"
 export IMAGENET_RAW_ROOT="${IMAGENET_RAW_ROOT:-${DATA_ROOT}/imagenet_raw}"
@@ -73,10 +88,10 @@ export OFFICIAL_REFERENCE_NPZ="${OFFICIAL_REFERENCE_NPZ:-}"
 export IMAGENET64_TEACHER_CKPT="${IMAGENET64_TEACHER_CKPT:-checkpoints/teachers/edm_imagenet64_ema.pt}"
 export HF_HOME="${HF_HOME:-${PROJ}/.hf_home}"
 export HF_HUB_CACHE="${HF_HUB_CACHE:-${HF_HOME}/hub}"
-unset HF_ENDPOINT
+export HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
+export HUGGINGFACE_HUB_ENDPOINT="${HUGGINGFACE_HUB_ENDPOINT:-${HF_ENDPOINT}}"
 export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-0}"
 export TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-0}"
-unset DGFM_TORCH_FIDELITY_MIRROR_PREFIX
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:False}"
 export EXP_VARIANT="${variant}"
 export EXP_TAG="${tag}"
@@ -88,8 +103,12 @@ export CKPT_DIR="${RUN_ROOT}/checkpoints"
 export SAMPLE_ROOT="${RUN_ROOT}/samples"
 export LOG_ROOT="${RUN_ROOT}/logs"
 export METRIC_ROOT="${EVAL_ROOT}/${FM_EXP}"
-unset ARCHIVE_ROOT
-unset DGFM_ARCHIVE_ROOT
+if [[ "${DG_TWFD_DISABLE_ARCHIVE:-0}" == "1" ]]; then
+  unset DGFM_ARCHIVE_ROOT
+else
+  export DG_TWFD_BACKUP_ROOT="${DG_TWFD_BACKUP_ROOT:-${PROJ}/backup_runs}"
+  export DGFM_ARCHIVE_ROOT="${DGFM_ARCHIVE_ROOT:-${DG_TWFD_BACKUP_ROOT}/${FM_EXP}}"
+fi
 export TORCH_CACHE_ROOT="${TORCH_CACHE_ROOT:-${PROJ}/.torch}"
 export TORCH_HOME="${TORCH_HOME:-${TORCH_CACHE_ROOT}}"
 export DNNLIB_CACHE_DIR="${DNNLIB_CACHE_DIR:-${TORCH_HOME}/dnnlib}"
@@ -103,9 +122,12 @@ export NODE_RANK="${NODE_RANK:-0}"
 export NPROC_PER_NODE="${NPROC_PER_NODE:-2}"
 export MASTER_ADDR="${MASTER_ADDR:-127.0.0.1}"
 export MASTER_PORT="${MASTER_PORT:-29500}"
-mkdir -p "${DATA_ROOT}" "${RUNS_ROOT}" "${EVAL_ROOT}" "${REF_ROOT}" 2>/dev/null || true
+mkdir -p "${DATA_ROOT}" "${RUNS_ROOT}" "${EVAL_ROOT}" "${RESULTS_ROOT}" "${REF_ROOT}" 2>/dev/null || true
 mkdir -p "${CKPT_DIR}" "${SAMPLE_ROOT}" "${LOG_ROOT}" "${METRIC_ROOT}" 2>/dev/null || true
 mkdir -p "${TORCH_HOME}" "${HF_HUB_CACHE}" "${DNNLIB_CACHE_DIR}" 2>/dev/null || true
+if [[ -n "${DGFM_ARCHIVE_ROOT:-}" ]]; then
+  mkdir -p "${DGFM_ARCHIVE_ROOT}" 2>/dev/null || true
+fi
 
 echo "Activated dgfm experiment"
 echo "  PROJ=${PROJ}"
@@ -118,6 +140,7 @@ echo "  FM_CONFIG=${FM_CONFIG}"
 echo "  FM_EXP=${FM_EXP}"
 echo "  RUN_ROOT=${RUN_ROOT}"
 echo "  METRIC_ROOT=${METRIC_ROOT}"
+echo "  RESULTS_ROOT=${RESULTS_ROOT}"
 echo "  TRAJ_ROOT=${TRAJ_ROOT}"
 echo "  REF_ROOT=${REF_ROOT}"
 echo "  IMAGENET_RAW_ROOT=${IMAGENET_RAW_ROOT}"
@@ -127,8 +150,12 @@ echo "  OFFICIAL_REFERENCE_NPZ=${OFFICIAL_REFERENCE_NPZ}"
 echo "  IMAGENET64_TEACHER_CKPT=${IMAGENET64_TEACHER_CKPT}"
 echo "  HF_HOME=${HF_HOME}"
 echo "  HF_HUB_CACHE=${HF_HUB_CACHE}"
+echo "  HF_ENDPOINT=${HF_ENDPOINT}"
+echo "  DG_TWFD_NETWORK_PROFILE=${DG_TWFD_NETWORK_PROFILE:-}"
 echo "  HF_HUB_OFFLINE=${HF_HUB_OFFLINE}"
 echo "  TRANSFORMERS_OFFLINE=${TRANSFORMERS_OFFLINE}"
+echo "  DG_TWFD_BACKUP_ROOT=${DG_TWFD_BACKUP_ROOT:-}"
+echo "  DGFM_ARCHIVE_ROOT=${DGFM_ARCHIVE_ROOT:-}"
 echo "  PYTORCH_CUDA_ALLOC_CONF=${PYTORCH_CUDA_ALLOC_CONF}"
 echo "  TORCH_HOME=${TORCH_HOME}"
 echo "  DNNLIB_CACHE_DIR=${DNNLIB_CACHE_DIR}"

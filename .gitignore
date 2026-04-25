@@ -15,7 +15,7 @@ __pycache__/
 .venv/
 venv/
 env/
-.conda_envs/
+.conda_envs
 
 # IDE/editor files
 .vscode/
@@ -33,10 +33,13 @@ dist/
 artifacts/
 checkpoints/
 checkpoints_*/
-datasets/
-eval/
-runs/
+datasets
+eval
+results
+runs
 vis_out/
+teacher_traj
+backup_runs
 
 # Teacher trajectory shards and large tensors
 data/teacher_shards/
@@ -51,5 +54,5 @@ public_repos/
 refs/*
 !refs/ctm/
 !refs/ctm-cifar10/
-.hf_home/
-.torch/
+.hf_home
+.torch

@@ -279,6 +279,7 @@ class DGTDTrainer:
             "curvature": 0.0,
             "low_sigma_hf": 0.0,
             "omega": 0.0,
+            "endpoint_anchor_loss": 0.0,
             "direct_teacher_error": 0.0,
             "bridge_state_teacher_error": 0.0,
             "bridge_u_teacher_error": 0.0,
@@ -415,6 +416,19 @@ class DGTDTrainer:
                     omega = omega * torch.pow(torch.clamp(p_corr, min=1.0e-6), -float(dgtd_cfg.get("kappa", 0.5)))
                     omega = omega / torch.clamp(omega.mean(), min=1.0e-6)
                     loss = torch.mean(omega.detach() * metric_value)
+                    endpoint_anchor_weight = float(dgtd_cfg.get("endpoint_anchor_weight", 0.0))
+                    endpoint_anchor_loss = torch.zeros((), device=device, dtype=loss.dtype)
+                    if endpoint_anchor_weight > 0.0:
+                        endpoint_anchor_metric = metric_norm(
+                            residual_info["x_u_direct"] - x_u_teacher,
+                            u,
+                            sigma_fn=teacher_adapter.sigma,
+                            lambda_hf_max=0.0,
+                            sigma_detail=float(dgtd_cfg.get("sigma_detail", 0.2)),
+                            disable_hf_metric=True,
+                        )
+                        endpoint_anchor_loss = torch.mean(omega.detach() * endpoint_anchor_metric)
+                        loss = loss + endpoint_anchor_weight * endpoint_anchor_loss
                 totals["forward_sec"] += time.perf_counter() - forward_t0
                 if train:
                     optimizer.zero_grad(set_to_none=True)
@@ -497,6 +511,7 @@ class DGTDTrainer:
                 totals["curvature"] += float(curvature.mean().item())
                 totals["low_sigma_hf"] += float(low_sigma_hf.item())
                 totals["omega"] += float(omega.mean().item())
+                totals["endpoint_anchor_loss"] += float(endpoint_anchor_loss.detach().item())
                 totals["direct_teacher_error"] += float(direct_teacher_error.mean().item())
                 totals["bridge_state_teacher_error"] += float(bridge_state_teacher_error.mean().item())
                 totals["bridge_u_teacher_error"] += float(bridge_u_teacher_error.mean().item())
@@ -546,6 +561,7 @@ class DGTDTrainer:
             "curvature": totals["curvature"] / denom,
             "low_sigma_hf": totals["low_sigma_hf"] / denom,
             "omega": totals["omega"] / denom,
+            "endpoint_anchor_loss": totals["endpoint_anchor_loss"] / denom,
             "direct_teacher_error": totals["direct_teacher_error"] / denom,
             "bridge_state_teacher_error": totals["bridge_state_teacher_error"] / denom,
             "bridge_u_teacher_error": totals["bridge_u_teacher_error"] / denom,
@@ -599,6 +615,7 @@ class DGTDTrainer:
                 "curvature",
                 "low_sigma_hf",
                 "omega",
+                "endpoint_anchor_loss",
                 "warp_loss",
                 "eta",
                 "beta",
@@ -800,6 +817,8 @@ class DGTDTrainer:
                 "val_defect": val_stats["defect"],
                 "train_low_sigma_hf": train_stats["low_sigma_hf"],
                 "val_low_sigma_hf": val_stats["low_sigma_hf"],
+                "train_endpoint_anchor_loss": train_stats["endpoint_anchor_loss"],
+                "val_endpoint_anchor_loss": val_stats["endpoint_anchor_loss"],
                 "train_direct_teacher_error": train_stats["direct_teacher_error"],
                 "val_direct_teacher_error": val_stats["direct_teacher_error"],
                 "train_bridge_state_teacher_error": train_stats["bridge_state_teacher_error"],

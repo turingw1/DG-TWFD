@@ -1,0 +1,32 @@
+base: configs/experiment/dgtd_cifar10_v3_ablation_no_warp.yaml
+
+experiment:
+  name: dgtd_cifar10_v3_ablation_no_warp_diag
+
+train:
+  epochs: 3
+  batch_size: 128
+  num_workers: 4
+  persistent_workers: true
+  prefetch_factor: 4
+  max_train_batches: 200
+  max_val_batches: 50
+
+eval:
+  step_counts: [1, 2, 4, 8]
+  num_fid_samples: 512
+  fid_batch_size: 64
+  sample_batch_size: 64
+  fixed_grid_size: 64
+  fixed_grid_batch_size: 64
+  dump_image_count: 64
+  default_sample_steps: 8
+
+target:
+  cache_limit: 1
+
+dgtd:
+  endpoint_anchor_weight: 0.1
+  update_density_every: 16
+  update_warp_every: 16
+

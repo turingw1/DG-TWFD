@@ -18,6 +18,11 @@ This directory is the branch-facing documentation entry for the active
   - dataset loading
   - distributed/server workflow
   - evaluation and few-step sampling
+- current experiment priority:
+  - result-first diagnostic loop: `e401a` smoke -> `e401b` diag -> gated
+    `e402a` full
+  - `oss001` optimal-steps baseline is deferred until a usable DGTD checkpoint
+    exists
 
 ## Reading order
 
@@ -27,7 +32,8 @@ This directory is the branch-facing documentation entry for the active
 4. [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md)
 5. [PAPER_EXPERIMENT_TARGETS.md](PAPER_EXPERIMENT_TARGETS.md)
 6. [ARCHITECTURE_AND_IMPLEMENTATION.md](ARCHITECTURE_AND_IMPLEMENTATION.md)
-7. [A100_MIGRATION_2026-04-25.md](A100_MIGRATION_2026-04-25.md)
+7. [A100_SERVER_DEPLOYMENT_2026-04-25.md](A100_SERVER_DEPLOYMENT_2026-04-25.md)
+8. [NETWORK_AND_RECOVERY.md](NETWORK_AND_RECOVERY.md)
 
 ## Documentation roles
 
@@ -41,11 +47,16 @@ This directory is the branch-facing documentation entry for the active
   - paper-facing experiment tables and baseline data plan
 - `ARCHITECTURE_AND_IMPLEMENTATION.md`:
   - implementation details for the active DGTD stack
-- `A100_MIGRATION_2026-04-25.md`:
-  - server migration checklist, pinned revisions, and runtime asset gaps
+- `A100_SERVER_DEPLOYMENT_2026-04-25.md`:
+  - current workspace/cache/temp server layout, symlink policy, env bootstrap,
+    and backup flow
+- `NETWORK_AND_RECOVERY.md`:
+  - local-proxy vs heavy-download network profiles, mirror defaults, and
+    `/temp` recovery snapshot policy
 
-Archived context lives under `docs/archive/context_noise_2026-04-21/` and is
-not part of the default reading set.
+Archived context lives under `docs/archive/` and is not part of the default
+reading set. Do not read archived docs unless a specific historical lookup or
+baseline reproduction request requires it.
 
 ## Code And History Reading Map
 
@@ -56,12 +67,14 @@ re-read branch summaries, use these entry documents directly:
   - [HANDOFF_2026-04-20.md](HANDOFF_2026-04-20.md)
   - [ARCHITECTURE_AND_IMPLEMENTATION.md](ARCHITECTURE_AND_IMPLEMENTATION.md)
   - [PIPELINE.md](PIPELINE.md)
-- A100/server migration and missing runtime assets:
-  - [A100_MIGRATION_2026-04-25.md](A100_MIGRATION_2026-04-25.md)
+- A100/server runtime layout:
+  - [A100_SERVER_DEPLOYMENT_2026-04-25.md](A100_SERVER_DEPLOYMENT_2026-04-25.md)
+- network and crash recovery:
+  - [NETWORK_AND_RECOVERY.md](NETWORK_AND_RECOVERY.md)
 - CTM baseline code and commands:
   - [../../../refs/ctm/README.md](../../../refs/ctm/README.md)
-  - [../../../docs/baseline/reproduce_ctm_baselines.sh](../../../docs/baseline/reproduce_ctm_baselines.sh)
-  - [../../../docs/baseline/reproduce_ctm_imagenet64_conda.sh](../../../docs/baseline/reproduce_ctm_imagenet64_conda.sh)
+  - [../../archive/low_signal_2026-04-25/baseline/reproduce_ctm_baselines.sh](../../archive/low_signal_2026-04-25/baseline/reproduce_ctm_baselines.sh)
+  - [../../archive/low_signal_2026-04-25/baseline/reproduce_ctm_imagenet64_conda.sh](../../archive/low_signal_2026-04-25/baseline/reproduce_ctm_imagenet64_conda.sh)
 - consistency distillation lineage:
   - [../../../refs/consistency_models/README.md](../../../refs/consistency_models/README.md)
   - [../../../refs/consistency_models/cm/karras_diffusion.py](../../../refs/consistency_models/cm/karras_diffusion.py)
