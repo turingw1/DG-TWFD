@@ -1,0 +1,51 @@
+experiment:
+  name: cifar10_edm_map_warp_smoke
+
+paths:
+  data_root: ${DATA_ROOT:-datasets}/cifar10
+  network: ${EDM_CIFAR10_NETWORK:-https://nvlabs-fi-cdn.nvidia.com/edm/pretrained/edm-cifar10-32x32-cond-vp.pkl}
+  fid_stats: ${DATA_ROOT:-datasets}/cifar10/.dgfm_cache/fid_stats_cifar10_test_32_torch_fidelity_inceptionv3_2048.npz
+
+runtime:
+  device: cuda
+  amp: false
+  seed: 42
+
+teacher:
+  use_fp16: true
+
+train:
+  max_steps: 20
+  batch_size: 16
+  num_workers: 2
+  lr: 1.0e-6
+  weight_decay: 0.0
+  log_every: 5
+  save_every: 20
+  match_weight: 1.0
+  defect_weight: 0.05
+  anchor_weight: 0.25
+  sigma_data: 0.5
+  sigma_min: 0.002
+  sigma_max: 80.0
+  rho: 7.0
+
+timewarp:
+  enabled: true
+  num_bins: 32
+  init: logit_normal
+  lr: 1.0e-3
+  ema_mu: 0.98
+  update_every: 5
+  beta: 0.5
+  curvature_weight: 0.0
+  hf_weight: 0.0
+  ratio_cap: 0.0
+
+eval:
+  steps: [1, 2, 4, 8]
+  num_fid_samples: 128
+  fid_batch_size: 64
+  sample_batch_size: 64
+  fixed_grid_size: 64
+  fixed_seed: 42

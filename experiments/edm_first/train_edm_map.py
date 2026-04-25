@@ -1,0 +1,252 @@
+from __future__ import annotations
+
+import argparse
+import json
+import shutil
+import time
+from pathlib import Path
+
+import torch
+import torch.nn.functional as F
+
+from src.edm_map_lib import (
+    build_cifar10_loader,
+    clone_student_from_teacher,
+    init_warp,
+    load_config,
+    load_edm_network,
+    make_labels,
+    sample_triplet_u,
+    set_seed,
+    sigma_from_u,
+    student_transition,
+    teacher_transition,
+    update_warp_from_defect,
+    write_json,
+)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Train an isolated EDM-first continuous map student.")
+    parser.add_argument("--config", required=True)
+    parser.add_argument("--run-root", required=True)
+    parser.add_argument("--resume", default=None)
+    return parser.parse_args()
+
+
+def _device(cfg: dict) -> torch.device:
+    requested = str(cfg.get("runtime", {}).get("device", "cuda"))
+    if requested == "cuda" and not torch.cuda.is_available():
+        return torch.device("cpu")
+    return torch.device(requested)
+
+
+def _save_checkpoint(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(payload, path)
+
+
+def main() -> None:
+    args = parse_args()
+    cfg = load_config(args.config)
+    run_root = Path(args.run_root)
+    log_dir = run_root / "logs"
+    ckpt_dir = run_root / "checkpoints"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(args.config, log_dir / "config.yaml")
+    write_json(log_dir / "config_resolved.json", cfg)
+
+    seed = int(cfg.get("runtime", {}).get("seed", 42))
+    set_seed(seed)
+    device = _device(cfg)
+    if device.type == "cuda":
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+        torch.set_float32_matmul_precision("high")
+
+    train_cfg = cfg.get("train", {})
+    teacher_cfg = cfg.get("teacher", {})
+    runtime_cfg = cfg.get("runtime", {})
+    max_steps = int(train_cfg.get("max_steps", 1000))
+    max_seconds = float(train_cfg.get("max_seconds", 0.0) or 0.0)
+    log_every = max(1, int(train_cfg.get("log_every", 50)))
+    save_every = max(1, int(train_cfg.get("save_every", 500)))
+    sigma_min = float(train_cfg.get("sigma_min", 0.002))
+    sigma_max = float(train_cfg.get("sigma_max", 80.0))
+    rho = float(train_cfg.get("rho", 7.0))
+    match_weight = float(train_cfg.get("match_weight", 1.0))
+    defect_weight = float(train_cfg.get("defect_weight", 0.05))
+    anchor_weight = float(train_cfg.get("anchor_weight", 0.25))
+    amp_enabled = bool(runtime_cfg.get("amp", True)) and device.type == "cuda"
+
+    teacher = load_edm_network(cfg["paths"]["network"], device=device, use_fp16=bool(teacher_cfg.get("use_fp16", True)))
+    teacher.requires_grad_(False)
+    student = clone_student_from_teacher(teacher).to(device)
+    optimizer = torch.optim.AdamW(
+        student.parameters(),
+        lr=float(train_cfg.get("lr", 1.0e-6)),
+        weight_decay=float(train_cfg.get("weight_decay", 0.0)),
+    )
+    scaler = torch.amp.GradScaler(device="cuda", enabled=amp_enabled)
+
+    warp, q_base, q_target = init_warp(cfg, device=device)
+    warp_optimizer = None
+    warp_stats = None
+    if warp is not None:
+        warp_optimizer = torch.optim.AdamW(
+            warp.parameters(),
+            lr=float(cfg.get("timewarp", {}).get("lr", 1.0e-3)),
+            weight_decay=0.0,
+        )
+        warp_stats = {
+            "D_bar": torch.zeros(warp.num_bins, device=device),
+            "D_count": torch.zeros(warp.num_bins, device=device),
+        }
+
+    start_step = 0
+    best_loss = float("inf")
+    if args.resume:
+        ckpt = torch.load(args.resume, map_location=device)
+        student.load_state_dict(ckpt["student"])
+        optimizer.load_state_dict(ckpt["optimizer"])
+        if warp is not None and ckpt.get("warp") is not None:
+            warp.load_state_dict(ckpt["warp"])
+        if warp_optimizer is not None and ckpt.get("warp_optimizer") is not None:
+            warp_optimizer.load_state_dict(ckpt["warp_optimizer"])
+        if q_target is not None and ckpt.get("q_target") is not None:
+            q_target.copy_(ckpt["q_target"].to(device))
+        if warp_stats is not None and ckpt.get("warp_stats") is not None:
+            for key, value in ckpt["warp_stats"].items():
+                warp_stats[key].copy_(value.to(device))
+        start_step = int(ckpt.get("step", 0))
+        best_loss = float(ckpt.get("best_loss", best_loss))
+
+    loader = build_cifar10_loader(cfg)
+    data_iter = iter(loader)
+    history_path = log_dir / "train.jsonl"
+    start_time = time.time()
+    last_log = {}
+
+    for step in range(start_step + 1, max_steps + 1):
+        if max_seconds > 0.0 and time.time() - start_time >= max_seconds:
+            break
+        try:
+            images, labels_int = next(data_iter)
+        except StopIteration:
+            data_iter = iter(loader)
+            images, labels_int = next(data_iter)
+
+        images = images.to(device=device, non_blocking=True) * 2.0 - 1.0
+        labels = make_labels(labels_int, label_dim=int(getattr(teacher, "label_dim", 0) or 0), device=device)
+        batch_size = int(images.shape[0])
+        u_t, u_s, u_u = sample_triplet_u(warp, batch_size, device=device)
+        sigma_t = sigma_from_u(u_t, sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
+        sigma_s = sigma_from_u(u_s, sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
+        sigma_u = sigma_from_u(u_u, sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
+        noise = torch.randn_like(images)
+        x_t = images + noise * sigma_t.view(-1, 1, 1, 1)
+
+        with torch.no_grad():
+            x_s_ref = teacher_transition(teacher, x_t, sigma_t, sigma_s, labels)
+            x_u_ref = teacher_transition(teacher, x_t, sigma_t, sigma_u, labels)
+
+        optimizer.zero_grad(set_to_none=True)
+        with torch.autocast(device_type="cuda", dtype=torch.float16, enabled=amp_enabled):
+            x_s = student_transition(student, x_t, sigma_t, sigma_s, labels)
+            x_u_direct = student_transition(student, x_t, sigma_t, sigma_u, labels)
+            x_u_bridge = student_transition(student, x_s, sigma_s, sigma_u, labels)
+            match_per_sample = (x_s - x_s_ref).flatten(1).square().mean(dim=1)
+            anchor_per_sample = (x_u_direct - x_u_ref).flatten(1).square().mean(dim=1)
+            match_denom = (x_s_ref - x_t).flatten(1).square().mean(dim=1).clamp_min(1.0e-6)
+            anchor_denom = (x_u_ref - x_t).flatten(1).square().mean(dim=1).clamp_min(1.0e-6)
+            match_loss = (match_per_sample / match_denom).mean()
+            anchor_loss = (anchor_per_sample / anchor_denom).mean()
+            defect_raw = (x_u_direct - x_u_bridge.detach()).flatten(1).square().mean(dim=1)
+            defect_denom = (x_u_ref - x_t).flatten(1).square().mean(dim=1).clamp_min(1.0e-6)
+            defect_loss = (defect_raw / defect_denom).mean()
+            loss = match_weight * match_loss + anchor_weight * anchor_loss + defect_weight * defect_loss
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
+
+        denom = (x_u_ref - x_t).flatten(1).square().mean(dim=1).clamp_min(1.0e-6)
+        norm_defect_per_sample = defect_raw.detach().float() / denom.detach().float()
+        norm_defect = norm_defect_per_sample.mean()
+        warp_loss_value = None
+        if (
+            warp is not None
+            and warp_optimizer is not None
+            and q_base is not None
+            and q_target is not None
+            and warp_stats is not None
+            and step % max(1, int(cfg.get("timewarp", {}).get("update_every", 25))) == 0
+        ):
+            warp_loss = update_warp_from_defect(
+                warp=warp,
+                warp_optimizer=warp_optimizer,
+                q_base=q_base,
+                q_target=q_target,
+                stats=warp_stats,
+                u=u_u,
+                defect=norm_defect_per_sample.detach(),
+                cfg=cfg,
+            )
+            warp_loss_value = float(warp_loss.item())
+
+        elapsed = time.time() - start_time
+        record = {
+            "step": step,
+            "loss": float(loss.detach().float().item()),
+            "match_loss": float(match_loss.detach().float().item()),
+            "anchor_loss": float(anchor_loss.detach().float().item()),
+            "defect_loss": float(defect_loss.detach().float().item()),
+            "raw_match_mse": float(match_per_sample.detach().float().mean().item()),
+            "raw_anchor_mse": float(anchor_per_sample.detach().float().mean().item()),
+            "norm_defect": float(norm_defect.detach().float().item()),
+            "sigma_t_mean": float(sigma_t.detach().float().mean().item()),
+            "sigma_s_mean": float(sigma_s.detach().float().mean().item()),
+            "sigma_u_mean": float(sigma_u.detach().float().mean().item()),
+            "elapsed_sec": elapsed,
+            "samples_seen": step * batch_size,
+            "warp_loss": warp_loss_value,
+            "entropy_q_phi": float((-(warp.density() * torch.log(torch.clamp(warp.density(), min=1.0e-6))).sum()).item()) if warp is not None else None,
+            "max_qphi_over_qbase": float((warp.density() / torch.clamp(q_base, min=1.0e-6)).max().item()) if warp is not None and q_base is not None else None,
+        }
+        last_log = record
+        if step % log_every == 0 or step == 1:
+            with history_path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(record) + "\n")
+            print(
+                f"step={step}/{max_steps} loss={record['loss']:.6f} "
+                f"match={record['match_loss']:.6f} defect={record['norm_defect']:.6f} "
+                f"qmax={record['max_qphi_over_qbase']} elapsed={elapsed:.1f}s",
+                flush=True,
+            )
+
+        should_save = step % save_every == 0 or step == max_steps
+        if should_save:
+            ckpt = {
+                "step": step,
+                "student": student.state_dict(),
+                "optimizer": optimizer.state_dict(),
+                "warp": warp.state_dict() if warp is not None else None,
+                "warp_optimizer": warp_optimizer.state_dict() if warp_optimizer is not None else None,
+                "q_target": q_target.detach().cpu() if q_target is not None else None,
+                "warp_stats": {key: value.detach().cpu() for key, value in (warp_stats or {}).items()} if warp_stats is not None else None,
+                "config": cfg,
+                "best_loss": best_loss,
+                "last_log": record,
+            }
+            _save_checkpoint(ckpt_dir / "last.pt", ckpt)
+            if float(record["loss"]) <= best_loss:
+                best_loss = float(record["loss"])
+                ckpt["best_loss"] = best_loss
+                _save_checkpoint(ckpt_dir / "best.pt", ckpt)
+
+    write_json(run_root / "train_summary.json", {"last": last_log, "best_loss": best_loss})
+    print(f"edm-first training completed: {run_root}")
+
+
+if __name__ == "__main__":
+    main()

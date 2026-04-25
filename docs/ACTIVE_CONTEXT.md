@@ -14,6 +14,7 @@ historical context:
 4. `docs/experiments/DG_TWFD_v3/PAPER_EXPERIMENT_TARGETS.md`
 5. `docs/experiments/DG_TWFD_v3/ARCHITECTURE_AND_IMPLEMENTATION.md`
 6. `docs/experiments/DG_TWFD_v3/NETWORK_AND_RECOVERY.md`
+7. `docs/experiments/DG_TWFD_v3/DDPM_TEACHER_SUITABILITY_2026-04-26.md`
 
 Then inspect the relevant code/config files directly.
 
@@ -43,13 +44,15 @@ Then inspect the relevant code/config files directly.
 - Main config: `configs/experiment/dgtd_cifar10_v3.yaml`
 - Smoke config: `configs/experiment/dgtd_cifar10_v3_smoke.yaml`
 - Diagnostic config: `configs/experiment/dgtd_cifar10_v3_diag.yaml`
+- EDM-first isolated track: `experiments/edm_first/`
 - Teacher endpoint diagnostic: `scripts/diagnose_teacher_endpoints.py`
 - Run analysis gate: `scripts/analyze_dgtd_run.py`
 
 ## Latest Empirical State
 
-As of 2026-04-26, the DGTD v3 result-first loop is functional but the mainline
-is not yet producing usable CIFAR-10 samples.
+As of 2026-04-26, the DDPM/DGTD result-first loop is functional but is paused as
+the primary algorithm route. The active route is now EDM-first continuous
+sigma-space distillation with time warp retained.
 
 - `e405b` fast-teacher warped probe:
   - config: `configs/experiment/dgtd_cifar10_v3_probe_fast_teacher.yaml`
@@ -72,7 +75,8 @@ is not yet producing usable CIFAR-10 samples.
 
 Operational conclusions:
 
-- Do not launch `e402a` full training yet.
+- Do not launch DDPM `e402a` full training or DDPM `oss001` unless a specific
+  DDPM revisit is requested.
 - The previous short-budget scheduler stayed in warmup because trainer
   `total_steps` ignored `train.max_train_batches`; this is fixed in
   `src/dgtd/train_dgtd.py`.
@@ -81,3 +85,34 @@ Operational conclusions:
   current bottleneck.
 - Current failure is objective/data-coverage level: training losses and defects
   improve while pure-noise rollout samples remain noise-like.
+
+EDM-first continuous-teacher evidence:
+
+- isolated code path: `experiments/edm_first/`
+- `e500c` smoke: 20 training steps, 128-sample eval, clear non-noise CIFAR-like
+  grids.
+- `e501a` learned-warp train:
+  - run: `runs/edm_first_cifar10_warp_e501a`
+  - eval: `eval/edm_first_cifar10_warp_e501a`
+  - budget: 2000 steps, batch size 64, 128k samples seen
+  - approx FID@1024 for `1/2/4/8` steps:
+    `339.01 / 106.23 / 53.83 / 39.46`
+- `e501a` identity-clock eval on the same checkpoint:
+  - eval: `eval/edm_first_cifar10_identity_e501a`
+  - approx FID@1024 for `1/2/4/8` steps:
+    `339.01 / 124.48 / 61.10 / 38.84`
+- `e501ref` official EDM checkpoint reference:
+  - eval: `eval/edm_cifar10_public_eval_e501ref`
+  - official-protocol FID@1024 for sampler steps `1/2/4/8`:
+    `679.611 / 473.607 / 115.246 / 33.0675`
+
+Current algorithm judgement:
+
+- DDPM/discrete teacher is not theoretically impossible, but it is a poor
+  current distillation target because interpolation error, teacher cost, and
+  weak loss-to-sample correlation dominate the experiment.
+- EDM-first is now the main path because continuous sigma transitions produce
+  usable samples immediately and let time warp operate on a meaningful
+  continuous domain.
+- Time warp remains mandatory: it helps at 2 and 4 steps, is slightly worse at
+  8 steps, and should be upgraded into a step-budget-aware schedule component.

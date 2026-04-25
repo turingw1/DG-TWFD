@@ -1,3 +1,5 @@
+2026-04-26 执行状态：本计划已从“建议路线”升级为当前主线。DDPM/DGTD 离散 teacher 路线在 `e405b/e406a/e407a` 后暂停；第一版 EDM-first 连续 teacher 代码已放在 `experiments/edm_first/`，并完成 `e501a` 训练与评测。当前证据见 `docs/experiments/DG_TWFD_v3/DDPM_TEACHER_SUITABILITY_2026-04-26.md`。
+
 先给你结论：这份服务器计划应该**优先把“能产出真实结果的代码任务”提前**，暂时把论文文字、复杂图美化、CTM 重训、附录 toy 等后移。理由很明确：EDM 官方仓库已经提供了 `train.py`、`generate.py`、预训练 checkpoint，以及 CIFAR-10 / ImageNet64 的推荐采样设置，能最快把“连续型 teacher + online rollout + 自动评测”闭环打通；CTM 也有官方 PyTorch 代码，但重训成本更高，适合作为第二阶段公平基线。AYS 是 ICML 2024 的正式论文，Optimal Stepsize 也有官方代码仓库；这些更适合先作为**schedule baseline 接口预留**，而不是立刻成为第一优先级跑完的对象。评测上，`torch-fidelity` 官方文档强调 FID/IS/KID 的实现细节会显著影响数值可比性，所以评测脚本必须统一、自动化。([GitHub][1])
 
 下面这份就是我建议你直接交给 Codex，在服务器上推进实现的 **plan 形式文档**。它把需要代码完成的部分提前，并按“先出结果、再扩 baseline、最后补论文图表”的顺序组织。
