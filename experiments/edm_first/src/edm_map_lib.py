@@ -186,6 +186,71 @@ def student_transition(
     return x_t + append_dims(sigma_s - sigma_t, x_t.ndim) * d_cur
 
 
+@torch.no_grad()
+def teacher_rollout_transition(
+    net: torch.nn.Module,
+    x_t: torch.Tensor,
+    sigma_t: torch.Tensor | float,
+    sigma_s: torch.Tensor | float,
+    labels: torch.Tensor | None,
+    *,
+    num_steps: int,
+    rho: float,
+) -> torch.Tensor:
+    """Roll a teacher transition with a Karras/EDM Heun grid.
+
+    This is intentionally more expensive than `teacher_transition`: it provides
+    a high-quality endpoint target for one-step consistency distillation.
+    """
+    if int(num_steps) < 1:
+        raise ValueError("num_steps must be >= 1")
+    device = x_t.device
+    dtype = x_t.dtype
+    sigma_start = torch.as_tensor(sigma_t, device=device, dtype=torch.float32).flatten()[0]
+    sigma_end = torch.as_tensor(sigma_s, device=device, dtype=torch.float32).flatten()[0]
+    if float(sigma_start.item()) <= float(sigma_end.item()):
+        raise ValueError("teacher_rollout_transition expects sigma_t > sigma_s")
+    if float(sigma_end.item()) <= 0.0:
+        from generate import edm_sampler
+
+        latents = x_t.to(torch.float64) / sigma_start.to(torch.float64)
+        return edm_sampler(
+            net,
+            latents,
+            labels,
+            num_steps=int(num_steps),
+            sigma_min=max(0.002, float(getattr(net, "sigma_min", 0.0))),
+            sigma_max=float(sigma_start.item()),
+            rho=float(rho),
+        ).to(dtype)
+    sigma_min = max(float(sigma_end.item()), float(getattr(net, "sigma_min", 0.0)))
+    sigma_max = min(float(sigma_start.item()), float(getattr(net, "sigma_max", sigma_start.item())))
+    if int(num_steps) == 1:
+        t_steps = torch.as_tensor([sigma_max, 0.0], device=device, dtype=torch.float32)
+    else:
+        step_indices = torch.arange(int(num_steps), dtype=torch.float32, device=device)
+        t_steps = (sigma_max ** (1.0 / rho) + step_indices / (int(num_steps) - 1) * (sigma_min ** (1.0 / rho) - sigma_max ** (1.0 / rho))) ** rho
+        if hasattr(net, "round_sigma"):
+            t_steps = net.round_sigma(t_steps)
+        t_steps = torch.cat([t_steps, torch.zeros_like(t_steps[:1])])
+
+    x_next = x_t.to(torch.float32)
+    for step_index, (t_cur, t_next) in enumerate(zip(t_steps[:-1], t_steps[1:])):
+        x_cur = x_next
+        sigma_cur = t_cur.expand(x_cur.shape[0]).to(device=device, dtype=x_cur.dtype)
+        denoised = net(x_cur, sigma_cur, labels).to(x_cur.dtype)
+        d_cur = (x_cur - denoised) / append_dims(torch.clamp(sigma_cur, min=1.0e-6), x_cur.ndim)
+        x_euler = x_cur + append_dims((t_next - t_cur).to(x_cur.dtype), x_cur.ndim) * d_cur
+        if step_index < int(num_steps) - 1 and float(t_next.item()) > 0.0:
+            sigma_next = t_next.expand(x_cur.shape[0]).to(device=device, dtype=x_cur.dtype)
+            denoised_next = net(x_euler, sigma_next, labels).to(x_cur.dtype)
+            d_next = (x_euler - denoised_next) / append_dims(torch.clamp(sigma_next, min=1.0e-6), x_cur.ndim)
+            x_next = x_cur + append_dims((t_next - t_cur).to(x_cur.dtype), x_cur.ndim) * (0.5 * d_cur + 0.5 * d_next)
+        else:
+            x_next = x_euler
+    return x_next.to(dtype)
+
+
 def build_cifar10_loader(cfg: dict):
     from torch.utils.data import DataLoader
     from torchvision import datasets, transforms

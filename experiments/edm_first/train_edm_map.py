@@ -17,10 +17,12 @@ from src.edm_map_lib import (
     load_config,
     load_edm_network,
     make_labels,
+    sample_labels,
     sample_triplet_u,
     set_seed,
     sigma_from_u,
     student_transition,
+    teacher_rollout_transition,
     teacher_transition,
     update_warp_from_defect,
     write_json,
@@ -79,6 +81,7 @@ def main() -> None:
     match_weight = float(train_cfg.get("match_weight", 1.0))
     defect_weight = float(train_cfg.get("defect_weight", 0.05))
     anchor_weight = float(train_cfg.get("anchor_weight", 0.25))
+    objective = str(train_cfg.get("objective", "triplet"))
     amp_enabled = bool(runtime_cfg.get("amp", True)) and device.type == "cuda"
 
     teacher = load_edm_network(cfg["paths"]["network"], device=device, use_fp16=bool(teacher_cfg.get("use_fp16", True)))
@@ -110,21 +113,25 @@ def main() -> None:
     if args.resume:
         ckpt = torch.load(args.resume, map_location=device)
         student.load_state_dict(ckpt["student"])
-        optimizer.load_state_dict(ckpt["optimizer"])
+        resume_optimizer = bool(train_cfg.get("resume_optimizer", True))
+        resume_step = bool(train_cfg.get("resume_step", resume_optimizer))
+        if resume_optimizer:
+            optimizer.load_state_dict(ckpt["optimizer"])
         if warp is not None and ckpt.get("warp") is not None:
             warp.load_state_dict(ckpt["warp"])
-        if warp_optimizer is not None and ckpt.get("warp_optimizer") is not None:
+        if resume_optimizer and warp_optimizer is not None and ckpt.get("warp_optimizer") is not None:
             warp_optimizer.load_state_dict(ckpt["warp_optimizer"])
         if q_target is not None and ckpt.get("q_target") is not None:
             q_target.copy_(ckpt["q_target"].to(device))
         if warp_stats is not None and ckpt.get("warp_stats") is not None:
             for key, value in ckpt["warp_stats"].items():
                 warp_stats[key].copy_(value.to(device))
-        start_step = int(ckpt.get("step", 0))
-        best_loss = float(ckpt.get("best_loss", best_loss))
+        if resume_step:
+            start_step = int(ckpt.get("step", 0))
+            best_loss = float(ckpt.get("best_loss", best_loss))
 
-    loader = build_cifar10_loader(cfg)
-    data_iter = iter(loader)
+    loader = build_cifar10_loader(cfg) if objective == "triplet" else None
+    data_iter = iter(loader) if loader is not None else None
     history_path = log_dir / "train.jsonl"
     start_time = time.time()
     last_log = {}
@@ -141,41 +148,78 @@ def main() -> None:
             break
         if max_seconds > 0.0 and time.time() - start_time >= max_seconds:
             break
-        try:
-            images, labels_int = next(data_iter)
-        except StopIteration:
-            data_iter = iter(loader)
-            images, labels_int = next(data_iter)
+        batch_size = int(train_cfg.get("batch_size", 64))
+        if objective == "prior_endpoint":
+            labels = sample_labels(teacher, batch_size, device=device)
+            sigma_t = sigma_from_u(torch.zeros(batch_size, device=device), sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
+            sigma_u = torch.zeros_like(sigma_t)
+            sigma_s = sigma_u
+            x_t = torch.randn(
+                batch_size,
+                int(getattr(teacher, "img_channels", 3)),
+                int(getattr(teacher, "img_resolution", 32)),
+                int(getattr(teacher, "img_resolution", 32)),
+                device=device,
+            ) * sigma_t.view(-1, 1, 1, 1)
+            with torch.no_grad():
+                x_u_ref = teacher_rollout_transition(
+                    teacher,
+                    x_t,
+                    sigma_t[0],
+                    0.0,
+                    labels,
+                    num_steps=int(teacher_cfg.get("rollout_steps", 18)),
+                    rho=rho,
+                )
+                x_s_ref = x_u_ref
 
-        images = images.to(device=device, non_blocking=True) * 2.0 - 1.0
-        labels = make_labels(labels_int, label_dim=int(getattr(teacher, "label_dim", 0) or 0), device=device)
-        batch_size = int(images.shape[0])
-        u_t, u_s, u_u = sample_triplet_u(warp, batch_size, device=device)
-        sigma_t = sigma_from_u(u_t, sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
-        sigma_s = sigma_from_u(u_s, sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
-        sigma_u = sigma_from_u(u_u, sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
-        noise = torch.randn_like(images)
-        x_t = images + noise * sigma_t.view(-1, 1, 1, 1)
+            optimizer.zero_grad(set_to_none=True)
+            with torch.autocast(device_type="cuda", dtype=torch.float16, enabled=amp_enabled):
+                x_u_direct = student_transition(student, x_t, sigma_t, sigma_u, labels)
+                match_per_sample = (x_u_direct - x_u_ref).flatten(1).square().mean(dim=1)
+                anchor_per_sample = match_per_sample
+                match_loss = match_per_sample.mean()
+                anchor_loss = match_loss
+                defect_raw = torch.zeros_like(match_per_sample)
+                defect_loss = torch.zeros((), device=device, dtype=match_loss.dtype)
+                loss = match_weight * match_loss
+        else:
+            assert data_iter is not None and loader is not None
+            try:
+                images, labels_int = next(data_iter)
+            except StopIteration:
+                data_iter = iter(loader)
+                images, labels_int = next(data_iter)
 
-        with torch.no_grad():
-            x_s_ref = teacher_transition(teacher, x_t, sigma_t, sigma_s, labels)
-            x_u_ref = teacher_transition(teacher, x_t, sigma_t, sigma_u, labels)
+            images = images.to(device=device, non_blocking=True) * 2.0 - 1.0
+            labels = make_labels(labels_int, label_dim=int(getattr(teacher, "label_dim", 0) or 0), device=device)
+            batch_size = int(images.shape[0])
+            u_t, u_s, u_u = sample_triplet_u(warp, batch_size, device=device)
+            sigma_t = sigma_from_u(u_t, sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
+            sigma_s = sigma_from_u(u_s, sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
+            sigma_u = sigma_from_u(u_u, sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
+            noise = torch.randn_like(images)
+            x_t = images + noise * sigma_t.view(-1, 1, 1, 1)
 
-        optimizer.zero_grad(set_to_none=True)
-        with torch.autocast(device_type="cuda", dtype=torch.float16, enabled=amp_enabled):
-            x_s = student_transition(student, x_t, sigma_t, sigma_s, labels)
-            x_u_direct = student_transition(student, x_t, sigma_t, sigma_u, labels)
-            x_u_bridge = student_transition(student, x_s, sigma_s, sigma_u, labels)
-            match_per_sample = (x_s - x_s_ref).flatten(1).square().mean(dim=1)
-            anchor_per_sample = (x_u_direct - x_u_ref).flatten(1).square().mean(dim=1)
-            match_denom = (x_s_ref - x_t).flatten(1).square().mean(dim=1).clamp_min(1.0e-6)
-            anchor_denom = (x_u_ref - x_t).flatten(1).square().mean(dim=1).clamp_min(1.0e-6)
-            match_loss = (match_per_sample / match_denom).mean()
-            anchor_loss = (anchor_per_sample / anchor_denom).mean()
-            defect_raw = (x_u_direct - x_u_bridge.detach()).flatten(1).square().mean(dim=1)
-            defect_denom = (x_u_ref - x_t).flatten(1).square().mean(dim=1).clamp_min(1.0e-6)
-            defect_loss = (defect_raw / defect_denom).mean()
-            loss = match_weight * match_loss + anchor_weight * anchor_loss + defect_weight * defect_loss
+            with torch.no_grad():
+                x_s_ref = teacher_transition(teacher, x_t, sigma_t, sigma_s, labels)
+                x_u_ref = teacher_transition(teacher, x_t, sigma_t, sigma_u, labels)
+
+            optimizer.zero_grad(set_to_none=True)
+            with torch.autocast(device_type="cuda", dtype=torch.float16, enabled=amp_enabled):
+                x_s = student_transition(student, x_t, sigma_t, sigma_s, labels)
+                x_u_direct = student_transition(student, x_t, sigma_t, sigma_u, labels)
+                x_u_bridge = student_transition(student, x_s, sigma_s, sigma_u, labels)
+                match_per_sample = (x_s - x_s_ref).flatten(1).square().mean(dim=1)
+                anchor_per_sample = (x_u_direct - x_u_ref).flatten(1).square().mean(dim=1)
+                match_denom = (x_s_ref - x_t).flatten(1).square().mean(dim=1).clamp_min(1.0e-6)
+                anchor_denom = (x_u_ref - x_t).flatten(1).square().mean(dim=1).clamp_min(1.0e-6)
+                match_loss = (match_per_sample / match_denom).mean()
+                anchor_loss = (anchor_per_sample / anchor_denom).mean()
+                defect_raw = (x_u_direct - x_u_bridge.detach()).flatten(1).square().mean(dim=1)
+                defect_denom = (x_u_ref - x_t).flatten(1).square().mean(dim=1).clamp_min(1.0e-6)
+                defect_loss = (defect_raw / defect_denom).mean()
+                loss = match_weight * match_loss + anchor_weight * anchor_loss + defect_weight * defect_loss
         scaler.scale(loss).backward()
         scaler.step(optimizer)
         scaler.update()
@@ -207,6 +251,7 @@ def main() -> None:
         elapsed = time.time() - start_time
         record = {
             "step": step,
+            "objective": objective,
             "loss": float(loss.detach().float().item()),
             "match_loss": float(match_loss.detach().float().item()),
             "anchor_loss": float(anchor_loss.detach().float().item()),
