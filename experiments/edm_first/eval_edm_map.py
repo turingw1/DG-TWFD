@@ -38,15 +38,19 @@ def _device(cfg: dict) -> torch.device:
     return torch.device(requested)
 
 
-def _fid_for_samples(samples: torch.Tensor, fid_stats_path: str | Path, *, device: torch.device) -> float:
+def _fid_for_samples(samples: torch.Tensor, fid_stats_path: str | Path, *, device: torch.device, batch_size: int) -> float:
     from dgfm.evaluators.fid import InceptionFeatureExtractor, RunningStats, frechet_distance, load_stats
 
     feature_extractor = InceptionFeatureExtractor().to(device).eval()
     running = None
     with torch.no_grad():
-        feats = feature_extractor(samples.to(device))
-        running = RunningStats(int(feats.shape[1]))
-        running.update(feats)
+        for chunk in samples.split(max(1, int(batch_size)), dim=0):
+            feats = feature_extractor(chunk.to(device))
+            if running is None:
+                running = RunningStats(int(feats.shape[1]))
+            running.update(feats)
+    if running is None:
+        raise ValueError("No samples provided for FID")
     fake = running.finalize()
     real = load_stats(fid_stats_path)
     return frechet_distance(real, fake)
@@ -132,7 +136,7 @@ def main() -> None:
             device=device,
             seed=fixed_seed + 100000 * step_count,
         )
-        fid = _fid_for_samples(all_samples, fid_stats, device=device)
+        fid = _fid_for_samples(all_samples, fid_stats, device=device, batch_size=fid_batch_size)
         stats = sample_stats(grid_samples)
         record = {
             "step_count": step_count,
