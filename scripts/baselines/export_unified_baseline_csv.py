@@ -205,10 +205,39 @@ def _optimalsteps_cifar10_rows() -> list[dict[str, str]]:
     return rows
 
 
+def _cd_imagenet64_rows() -> list[dict[str, str]]:
+    summary = _best_existing_summary(
+        [
+            ROOT / "eval" / "cd_imagenet64_lpips_full" / "reports" / "summary.json",
+            ROOT / "eval" / "cd_imagenet64_full" / "reports" / "summary.json",
+        ]
+    )
+    if not summary.exists():
+        return []
+    rows: list[dict[str, str]] = []
+    for record in _records_from_summary(summary):
+        notes = str(record.get("notes", ""))
+        rows.append(
+            {
+                "dataset": "imagenet64",
+                "method": str(record.get("method", "CD-LPIPS-official")),
+                "step": str(record.get("step_count", "")),
+                "fid": _format_float(record.get("fid")),
+                "is": "",
+                "recall": "",
+                "checkpoint": str(record.get("checkpoint", "")),
+                "eval_script": "scripts/baselines/run_cd_imagenet64_eval.py",
+                "notes": notes,
+            }
+        )
+    return rows
+
+
 def build_outputs() -> dict[str, list[dict[str, str]]]:
     return {
         "baseline_edm_cifar10.csv": _edm_cifar10_rows(),
         "baseline_edm_imagenet64.csv": _edm_imagenet64_rows(),
+        "baseline_cd_imagenet64.csv": _cd_imagenet64_rows(),
         "schedule_optimalsteps_cifar10.csv": _optimalsteps_cifar10_rows(),
     }
 

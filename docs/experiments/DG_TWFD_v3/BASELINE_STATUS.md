@@ -11,6 +11,15 @@ scope: EDM official CIFAR-10 50k FID, then EDM official ImageNet64 50k FID
 policy: sequential low-batch runner, retry smaller batch on failure
 ```
 
+Queued automatic follow-up:
+
+```text
+tmux session: baseline_cd_imagenet64_full
+run tag: cd_imagenet64_lpips_full_20260426
+scope: wait for baseline_external_full, then run OpenAI CD-LPIPS ImageNet64 50k FID at steps 1/2/4/8
+checkpoint: /cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/consistency_models/cd_imagenet64_lpips.pt
+```
+
 ## Scope
 
 This page tracks external and schedule baselines requested for the DG-TWFD v3
@@ -178,7 +187,7 @@ Known blockers:
 ```text
 EDM ImageNet64: official checkpoint/ref not cached; config now exists.
 CTM CIFAR-10/ImageNet64: repos exist, official checkpoints not found locally.
-CD ImageNet64: repo exists, checkpoint/eval output not found locally.
+CD ImageNet64: LPIPS and L2 checkpoints downloaded; queued after EDM baselines.
 AYS: schedule integration pending; use official schedule values, no training.
 OptimalSteps ImageNet64: search/eval pending on a usable checkpoint.
 Entropic: repo cloned; schedule integration pending.
@@ -210,6 +219,13 @@ python3 scripts/baselines/export_unified_baseline_csv.py --write-empty
 
 Do not start CTM/CD/TCM runs until the required official checkpoint paths are
 registered in this page or in a committed config.
+
+For CD ImageNet64, the required checkpoint is now registered and the queued
+runner is:
+
+```bash
+bash scripts/baselines/run_cd_after_edm.sh
+```
 
 ## Asset Probe
 
