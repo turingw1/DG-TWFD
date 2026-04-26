@@ -2,6 +2,15 @@
 
 Last updated: 2026-04-26
 
+Active baseline run:
+
+```text
+tmux session: baseline_external_full
+run tag: external_baselines_full_20260426
+scope: EDM official CIFAR-10 50k FID, then EDM official ImageNet64 50k FID
+policy: sequential low-batch runner, retry smaller batch on failure
+```
+
 ## Scope
 
 This page tracks external and schedule baselines requested for the DG-TWFD v3
