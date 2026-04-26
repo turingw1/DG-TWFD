@@ -1,58 +1,61 @@
 # DG_TWFD_v3
 
 This directory is the branch-facing documentation entry for the active
-`DG_TWFD_v3` implementation.
+`DG_TWFD_v3` implementation and EDM-first experiment track.
+
+Use [DOCS_REGISTRY.md](DOCS_REGISTRY.md) as the canonical documentation map.
+Dated filenames are evidence snapshots, not the primary versioning mechanism.
 
 ## Scope
 
 - algorithm:
   - unified Defect-Guided Trajectory Distillation on explicit map prediction
 - active objective:
-  - `train.objective=dgtd_map`
+  - EDM-first continuous sigma-space distillation in `experiments/edm_first/`
 - active time warp:
-  - `scheduler.timewarp.type=dgtd_density`
+  - retained as a required architecture component, but `e504a` is the current
+    no-warp baseline for one-step endpoint quality
 - active teacher source:
-  - online teacher data and online trajectory anchors
-  - cached trajectory continuation only as fallback
+  - official EDM CIFAR-10 teacher checkpoint for the current track
 - preserved infrastructure:
   - dataset loading
   - distributed/server workflow
   - evaluation and few-step sampling
 - current experiment priority:
-  - result-first diagnostic loop: `e401a` smoke -> `e401b` diag -> gated
-    `e402a` full
-  - `oss001` optimal-steps baseline is deferred until a usable DGTD checkpoint
-    exists
+  - supervise `e504a` until the 50% one-step FID threshold is hit or the trend
+    clearly fails
+  - compare timewarp against identity on future timewarp-enabled runs
+  - keep DDPM/DGTD as paused evidence unless explicitly revisited
 
 ## Reading order
 
 1. [../../ACTIVE_CONTEXT.md](../../ACTIVE_CONTEXT.md)
-2. [HANDOFF_2026-04-20.md](HANDOFF_2026-04-20.md)
-3. [PIPELINE.md](PIPELINE.md)
-4. [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md)
-5. [PAPER_EXPERIMENT_TARGETS.md](PAPER_EXPERIMENT_TARGETS.md)
-6. [ARCHITECTURE_AND_IMPLEMENTATION.md](ARCHITECTURE_AND_IMPLEMENTATION.md)
-7. [A100_SERVER_DEPLOYMENT_2026-04-25.md](A100_SERVER_DEPLOYMENT_2026-04-25.md)
-8. [NETWORK_AND_RECOVERY.md](NETWORK_AND_RECOVERY.md)
+2. [DOCS_REGISTRY.md](DOCS_REGISTRY.md)
+3. [EDM_FIRST_SUPERVISION.md](EDM_FIRST_SUPERVISION.md)
+4. [NETWORK_AND_RECOVERY.md](NETWORK_AND_RECOVERY.md)
+5. [BASELINE_STATUS.md](BASELINE_STATUS.md)
+6. [BASELINE_COMPARISON_GUIDE.md](BASELINE_COMPARISON_GUIDE.md)
 
 ## Documentation roles
 
-- `HANDOFF_2026-04-20.md`:
-  - current project state, rules, and implementation lineage
-- `PIPELINE.md`:
-  - stable server command families after experiment activation
-- `EXPERIMENT_LOG.md`:
-  - accepted experiment rows, tags, commands, and return fields
-- `PAPER_EXPERIMENT_TARGETS.md`:
-  - paper-facing experiment tables and baseline data plan
-- `ARCHITECTURE_AND_IMPLEMENTATION.md`:
-  - implementation details for the active DGTD stack
-- `A100_SERVER_DEPLOYMENT_2026-04-25.md`:
-  - current workspace/cache/temp server layout, symlink policy, env bootstrap,
-    and backup flow
-- `NETWORK_AND_RECOVERY.md`:
-  - local-proxy vs heavy-download network profiles, mirror defaults, and
-    `/temp` recovery snapshot policy
+Use [DOCS_REGISTRY.md](DOCS_REGISTRY.md) for the full classification. The
+short version is:
+
+- status dashboards:
+  - [EDM_FIRST_SUPERVISION.md](EDM_FIRST_SUPERVISION.md)
+  - [BASELINE_STATUS.md](BASELINE_STATUS.md)
+- operations and recovery:
+  - [NETWORK_AND_RECOVERY.md](NETWORK_AND_RECOVERY.md)
+  - [A100_SERVER_DEPLOYMENT_2026-04-25.md](A100_SERVER_DEPLOYMENT_2026-04-25.md)
+- algorithm evidence/reference:
+  - [DDPM_TEACHER_SUITABILITY_2026-04-26.md](DDPM_TEACHER_SUITABILITY_2026-04-26.md)
+  - [TIME_COORDINATE_DESIGN_ABLATION.md](TIME_COORDINATE_DESIGN_ABLATION.md)
+  - [ARCHITECTURE_AND_IMPLEMENTATION.md](ARCHITECTURE_AND_IMPLEMENTATION.md)
+- planning:
+  - [PAPER_EXPERIMENT_TARGETS.md](PAPER_EXPERIMENT_TARGETS.md)
+  - [PLAN/impreved_to_cinsistent.md](PLAN/impreved_to_cinsistent.md)
+- superseded handoff:
+  - [HANDOFF_2026-04-20.md](HANDOFF_2026-04-20.md)
 
 Archived context lives under `docs/archive/` and is not part of the default
 reading set. Do not read archived docs unless a specific historical lookup or
@@ -63,7 +66,7 @@ baseline reproduction request requires it.
 If the goal is to re-open the implementation and algorithm lineage rather than
 re-read branch summaries, use these entry documents directly:
 
-- active DG-TWFD branch docs:
+- paused DGTD branch docs:
   - [HANDOFF_2026-04-20.md](HANDOFF_2026-04-20.md)
   - [ARCHITECTURE_AND_IMPLEMENTATION.md](ARCHITECTURE_AND_IMPLEMENTATION.md)
   - [PIPELINE.md](PIPELINE.md)
@@ -88,6 +91,19 @@ re-read branch summaries, use these entry documents directly:
 
 ## Active code entrypoints
 
+- EDM-first trainer:
+  - [../../../experiments/edm_first/train_edm_map.py](../../../experiments/edm_first/train_edm_map.py)
+- EDM-first evaluator:
+  - [../../../experiments/edm_first/eval_edm_map.py](../../../experiments/edm_first/eval_edm_map.py)
+- EDM-first watcher:
+  - [../../../experiments/edm_first/scripts/watch_eval_checkpoints.sh](../../../experiments/edm_first/scripts/watch_eval_checkpoints.sh)
+- EDM-first threshold check:
+  - [../../../experiments/edm_first/scripts/check_fid_thresholds.py](../../../experiments/edm_first/scripts/check_fid_thresholds.py)
+- current e504a config:
+  - [../../../experiments/edm_first/configs/cifar10_edm_map_onestep_prior_msdefect_8h.yaml](../../../experiments/edm_first/configs/cifar10_edm_map_onestep_prior_msdefect_8h.yaml)
+
+## Paused DGTD code entrypoints
+
 - trainer:
   - [../../../src/dgtd/train_dgtd.py](../../../src/dgtd/train_dgtd.py)
 - warp:
@@ -106,9 +122,6 @@ re-read branch summaries, use these entry documents directly:
 
 ## Active commands
 
-- train:
-  - `torchrun --nproc_per_node=2 scripts/run_train.py --config configs/experiment/dgtd_cifar10_v3.yaml --run-root runs/dgtd_cifar10_v3`
-- sample:
-  - `python scripts/run_sample_dgtd.py --config configs/experiment/dgtd_cifar10_v3.yaml --checkpoint runs/dgtd_cifar10_v3/checkpoints/best.pt --output-dir runs/dgtd_cifar10_v3/samples/steps16 --steps 16`
-- eval:
-  - `python scripts/run_eval.py --config configs/experiment/dgtd_cifar10_v3.yaml --checkpoint runs/dgtd_cifar10_v3/checkpoints/best.pt --eval-root eval/dgtd_cifar10_v3`
+Use [EDM_FIRST_SUPERVISION.md](EDM_FIRST_SUPERVISION.md) for the current
+training/eval monitoring commands. Do not use the old DGTD train/sample/eval
+commands unless the DDPM/DGTD route is explicitly resumed.

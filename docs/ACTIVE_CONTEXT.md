@@ -5,16 +5,15 @@ This file is the default documentation entry for current development on
 
 ## Default Reading Set
 
-Read only these docs before code work unless the user explicitly asks for
-historical context:
+Read only these docs before current EDM-first code work unless the user
+explicitly asks for historical context:
 
-1. `docs/experiments/DG_TWFD_v3/HANDOFF_2026-04-20.md`
-2. `docs/experiments/DG_TWFD_v3/PIPELINE.md`
-3. `docs/experiments/DG_TWFD_v3/EXPERIMENT_LOG.md`
-4. `docs/experiments/DG_TWFD_v3/PAPER_EXPERIMENT_TARGETS.md`
-5. `docs/experiments/DG_TWFD_v3/ARCHITECTURE_AND_IMPLEMENTATION.md`
-6. `docs/experiments/DG_TWFD_v3/NETWORK_AND_RECOVERY.md`
-7. `docs/experiments/DG_TWFD_v3/DDPM_TEACHER_SUITABILITY_2026-04-26.md`
+1. `docs/experiments/DG_TWFD_v3/README.md`
+2. `docs/experiments/DG_TWFD_v3/DOCS_REGISTRY.md`
+3. `docs/experiments/DG_TWFD_v3/EDM_FIRST_SUPERVISION.md`
+4. `docs/experiments/DG_TWFD_v3/NETWORK_AND_RECOVERY.md`
+5. `docs/experiments/DG_TWFD_v3/BASELINE_STATUS.md`
+6. `docs/experiments/DG_TWFD_v3/BASELINE_COMPARISON_GUIDE.md`
 
 Then inspect the relevant code/config files directly.
 
@@ -31,22 +30,27 @@ Then inspect the relevant code/config files directly.
   reproduction question requires it.
 - Archived low-signal docs under `docs/archive/low_signal_2026-04-25/` are not
   part of the active development context.
+- Use `docs/experiments/DG_TWFD_v3/DOCS_REGISTRY.md` to classify any new doc.
+  Dated filenames are evidence snapshots, not the primary versioning method.
 
 ## Active Code Anchors
 
-- Trainer: `src/dgtd/train_dgtd.py`
-- Teacher path: `src/dgtd/teacher.py`
-- Residual: `src/dgtd/defect.py`
-- Warp: `src/dgtd/warp.py`
-- Metrics: `src/dgtd/metrics.py`
-- Sampling: `src/dgtd/sample_dgtd.py`
-- Eval dispatch: `src/dgfm/evaluators/common.py`
-- Main config: `configs/experiment/dgtd_cifar10_v3.yaml`
-- Smoke config: `configs/experiment/dgtd_cifar10_v3_smoke.yaml`
-- Diagnostic config: `configs/experiment/dgtd_cifar10_v3_diag.yaml`
 - EDM-first isolated track: `experiments/edm_first/`
-- Teacher endpoint diagnostic: `scripts/diagnose_teacher_endpoints.py`
-- Run analysis gate: `scripts/analyze_dgtd_run.py`
+- EDM-first trainer: `experiments/edm_first/train_edm_map.py`
+- EDM-first evaluator: `experiments/edm_first/eval_edm_map.py`
+- EDM-first watcher: `experiments/edm_first/scripts/watch_eval_checkpoints.sh`
+- EDM-first threshold checker:
+  `experiments/edm_first/scripts/check_fid_thresholds.py`
+- Current e504a config:
+  `experiments/edm_first/configs/cifar10_edm_map_onestep_prior_msdefect_8h.yaml`
+- Eval dispatch: `src/dgfm/evaluators/common.py`
+- Paused DGTD trainer: `src/dgtd/train_dgtd.py`
+- Paused DGTD teacher path: `src/dgtd/teacher.py`
+- Paused DGTD residual/warp: `src/dgtd/defect.py`, `src/dgtd/warp.py`
+- Paused DGTD configs:
+  `configs/experiment/dgtd_cifar10_v3.yaml`,
+  `configs/experiment/dgtd_cifar10_v3_smoke.yaml`,
+  `configs/experiment/dgtd_cifar10_v3_diag.yaml`
 
 ## Latest Empirical State
 
