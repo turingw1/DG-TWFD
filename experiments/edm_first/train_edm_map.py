@@ -161,7 +161,9 @@ def main() -> None:
             sigma_u = torch.zeros_like(sigma_t)
             mid_u_low = float(train_cfg.get("prior_mid_u_low", 0.25))
             mid_u_high = float(train_cfg.get("prior_mid_u_high", 0.85))
-            u_mid = torch.empty(batch_size, device=device).uniform_(mid_u_low, mid_u_high)
+            r_mid = torch.empty(batch_size, device=device).uniform_(mid_u_low, mid_u_high)
+            u_mid = warp.r_to_t(r_mid) if warp is not None else r_mid
+            u_u = u_mid
             sigma_s = sigma_from_u(u_mid, sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
             x_t = torch.randn(
                 batch_size,

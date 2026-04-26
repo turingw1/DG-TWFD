@@ -50,6 +50,14 @@ historical failure cases:
 | active | [BASELINE_STATUS.md](BASELINE_STATUS.md) | external baseline queue, blockers, generated CSV status |
 | reference | [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md) | legacy DGTD run ledger; update only if DDPM/DGTD route is resumed |
 
+Active supervision scripts:
+
+| lifecycle | path | owner/use |
+|---|---|---|
+| active | `experiments/edm_first/scripts/hourly_supervise_edm_first.sh` | hourly train/eval supervisor and success/failure action |
+| active | `experiments/edm_first/scripts/analyze_hourly_supervision.py` | 7-hour blocker report generator |
+| active | `experiments/edm_first/scripts/launch_timewarp_followup.sh` | threshold-triggered timewarp follow-up launcher |
+
 ### Operations And Recovery
 
 | lifecycle | document | owner/use |

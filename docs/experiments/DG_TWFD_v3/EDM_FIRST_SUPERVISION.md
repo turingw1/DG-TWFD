@@ -229,6 +229,56 @@ python experiments/edm_first/scripts/check_fid_thresholds.py \
 cat "$latest_eval/reports/threshold_verdict.json"
 ```
 
+### Hourly Supervisor
+
+The long supervision job runs a stronger loop than the checkpoint watcher:
+every hour it prints training state, runs FID on the latest checkpoint, writes a
+threshold verdict, backs up metrics/grids to `/temp`, and exits with a blocker
+report if the target is not met after 7 hours.
+
+Start or restart it:
+
+```bash
+tmux kill-session -t e504a_hourly_supervisor 2>/dev/null || true
+tmux new-session -d -s e504a_hourly_supervisor \
+  'cd /home/ma-user/workspace/Zhengwei/DG-TWFD && \
+   DG_TWFD_SUPERVISION_INTERVAL_SECONDS=3600 \
+   DG_TWFD_SUPERVISION_MAX_HOURS=7 \
+   DG_TWFD_SUPERVISION_FID_SAMPLES=2048 \
+   bash experiments/edm_first/scripts/hourly_supervise_edm_first.sh'
+```
+
+Watch its output:
+
+```bash
+tail -f runs/edm_first_cifar10_onestep_msdefect_e504a/logs/hourly_supervisor.log
+```
+
+Check whether it is still running:
+
+```bash
+tmux ls | rg 'e504a_hourly_supervisor|e504a_msdefect|e504a_eval_watch'
+```
+
+If the one-step 50% FID target is reached, the supervisor calls:
+
+```bash
+bash experiments/edm_first/scripts/launch_timewarp_followup.sh <winning_checkpoint>
+```
+
+That follow-up uses:
+
+```text
+experiments/edm_first/configs/cifar10_edm_map_onestep_prior_msdefect_timewarp_8h.yaml
+```
+
+If 7 hours pass without hitting the target, inspect the generated blocker
+report:
+
+```bash
+find runs/edm_first_cifar10_onestep_msdefect_e504a/reports -name 'hourly_supervision_blockers_*.md' | sort -V | tail -1
+```
+
 ## Timewarp Tracking Rule
 
 e504a is intentionally an identity-clock run:
