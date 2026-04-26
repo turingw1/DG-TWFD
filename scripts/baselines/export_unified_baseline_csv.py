@@ -87,7 +87,13 @@ def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
 
 
 def _edm_cifar10_rows() -> list[dict[str, str]]:
-    summary = ROOT / "eval" / "edm_cifar10_public_eval_e501ref" / "reports" / "summary.json"
+    summary = _best_existing_summary(
+        [
+            ROOT / "eval" / "edm_cifar10_public_eval_full" / "reports" / "summary.json",
+            ROOT / "eval" / "edm_cifar10_public_eval_e501full" / "reports" / "summary.json",
+            ROOT / "eval" / "edm_cifar10_public_eval_e501ref" / "reports" / "summary.json",
+        ]
+    )
     if not summary.exists():
         return []
     return _edm_rows(
@@ -98,7 +104,13 @@ def _edm_cifar10_rows() -> list[dict[str, str]]:
 
 
 def _edm_imagenet64_rows() -> list[dict[str, str]]:
-    summary = ROOT / "eval" / "edm_imagenet64_public_eval_e501ref" / "reports" / "summary.json"
+    summary = _best_existing_summary(
+        [
+            ROOT / "eval" / "edm_imagenet64_public_eval_full" / "reports" / "summary.json",
+            ROOT / "eval" / "edm_imagenet64_public_eval_e501full" / "reports" / "summary.json",
+            ROOT / "eval" / "edm_imagenet64_public_eval_e501ref" / "reports" / "summary.json",
+        ]
+    )
     if not summary.exists():
         return []
     return _edm_rows(
@@ -131,6 +143,30 @@ def _edm_rows(*, summary: Path, dataset: str, eval_script: str) -> list[dict[str
             }
         )
     return rows
+
+
+def _best_existing_summary(candidates: list[Path]) -> Path:
+    existing = [path for path in candidates if path.exists()]
+    if not existing:
+        return candidates[0]
+
+    def score(path: Path) -> tuple[int, int]:
+        try:
+            records = _records_from_summary(path)
+        except Exception:
+            return (0, 0)
+        sample_count = 0
+        steps = 0
+        for record in records:
+            if record.get("fid") is not None:
+                steps += 1
+            try:
+                sample_count = max(sample_count, int(record.get("num_fid_samples", 0)))
+            except Exception:
+                pass
+        return (sample_count, steps)
+
+    return max(existing, key=score)
 
 
 def _optimalsteps_cifar10_rows() -> list[dict[str, str]]:

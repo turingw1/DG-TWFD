@@ -32,6 +32,18 @@ Regenerate from existing reports:
 python3 scripts/baselines/export_unified_baseline_csv.py --write-empty
 ```
 
+Long-running EDM official baseline launcher:
+
+```bash
+bash scripts/baselines/run_external_baselines.sh
+```
+
+The comparison role of each baseline is documented in:
+
+```text
+docs/experiments/DG_TWFD_v3/BASELINE_COMPARISON_GUIDE.md
+```
+
 ## Current GPU Constraint
 
 The main experiment `e504a_msdefect` is running on GPU 0, and its watcher
@@ -189,3 +201,17 @@ python3 scripts/baselines/export_unified_baseline_csv.py --write-empty
 
 Do not start CTM/CD/TCM runs until the required official checkpoint paths are
 registered in this page or in a committed config.
+
+## Asset Probe
+
+The current machine asset probe is generated at:
+
+```text
+results/baselines/asset_probe.json
+```
+
+Generate it with:
+
+```bash
+python3 scripts/baselines/probe_baseline_assets.py
+```
