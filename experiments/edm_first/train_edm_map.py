@@ -185,8 +185,9 @@ def main() -> None:
             optimizer.zero_grad(set_to_none=True)
             with torch.autocast(device_type="cuda", dtype=torch.float16, enabled=amp_enabled):
                 x_u_direct = student_transition(student, x_t, sigma_t, sigma_u, labels)
-                x_s = student_transition(student, x_t, sigma_t, sigma_s, labels)
-                x_u_bridge = student_transition(student, x_s.detach(), sigma_s, sigma_u, labels)
+                with torch.no_grad():
+                    x_s = student_transition(student, x_t, sigma_t, sigma_s, labels)
+                    x_u_bridge = student_transition(student, x_s, sigma_s, sigma_u, labels)
                 match_per_sample = (x_u_direct - x_u_ref).flatten(1).square().mean(dim=1)
                 anchor_per_sample = match_per_sample
                 match_loss = match_per_sample.mean()
