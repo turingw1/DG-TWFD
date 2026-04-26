@@ -28,6 +28,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--eval-root", required=True)
     parser.add_argument("--steps", nargs="+", type=int, default=None)
     parser.add_argument("--fid-samples", type=int, default=None)
+    parser.add_argument(
+        "--warp-mode",
+        choices=("auto", "identity"),
+        default="auto",
+        help="auto loads the learned checkpoint warp when present; identity disables time warp for schedule comparison.",
+    )
     return parser.parse_args()
 
 
@@ -95,9 +101,15 @@ def main() -> None:
     student.load_state_dict(ckpt["student"])
     student.eval().requires_grad_(False)
     warp, _q_base, _q_target = init_warp(cfg, device=device)
-    if warp is not None and ckpt.get("warp") is not None:
+    timewarp_enabled = warp is not None
+    checkpoint_has_warp = ckpt.get("warp") is not None
+    warp_loaded = False
+    if args.warp_mode == "identity":
+        warp = None
+    elif warp is not None and checkpoint_has_warp:
         warp.load_state_dict(ckpt["warp"])
         warp.eval()
+        warp_loaded = True
 
     eval_cfg = cfg.get("eval", {})
     steps = [int(item) for item in (args.steps or eval_cfg.get("steps", [1, 2, 4, 8]))]
@@ -144,6 +156,10 @@ def main() -> None:
             "fid": fid,
             "num_fid_samples": fid_samples,
             "checkpoint": str(args.checkpoint),
+            "warp_mode": args.warp_mode,
+            "timewarp_enabled": timewarp_enabled,
+            "checkpoint_has_warp": checkpoint_has_warp,
+            "warp_loaded": warp_loaded,
             "u_grid": [float(item) for item in u_grid.detach().cpu().tolist()],
             "sigma_grid": [float(item) for item in sigma_grid.detach().cpu().tolist()],
             **{f"sample_{key}": value for key, value in stats.items() if key != "shape"},
@@ -152,7 +168,17 @@ def main() -> None:
         records.append(record)
         print(f"eval step={step_count} fid={fid:.4f} corr_h={record['sample_neighbor_corr_h']:.4f}", flush=True)
 
-    write_json(report_dir / "summary.json", {"records": records})
+    write_json(
+        report_dir / "summary.json",
+        {
+            "checkpoint": str(args.checkpoint),
+            "warp_mode": args.warp_mode,
+            "timewarp_enabled": timewarp_enabled,
+            "checkpoint_has_warp": checkpoint_has_warp,
+            "warp_loaded": warp_loaded,
+            "records": records,
+        },
+    )
     with (report_dir / "summary.csv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(records[0].keys()))
         writer.writeheader()
