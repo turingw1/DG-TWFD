@@ -27,6 +27,7 @@ from src.edm_map_lib import (
     update_warp_from_defect,
     write_json,
 )
+from dgfm.losses.perceptual import MultiScaleL1
 
 
 def parse_args() -> argparse.Namespace:
@@ -82,6 +83,7 @@ def main() -> None:
     defect_weight = float(train_cfg.get("defect_weight", 0.05))
     anchor_weight = float(train_cfg.get("anchor_weight", 0.25))
     objective = str(train_cfg.get("objective", "triplet"))
+    perceptual_weight = float(train_cfg.get("perceptual_weight", cfg.get("loss", {}).get("perceptual_weight", 0.0)))
     amp_enabled = bool(runtime_cfg.get("amp", True)) and device.type == "cuda"
 
     teacher = load_edm_network(cfg["paths"]["network"], device=device, use_fp16=bool(teacher_cfg.get("use_fp16", True)))
@@ -93,6 +95,10 @@ def main() -> None:
         weight_decay=float(train_cfg.get("weight_decay", 0.0)),
     )
     scaler = torch.amp.GradScaler(device="cuda", enabled=amp_enabled)
+    perceptual_metric = None
+    if perceptual_weight > 0.0:
+        perceptual_metric = MultiScaleL1(levels=int(train_cfg.get("perceptual_levels", cfg.get("loss", {}).get("perceptual_fallback_levels", 3)))).to(device)
+        perceptual_metric.eval().requires_grad_(False)
 
     warp, q_base, q_target = init_warp(cfg, device=device)
     warp_optimizer = None
@@ -153,7 +159,10 @@ def main() -> None:
             labels = sample_labels(teacher, batch_size, device=device)
             sigma_t = sigma_from_u(torch.zeros(batch_size, device=device), sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
             sigma_u = torch.zeros_like(sigma_t)
-            sigma_s = sigma_u
+            mid_u_low = float(train_cfg.get("prior_mid_u_low", 0.25))
+            mid_u_high = float(train_cfg.get("prior_mid_u_high", 0.85))
+            u_mid = torch.empty(batch_size, device=device).uniform_(mid_u_low, mid_u_high)
+            sigma_s = sigma_from_u(u_mid, sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
             x_t = torch.randn(
                 batch_size,
                 int(getattr(teacher, "img_channels", 3)),
@@ -176,13 +185,21 @@ def main() -> None:
             optimizer.zero_grad(set_to_none=True)
             with torch.autocast(device_type="cuda", dtype=torch.float16, enabled=amp_enabled):
                 x_u_direct = student_transition(student, x_t, sigma_t, sigma_u, labels)
+                x_s = student_transition(student, x_t, sigma_t, sigma_s, labels)
+                x_u_bridge = student_transition(student, x_s.detach(), sigma_s, sigma_u, labels)
                 match_per_sample = (x_u_direct - x_u_ref).flatten(1).square().mean(dim=1)
                 anchor_per_sample = match_per_sample
                 match_loss = match_per_sample.mean()
                 anchor_loss = match_loss
-                defect_raw = torch.zeros_like(match_per_sample)
-                defect_loss = torch.zeros((), device=device, dtype=match_loss.dtype)
-                loss = match_weight * match_loss
+                defect_raw = (x_u_direct - x_u_bridge.detach()).flatten(1).square().mean(dim=1)
+                defect_denom = (x_u_ref - x_t).flatten(1).square().mean(dim=1).clamp_min(1.0e-6)
+                defect_loss = (defect_raw / defect_denom).mean()
+                perceptual_loss = (
+                    perceptual_metric(x_u_direct.float(), x_u_ref.float())
+                    if perceptual_metric is not None
+                    else torch.zeros((), device=device, dtype=match_loss.dtype)
+                )
+                loss = match_weight * match_loss + defect_weight * defect_loss + perceptual_weight * perceptual_loss
         else:
             assert data_iter is not None and loader is not None
             try:
@@ -256,6 +273,7 @@ def main() -> None:
             "match_loss": float(match_loss.detach().float().item()),
             "anchor_loss": float(anchor_loss.detach().float().item()),
             "defect_loss": float(defect_loss.detach().float().item()),
+            "perceptual_loss": float(perceptual_loss.detach().float().item()) if "perceptual_loss" in locals() else 0.0,
             "raw_match_mse": float(match_per_sample.detach().float().mean().item()),
             "raw_anchor_mse": float(anchor_per_sample.detach().float().mean().item()),
             "norm_defect": float(norm_defect.detach().float().item()),
