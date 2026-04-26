@@ -74,11 +74,18 @@ This writes:
 - `/temp/Zhengwei/DG-TWFD-recovery/latest/dirty.patch`
 - `/temp/Zhengwei/DG-TWFD-recovery/latest/untracked_files.tar.gz`, if small
 - `/temp/Zhengwei/DG-TWFD-recovery/latest/refs_commits.txt`
+- `/temp/Zhengwei/DG-TWFD-recovery/latest/repo_head.bundle`, including
+  committed local HEAD even when it is not pushed yet
+- `/temp/Zhengwei/DG-TWFD-recovery/latest/codex_home_minimal.tar.gz`, if under
+  the size cap; this contains Codex `config.toml` and archived session JSONL
+  files, not the full Codex cache
 - `/temp/Zhengwei/DG-TWFD-recovery/restore_after_crash.sh`
 - `/temp/Zhengwei/DG-TWFD-recovery/RESTORE.md`
 
 The script keeps only the latest 3 snapshots by default
 (`DG_TWFD_RECOVERY_KEEP_SNAPSHOTS=3`) to avoid turning `/temp` into a cache.
+Codex archived-session backup is capped by
+`DG_TWFD_CODEX_SNAPSHOT_MAX_MB=256` by default.
 
 For the normal code checkpoint flow, use:
 

@@ -5,6 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RECOVERY_ROOT="${DG_TWFD_RECOVERY_ROOT:-/temp/Zhengwei/DG-TWFD-recovery}"
 MAX_UNTRACKED_MB="${DG_TWFD_RECOVERY_MAX_UNTRACKED_MB:-200}"
 KEEP_SNAPSHOTS="${DG_TWFD_RECOVERY_KEEP_SNAPSHOTS:-3}"
+CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+CODEX_SNAPSHOT_MAX_MB="${DG_TWFD_CODEX_SNAPSHOT_MAX_MB:-256}"
 
 cd "$ROOT_DIR"
 mkdir -p "$RECOVERY_ROOT"
@@ -51,6 +53,28 @@ if git rev-parse --verify HEAD >/dev/null 2>&1; then
   rm -f "$tmp_bundle"
 fi
 
+codex_mb=0
+if [[ -d "$CODEX_HOME" ]]; then
+  codex_list="$snapshot_dir/codex_files.txt"
+  : > "$codex_list"
+  if [[ -f "$CODEX_HOME/config.toml" ]]; then
+    printf '%s\n' "config.toml" >> "$codex_list"
+  fi
+  if [[ -d "$CODEX_HOME/archived_sessions" ]]; then
+    find "$CODEX_HOME/archived_sessions" -maxdepth 1 -type f -name '*.jsonl' -printf 'archived_sessions/%f\n' \
+      | sort >> "$codex_list"
+  fi
+  if [[ -s "$codex_list" ]]; then
+    codex_bytes="$(tar -C "$CODEX_HOME" -cf - --files-from "$codex_list" 2>/dev/null | wc -c || echo 0)"
+    codex_mb=$(( (codex_bytes + 1048575) / 1048576 ))
+    if (( codex_mb <= CODEX_SNAPSHOT_MAX_MB )); then
+      tar -C "$CODEX_HOME" -czf "$snapshot_dir/codex_home_minimal.tar.gz" --files-from "$codex_list"
+    else
+      echo "Skipped Codex snapshot: ${codex_mb}MB exceeds ${CODEX_SNAPSHOT_MAX_MB}MB" > "$snapshot_dir/codex_home_minimal.skipped"
+    fi
+  fi
+fi
+
 cat > "$snapshot_dir/RESTORE.md" <<EOF
 # DG-TWFD Crash Recovery Snapshot
 
@@ -74,6 +98,9 @@ bash /temp/Zhengwei/DG-TWFD-recovery/restore_after_crash.sh
 - \`dirty.patch\`: tracked uncommitted changes
 - \`untracked_files.tar.gz\`: untracked git-relevant files, if below size cap
 - \`refs_commits.txt\`: current reference repository commits
+- \`repo_head.bundle\`: current committed repo HEAD, including unpushed commits
+- \`codex_home_minimal.tar.gz\`: Codex config and archived sessions, if under
+  the size cap
 \`\`\`
 $(sed 's/^/  /' "$snapshot_dir/refs_commits.txt")
 \`\`\`
@@ -97,9 +124,15 @@ if [[ ! -d "$REPO_DIR/.git" ]]; then
 fi
 
 cd "$REPO_DIR"
-git fetch origin
-git checkout "$branch"
-git pull --ff-only origin "$branch" || true
+git fetch origin || true
+if [[ -f "$SNAPSHOT_DIR/repo_head.bundle" ]]; then
+  git fetch "$SNAPSHOT_DIR/repo_head.bundle" HEAD:refs/tmp/dg_twfd_recovery_head
+  git checkout -B "$branch" refs/tmp/dg_twfd_recovery_head
+  git branch --set-upstream-to="origin/$branch" "$branch" 2>/dev/null || true
+else
+  git checkout "$branch"
+  git pull --ff-only origin "$branch" || true
+fi
 
 if [[ -s "$SNAPSHOT_DIR/dirty.patch" ]]; then
   git apply --index "$SNAPSHOT_DIR/dirty.patch" || git apply "$SNAPSHOT_DIR/dirty.patch"
@@ -111,6 +144,12 @@ fi
 
 bash scripts/clone_reference_repos.sh || true
 source scripts/server/activate_a100_runtime.sh
+
+if [[ -f "$SNAPSHOT_DIR/codex_home_minimal.tar.gz" ]]; then
+  CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+  mkdir -p "$CODEX_HOME"
+  tar -xzf "$SNAPSHOT_DIR/codex_home_minimal.tar.gz" -C "$CODEX_HOME"
+fi
 
 cat <<EOM
 Recovery bootstrap finished.
@@ -139,4 +178,5 @@ echo "Recovery snapshot written"
 echo "  snapshot=$snapshot_dir"
 echo "  latest=$latest_dir"
 echo "  untracked_size_mb=$untracked_mb"
+echo "  codex_snapshot_mb=$codex_mb"
 echo "  keep_snapshots=$KEEP_SNAPSHOTS"
