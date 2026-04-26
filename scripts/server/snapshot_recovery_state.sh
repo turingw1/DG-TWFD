@@ -158,7 +158,7 @@ Snapshot: $SNAPSHOT_DIR
 
 Next checks:
   git status --short --branch
-  source "$(conda info --base)/etc/profile.d/conda.sh"
+  source "\$(conda info --base)/etc/profile.d/conda.sh"
   conda activate "$DG_TWFD_A100_ENV"
   python scripts/server/smoke_a100.py
 EOM
