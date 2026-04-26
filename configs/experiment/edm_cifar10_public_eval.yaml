@@ -10,7 +10,7 @@ train:
 
 eval:
   metrics: [fid]
-  step_counts: [1, 2, 4, 8, 18]
+  step_counts: [1, 2, 4, 8]
   num_fid_samples: 50000
   fid_batch_size: 64
   sample_batch_size: 64

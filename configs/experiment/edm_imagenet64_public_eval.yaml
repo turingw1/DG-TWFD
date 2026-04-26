@@ -1,0 +1,24 @@
+base: configs/base.yaml
+includes:
+  - dataset/imagenet64
+
+experiment:
+  name: edm_imagenet64_public_eval
+
+train:
+  objective: external_edm_eval
+
+eval:
+  metrics: [fid]
+  step_counts: [1, 2, 4, 8]
+  num_fid_samples: 50000
+  fid_batch_size: 32
+  sample_batch_size: 32
+  fixed_seed: 42
+  edm:
+    network: ${EDM_IMAGENET64_NETWORK:-https://nvlabs-fi-cdn.nvidia.com/edm/pretrained/edm-imagenet-64x64-cond-adm.pkl}
+    fid_ref: ${EDM_IMAGENET64_FID_REF:-https://nvlabs-fi-cdn.nvidia.com/edm/fid-refs/imagenet-64x64.npz}
+    nproc_per_node: ${EDM_NPROC_PER_NODE:-1}
+    generate_subdirs: true
+    seeds_start: 0
+    sampler: edm

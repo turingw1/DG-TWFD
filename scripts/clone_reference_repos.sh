@@ -13,6 +13,8 @@ repos=(
   "min_snr|https://github.com/TiankaiHang/Min-SNR-Diffusion-Training.git"
   "optimalsteps|https://github.com/bebebe666/OptimalSteps.git"
   "rectified_diffusion|https://github.com/G-U-N/Rectified-Diffusion.git"
+  "entropic_time_schedulers|https://github.com/DejanStancevic/Entropic-Time-Schedulers-for-Generative-Diffusion-Models.git"
+  "tcm|https://github.com/NVlabs/TCM.git"
   "edm|https://github.com/turingw1/edm.git"
 )
 

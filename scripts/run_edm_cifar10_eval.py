@@ -24,7 +24,7 @@ FID_RE = re.compile(r"^\s*([0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)\s*$")
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run public EDM CIFAR-10 inference and official FID eval")
+    parser = argparse.ArgumentParser(description="Run public EDM inference and official FID eval")
     parser.add_argument("--config", required=True, help="Experiment config path")
     parser.add_argument("--sample-root", required=True, help="Directory for generated EDM samples")
     parser.add_argument("--eval-root", required=True, help="Directory for EDM metric reports")
@@ -109,17 +109,27 @@ def main() -> None:
     steps = _as_int_list(args.steps, [int(item) for item in eval_cfg.get("step_counts", [18])])
     num_samples = int(args.num_samples or eval_cfg.get("num_fid_samples", 50000))
     batch = int(args.batch or eval_cfg.get("fid_batch_size", eval_cfg.get("sample_batch_size", 64)))
-    network = str(args.network or edm_cfg.get("network") or os.environ.get("EDM_CIFAR10_NETWORK", ""))
-    fid_ref = str(args.fid_ref or edm_cfg.get("fid_ref") or os.environ.get("EDM_CIFAR10_FID_REF", ""))
+    network = str(
+        args.network
+        or edm_cfg.get("network")
+        or os.environ.get("EDM_NETWORK")
+        or os.environ.get("EDM_CIFAR10_NETWORK", "")
+    )
+    fid_ref = str(
+        args.fid_ref
+        or edm_cfg.get("fid_ref")
+        or os.environ.get("EDM_FID_REF")
+        or os.environ.get("EDM_CIFAR10_FID_REF", "")
+    )
     seeds_start = int(args.seeds_start if args.seeds_start is not None else edm_cfg.get("seeds_start", 0))
     nproc_per_node = int(args.nproc_per_node or edm_cfg.get("nproc_per_node", os.environ.get("EDM_NPROC_PER_NODE", 1)))
     sampler = str(edm_cfg.get("sampler", "edm"))
     subdirs = bool(edm_cfg.get("generate_subdirs", True))
 
     if not network:
-        raise ValueError("EDM network is required via eval.edm.network, --network, or EDM_CIFAR10_NETWORK")
+        raise ValueError("EDM network is required via eval.edm.network, --network, or EDM_NETWORK")
     if not fid_ref and not args.skip_fid:
-        raise ValueError("EDM FID reference is required via eval.edm.fid_ref, --fid-ref, or EDM_CIFAR10_FID_REF")
+        raise ValueError("EDM FID reference is required via eval.edm.fid_ref, --fid-ref, or EDM_FID_REF")
     if not EDM_ROOT.exists():
         raise FileNotFoundError(f"refs/edm not found: {EDM_ROOT}")
 
@@ -217,7 +227,7 @@ def main() -> None:
         best = min(valid_fid, key=lambda item: float(item["fid"]))
         with (report_dir / "best.json").open("w", encoding="utf-8") as handle:
             json.dump(best, handle, indent=2)
-    print("edm cifar10 evaluation completed")
+    print("edm evaluation completed")
     print(f"sample_root: {sample_root}")
     print(f"eval_root: {eval_root}")
 
