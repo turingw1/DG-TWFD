@@ -94,6 +94,19 @@ def _parse_fid(stdout: str) -> float | None:
     return None
 
 
+def _resolve_under_root(path: str | Path) -> Path:
+    path = Path(path)
+    if path.is_absolute():
+        return path
+    return ROOT / path
+
+
+def _count_images(path: Path) -> int:
+    if not path.exists():
+        return 0
+    return sum(1 for item in path.rglob("*.png") if item.is_file())
+
+
 def _nfe_for_edm_steps(step_count: int, sampler: str) -> int:
     if sampler == "euler":
         return int(step_count)
@@ -133,8 +146,8 @@ def main() -> None:
     if not EDM_ROOT.exists():
         raise FileNotFoundError(f"refs/edm not found: {EDM_ROOT}")
 
-    sample_root = Path(args.sample_root)
-    eval_root = Path(args.eval_root)
+    sample_root = _resolve_under_root(args.sample_root)
+    eval_root = _resolve_under_root(args.eval_root)
     report_dir = eval_root / "reports"
     sample_root.mkdir(parents=True, exist_ok=True)
     report_dir.mkdir(parents=True, exist_ok=True)
@@ -151,7 +164,14 @@ def main() -> None:
         seed_end = seeds_start + num_samples - 1
         t0 = time.time()
 
-        if not args.skip_generate:
+        existing_images = _count_images(step_sample_dir)
+        if not args.skip_generate and existing_images >= num_samples:
+            print(
+                f"reusing existing images for step_count={step_count}: "
+                f"{existing_images} >= {num_samples} at {step_sample_dir}",
+                flush=True,
+            )
+        elif not args.skip_generate:
             generate_args = [
                 f"--outdir={step_sample_dir}",
                 f"--seeds={seeds_start}-{seed_end}",
