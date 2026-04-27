@@ -119,6 +119,29 @@ For the full-stack timewarp experiment, the best direction is:
 5. Keep a step-budget-aware schedule/search baseline in the loop, because the
    identity Karras grid is currently exposing the composition failure.
 
+User guidance on 2026-04-28 sets the next core goal: the full-stack experiment
+must preserve the endpoint improvement while using match and defect to train
+multi-step robustness. The desired behavior is that increasing the inference
+step budget improves quality instead of degrading it. Timewarp is not an
+optional add-on for this phase; one of the central goals is to demonstrate a
+real learned-timewarp advantage over the identity clock and over fixed
+schedules used during earlier evals.
+
+The implementation implication is:
+
+1. Keep direct endpoint supervision so FID@1 does not regress unnecessarily.
+2. Add real intermediate teacher targets so the student learns both
+   `sigma_max -> sigma_s` and `sigma_s -> 0` transitions.
+3. Make the bridge defect a trainable composition signal, not only a weak
+   detached diagnostic. Defect should expose where direct and composed paths
+   disagree and should drive both student robustness and timewarp density.
+4. Evaluate every milestone with identity and learned timewarp at
+   `1/2/4/8/16`; the success criterion is not just better FID@1, but a curve
+   where additional steps are neutral-to-beneficial.
+5. Treat the learned timewarp schedule as a first-class artifact: save its
+   density, entropy, max-density ratio, and per-bin defect statistics with each
+   checkpoint so its advantage can be explained rather than only observed.
+
 ## Runtime And Supervision Notes
 
 The current training is expensive: latest logs imply roughly `17.8s/step`, so
