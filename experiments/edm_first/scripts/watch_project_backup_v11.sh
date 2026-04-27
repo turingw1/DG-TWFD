@@ -104,8 +104,11 @@ while true; do
 
   now="$(date +%s)"
   if (( now - last_codex_sync >= codex_interval )); then
-    bash "${ROOT_DIR}/scripts/server/backup_codex_project_v11.sh" "$project_name" | tee -a "$log_file" "$temp_log"
-    last_codex_sync="$now"
+    if bash "${ROOT_DIR}/scripts/server/backup_codex_project_v11.sh" "$project_name" | tee -a "$log_file" "$temp_log"; then
+      last_codex_sync="$now"
+    else
+      log_line "codex project backup failed $(date -Is)"
+    fi
   fi
 
   find "$backup_run_root" "$backup_eval_root" -maxdepth 5 -type f | sort > "${backup_run_root}/MANIFEST.txt"

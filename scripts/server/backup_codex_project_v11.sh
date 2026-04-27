@@ -7,11 +7,17 @@ project_temp="${DG_TWFD_PROJECT_TEMP:-/temp/Zhengwei/projects/${project_name}}"
 codex_home="${CODEX_HOME:-$HOME/.codex}"
 out_dir="${project_temp}/codex"
 out_path="${out_dir}/codex_latest.tar.gz"
-tmp_path="${out_path}.tmp.$$"
+timestamp="$(date +%Y%m%d_%H%M%S)"
+version_path="${out_dir}/codex_${timestamp}_$$.tar.gz"
+tmp_path="$version_path"
 list_file="${TMPDIR:-/tmp}/${project_name}_codex_backup_files.$$"
+backup_complete=0
 
 cleanup() {
-  rm -f "$tmp_path" "$list_file"
+  if [[ "$backup_complete" != "1" ]]; then
+    rm -f "$tmp_path"
+  fi
+  rm -f "$list_file"
 }
 trap cleanup EXIT
 
@@ -44,5 +50,10 @@ COPYFILE_DISABLE=1 tar \
   --files-from "$list_file"
 
 tar -tzf "$tmp_path" >/dev/null
-mv -f "$tmp_path" "$out_path"
+
+# Some project /temp mounts reject atomic rename over an existing file. Keep the
+# verified versioned archive as a fallback, then refresh the canonical path.
+cp -pf "$tmp_path" "$out_path"
+tar -tzf "$out_path" >/dev/null
+backup_complete=1
 printf '[%s] codex 会话已备份\n' "$project_name"
