@@ -16,7 +16,7 @@ from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[2]
-TCM_ROOT = ROOT / "refs" / "tcm"
+ENTROPIC_ROOT = ROOT / "refs" / "entropic_time_schedulers" / "EDM"
 EDM_ROOT = ROOT / "refs" / "edm"
 FID_RE = re.compile(r"^\s*([0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)\s*$")
 
@@ -34,73 +34,65 @@ FIELDNAMES = [
 
 DATASET_DEFAULTS: dict[str, dict[str, Any]] = {
     "cifar10": {
-        "checkpoint": "/cache/Zhengwei/DG-TWFD/checkpoints/baselines/tcm/tcm_cifar10_ddpmpp.pkl",
-        "method": "TCM-official-DDPM++",
-        "sample_root": "runs/tcm_cifar10_5k/samples",
-        "eval_root": "eval/tcm_cifar10_5k",
-        "csv_out": "results/baselines/baseline_tcm_cifar10.csv",
+        "data_code": "CIFAR10",
+        "time_path": "refs/entropic_time_schedulers/EDM/Schedules/RE_function_CIFAR10_uncond_vp_80_128_FREQ.pt",
+        "method": "Entropic-RE-official",
+        "sample_root": "runs/entropic_cifar10_5k/samples",
+        "eval_root": "eval/entropic_cifar10_5k",
+        "csv_out": "results/baselines/schedule_entropic_cifar10.csv",
         "fid_ref": "https://nvlabs-fi-cdn.nvidia.com/edm/fid-refs/cifar10-32x32.npz",
-        "arch": "ddpmpp",
-        "cond": False,
-        "fp16": False,
-        "resolution": 32,
-        "num_classes": 0,
-        "batch": 512,
+        "checkpoint": "https://nvlabs-fi-cdn.nvidia.com/edm/pretrained/edm-cifar10-32x32-uncond-vp.pkl",
+        "batch": 256,
     },
     "imagenet64": {
-        "checkpoint": "/cache/Zhengwei/DG-TWFD/checkpoints/baselines/tcm/tcm_imgnet64_edm2s.pkl",
-        "method": "TCM-official-EDM2-S",
-        "sample_root": "runs/tcm_imagenet64_5k/samples",
-        "eval_root": "eval/tcm_imagenet64_5k",
-        "csv_out": "results/baselines/baseline_tcm_imagenet64.csv",
+        "data_code": "Imagenet_64_s",
+        "time_path": "refs/entropic_time_schedulers/EDM/Schedules/Rescaled_entropic_time_64.pt",
+        "method": "Entropic-RE-official",
+        "sample_root": "runs/entropic_imagenet64_5k/samples",
+        "eval_root": "eval/entropic_imagenet64_5k",
+        "csv_out": "results/baselines/schedule_entropic_imagenet64.csv",
         "fid_ref": "https://nvlabs-fi-cdn.nvidia.com/edm/fid-refs/imagenet-64x64.npz",
-        "arch": "edm2-img64-s",
-        "cond": True,
-        "fp16": True,
-        "resolution": 64,
-        "num_classes": 1000,
+        "checkpoint": "https://nvlabs-fi-cdn.nvidia.com/edm2/posthoc-reconstructions/edm2-img64-s-1073741-0.075.pkl",
         "batch": 128,
     },
 }
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run TCM official checkpoint generation and EDM FID.")
+    parser = argparse.ArgumentParser(description="Run Entropic Time Scheduler baseline and EDM FID.")
     subparsers = parser.add_subparsers(dest="command")
 
     main = subparsers.add_parser("run")
     main.add_argument("--dataset", choices=sorted(DATASET_DEFAULTS), required=True)
-    main.add_argument("--checkpoint", default=None)
-    main.add_argument("--method", default=None)
-    main.add_argument("--sample-root", default=None)
-    main.add_argument("--eval-root", default=None)
-    main.add_argument("--csv-out", default=None)
-    main.add_argument("--fid-ref", default=None)
     main.add_argument("--steps", nargs="+", type=int, default=[1, 2, 4, 8])
     main.add_argument("--num-samples", type=int, default=5000)
     main.add_argument("--batch", type=int, default=None)
     main.add_argument("--fid-batch", type=int, default=512)
+    main.add_argument("--solver", choices=["SDDIM", "DDDIM", "Heun"], default="SDDIM")
     main.add_argument("--seed", type=int, default=42)
     main.add_argument("--skip-sample", action="store_true")
     main.add_argument("--skip-fid", action="store_true")
     main.add_argument("--force", action="store_true")
+    main.add_argument("--sample-root", default=None)
+    main.add_argument("--eval-root", default=None)
+    main.add_argument("--csv-out", default=None)
+    main.add_argument("--time-path", default=None)
+    main.add_argument("--fid-ref", default=None)
     main.add_argument(
         "--stable-report-root",
         default="/temp/Zhengwei/projects/DG-TWFD/critical/analysis/baselines/reports",
     )
 
     worker = subparsers.add_parser("_generate")
-    worker.add_argument("--dataset", choices=sorted(DATASET_DEFAULTS), required=True)
-    worker.add_argument("--data", required=True)
-    worker.add_argument("--checkpoint", required=True)
-    worker.add_argument("--outdir", required=True)
-    worker.add_argument("--arch", required=True)
-    worker.add_argument("--cond", action=argparse.BooleanOptionalAction, default=False)
-    worker.add_argument("--fp16", action=argparse.BooleanOptionalAction, default=False)
+    worker.add_argument("--data-code", required=True)
+    worker.add_argument("--time-path", required=True)
+    worker.add_argument("--solver", required=True)
     worker.add_argument("--batch", type=int, required=True)
     worker.add_argument("--num-samples", type=int, required=True)
+    worker.add_argument("--num-steps", type=int, required=True)
     worker.add_argument("--seed", type=int, required=True)
-    worker.add_argument("--mid-t", nargs="*", type=float, default=[])
+    worker.add_argument("--outdir", required=True)
+    worker.add_argument("--device", default="cuda:0")
     return parser.parse_args()
 
 
@@ -113,43 +105,13 @@ def _resolve(path: str | Path) -> Path:
 
 def _dataset_defaults(args: argparse.Namespace) -> dict[str, Any]:
     defaults = dict(DATASET_DEFAULTS[args.dataset])
-    defaults["checkpoint"] = args.checkpoint or defaults["checkpoint"]
-    defaults["method"] = args.method or defaults["method"]
     defaults["sample_root"] = args.sample_root or defaults["sample_root"]
     defaults["eval_root"] = args.eval_root or defaults["eval_root"]
     defaults["csv_out"] = args.csv_out or defaults["csv_out"]
+    defaults["time_path"] = args.time_path or defaults["time_path"]
     defaults["fid_ref"] = args.fid_ref or defaults["fid_ref"]
     defaults["batch"] = args.batch or defaults["batch"]
     return defaults
-
-
-def _ensure_schema_dataset(dataset: str, *, resolution: int, num_classes: int) -> Path:
-    root = Path("/cache/Zhengwei/DG-TWFD/datasets/tcm_schema") / dataset
-    root.mkdir(parents=True, exist_ok=True)
-    image_path = root / "000000.png"
-    if not image_path.exists():
-        arr = np.zeros((resolution, resolution, 3), dtype=np.uint8)
-        Image.fromarray(arr).save(image_path)
-    json_path = root / "dataset.json"
-    if num_classes > 0:
-        label = num_classes - 1
-        payload = {"labels": [["000000.png", label]]}
-        json_path.write_text(json.dumps(payload), encoding="utf-8")
-    elif json_path.exists():
-        json_path.unlink()
-    return root
-
-
-def _mid_t_for_step_count(step_count: int) -> list[float]:
-    if step_count < 1:
-        raise ValueError(f"step count must be >= 1, got {step_count}")
-    if step_count == 1:
-        return []
-    official_two_step_mid = 0.821
-    if step_count == 2:
-        return [official_two_step_mid]
-    values = np.geomspace(official_two_step_mid, 0.002, step_count - 1)
-    return [float(f"{value:.8g}") for value in values]
 
 
 def _run_and_tee(command: list[str], *, cwd: Path, env: dict[str, str], log_path: Path) -> str:
@@ -180,7 +142,7 @@ def _run_and_tee(command: list[str], *, cwd: Path, env: dict[str, str], log_path
 def _count_pngs(path: Path) -> int:
     if not path.exists():
         return 0
-    return sum(1 for item in path.glob("sample_*.png") if item.is_file())
+    return sum(1 for item in path.glob("*.png") if item.is_file())
 
 
 def _parse_fid(stdout: str) -> float | None:
@@ -208,7 +170,7 @@ def _load_completed_metric(metrics_path: Path, image_dir: Path, *, expected: int
 
 
 def _write_preview(image_dir: Path, preview_path: Path, *, limit: int = 64) -> None:
-    images = sorted(image_dir.glob("sample_*.png"))[:limit]
+    images = sorted(image_dir.glob("*.png"))[:limit]
     if not images:
         return
     thumbs = []
@@ -248,7 +210,7 @@ def _write_outputs(*, rows: list[dict[str, Any]], eval_root: Path, csv_out: Path
                     "is": "",
                     "recall": "",
                     "checkpoint": row["checkpoint"],
-                    "eval_script": "scripts/baselines/run_tcm_eval.py",
+                    "eval_script": "scripts/baselines/run_entropic_schedule_eval.py",
                     "notes": row["notes"],
                 }
             )
@@ -263,94 +225,57 @@ def _write_outputs(*, rows: list[dict[str, Any]], eval_root: Path, csv_out: Path
 
 
 def _run_worker(args: argparse.Namespace) -> None:
-    sys.path.insert(0, str(TCM_ROOT))
+    sys.path.insert(0, str(ENTROPIC_ROOT))
 
     import torch
-    import dnnlib
-    from generate import evaluation
-    from torch_utils import distributed as dist
+    from Generate_image import generate_image
 
-    torch.multiprocessing.set_start_method("spawn", force=True)
-    os.environ.setdefault("MASTER_ADDR", "localhost")
-    os.environ.setdefault("MASTER_PORT", str(29500 + os.getpid() % 20000))
-    os.environ.setdefault("RANK", "0")
-    os.environ.setdefault("LOCAL_RANK", "0")
-    os.environ.setdefault("WORLD_SIZE", "1")
-    dist.init()
+    np.random.seed(int(args.seed))
+    torch.manual_seed(int(args.seed))
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(int(args.seed))
 
-    network_kwargs = dnnlib.EasyDict()
-    if args.arch == "ddpmpp":
-        network_kwargs.update(
-            model_type="SongUNet",
-            embedding_type="positional",
-            encoder_type="standard",
-            decoder_type="standard",
-            channel_mult_noise=1,
-            resample_filter=[1, 1],
-            model_channels=128,
-            channel_mult=[2, 2, 2],
-            attn_type="dot",
-            emb_norm=False,
-        )
-    elif args.arch == "edm2-img64-s":
-        network_kwargs.update(model_type="EDM2UNet", model_channels=192)
-        network_kwargs.update(scale=1.0, emb_norm=False, learnable_scale=False)
-    else:
-        raise ValueError(f"Unsupported TCM arch: {args.arch}")
-    network_kwargs.class_name = "training.networks.ECMPrecond"
-    network_kwargs.update(dropout=0.13, use_fp16=args.fp16)
-
-    try:
-        evaluation(
-            run_dir=args.outdir,
-            dataset_kwargs=dnnlib.EasyDict(
-                class_name="training.dataset.ImageFolderDataset",
-                path=args.data,
-                use_labels=args.cond,
-                xflip=False,
-                cache=False,
-            ),
-            network_kwargs=network_kwargs,
-            batch_size=args.batch,
-            seed=args.seed,
-            resume_pkl=args.checkpoint,
-            mid_t=list(args.mid_t),
-            metrics=[],
-            cudnn_benchmark=True,
-            num_samples=args.num_samples,
-            class_label=None,
-        )
-    finally:
-        if torch.distributed.is_initialized():
-            torch.distributed.destroy_process_group()
+    checkpoint = torch.load(args.time_path, map_location=torch.device("cpu"))
+    time_values = checkpoint["time"]
+    time_func = checkpoint["time_func"]
+    outdir = Path(args.outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+    generate_image(
+        data=args.data_code,
+        time=time_values,
+        time_function=time_func,
+        solver=args.solver,
+        batch_size=int(args.batch),
+        num_images=int(args.num_samples),
+        num_steps=int(args.num_steps),
+        device=args.device,
+        save_path=str(outdir),
+    )
 
 
 def _run_main(args: argparse.Namespace) -> None:
     defaults = _dataset_defaults(args)
-    checkpoint = _resolve(defaults["checkpoint"])
-    if not checkpoint.exists():
-        raise FileNotFoundError(checkpoint)
-    if not TCM_ROOT.exists():
-        raise FileNotFoundError(TCM_ROOT)
+    if not ENTROPIC_ROOT.exists():
+        raise FileNotFoundError(ENTROPIC_ROOT)
     if not EDM_ROOT.exists():
         raise FileNotFoundError(EDM_ROOT)
 
-    schema_data = _ensure_schema_dataset(
-        args.dataset,
-        resolution=int(defaults["resolution"]),
-        num_classes=int(defaults["num_classes"]),
-    )
+    time_path = _resolve(defaults["time_path"])
+    if not time_path.exists():
+        raise FileNotFoundError(time_path)
     sample_root = _resolve(defaults["sample_root"])
     eval_root = _resolve(defaults["eval_root"])
     csv_out = _resolve(defaults["csv_out"])
     stable_report_root = _resolve(args.stable_report_root)
 
     env = dict(os.environ)
-    env["PYTHONPATH"] = str(ROOT) + os.pathsep + str(EDM_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = (
+        str(ENTROPIC_ROOT) + os.pathsep + str(EDM_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
+    )
     env.setdefault("DNNLIB_CACHE_DIR", str(ROOT / ".torch" / "dnnlib"))
+    env.setdefault("NCCL_DEBUG", "WARN")
     env.setdefault("OMPI_MCA_btl", "^openib")
     env.setdefault("OMPI_MCA_btl_openib_warn_no_device_params_found", "0")
-    env.setdefault("NCCL_DEBUG", "WARN")
 
     rows: list[dict[str, Any]] = []
     for step_count in args.steps:
@@ -374,37 +299,33 @@ def _run_main(args: argparse.Namespace) -> None:
                 csv_out=csv_out,
                 stable_report_root=stable_report_root,
             )
-            print(f"reuse tcm {args.dataset} step_count={step_count} fid={completed['fid']}", flush=True)
+            print(f"reuse entropic {args.dataset} step_count={step_count} fid={completed['fid']}", flush=True)
             continue
 
-        mid_t = _mid_t_for_step_count(step_count)
         if not args.skip_sample and _count_pngs(image_dir) < args.num_samples:
             command = [
                 sys.executable,
                 str(Path(__file__).resolve()),
                 "_generate",
-                "--dataset",
-                args.dataset,
-                "--data",
-                str(schema_data),
-                "--checkpoint",
-                str(checkpoint),
-                "--outdir",
-                str(image_dir),
-                "--arch",
-                str(defaults["arch"]),
+                "--data-code",
+                str(defaults["data_code"]),
+                "--time-path",
+                str(time_path),
+                "--solver",
+                args.solver,
                 "--batch",
                 str(defaults["batch"]),
                 "--num-samples",
                 str(args.num_samples),
+                "--num-steps",
+                str(step_count),
                 "--seed",
-                str(args.seed + 1000 * step_count),
+                str(args.seed + 1000 * int(step_count)),
+                "--outdir",
+                str(image_dir),
+                "--device",
+                "cuda:0",
             ]
-            command.append("--cond" if defaults["cond"] else "--no-cond")
-            command.append("--fp16" if defaults["fp16"] else "--no-fp16")
-            if mid_t:
-                command.append("--mid-t")
-                command.extend(str(value) for value in mid_t)
             _run_and_tee(command, cwd=ROOT, env=env, log_path=step_dir / "sample.stdout_stderr.txt")
 
         png_count = _count_pngs(image_dir)
@@ -430,27 +351,23 @@ def _run_main(args: argparse.Namespace) -> None:
             )
             fid = _parse_fid(fid_stdout)
 
-        schedule_note = (
-            "official 1-step path"
-            if step_count == 1
-            else "official README 2-step mid_t=0.821"
-            if step_count == 2
-            else "geometric extension from official mid_t=0.821 to sigma_min=0.002"
-        )
         row = {
             "dataset": args.dataset,
             "step_count": int(step_count),
             "fid": fid,
             "num_fid_samples": int(args.num_samples),
-            "checkpoint": str(checkpoint),
+            "checkpoint": str(defaults["checkpoint"]),
             "method": defaults["method"],
             "image_dir": str(image_dir),
-            "mid_t": mid_t,
+            "time_path": str(time_path),
+            "solver": args.solver,
             "elapsed_sec": time.time() - t0,
             "notes": "; ".join(
                 [
-                    "official TCM checkpoint and sampling code",
-                    schedule_note,
+                    "official Entropic Time Scheduler precomputed schedule",
+                    f"data_code={defaults['data_code']}",
+                    f"solver={args.solver}",
+                    f"time_path={time_path}",
                     f"num_fid_samples={args.num_samples}",
                     f"png_count={png_count}",
                     "recall pending reference sample batch",
@@ -465,7 +382,7 @@ def _run_main(args: argparse.Namespace) -> None:
             csv_out=csv_out,
             stable_report_root=stable_report_root,
         )
-        print(f"tcm {args.dataset} step_count={step_count} fid={fid} elapsed_sec={row['elapsed_sec']:.2f}", flush=True)
+        print(f"entropic {args.dataset} step_count={step_count} fid={fid} elapsed_sec={row['elapsed_sec']:.2f}", flush=True)
 
 
 def main() -> None:

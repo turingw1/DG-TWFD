@@ -1,6 +1,6 @@
 # Baseline Status
 
-Last updated: 2026-04-28
+Last updated: 2026-04-28 Asia/Shanghai
 
 Active baseline run:
 
@@ -13,7 +13,7 @@ Current baseline budget:
 ```text
 num_fid_samples: 5000
 steps: 1 2 4 8
-policy: run remaining official baselines to completion, keep CSV reports in /temp via results/baselines symlink
+policy: run valid official baselines to completion, keep CSV reports in the stable per-project /temp tree
 ```
 
 ## Scope
@@ -32,17 +32,25 @@ results/baselines/
 ```
 
 `results/` is a symlink to `/cache/Zhengwei/DG-TWFD-runtime/results`, and
-`results/baselines` is redirected to `/temp/Zhengwei/DG-TWFD-backups/experiment_evidence/baselines_20260426`.
-The unified CSV reports therefore survive `/cache` loss as long as `/temp`
-remains intact.
-
-Current small CSV exports are also backed up at:
+`results/baselines` is redirected to the stable project-isolated path:
 
 ```text
-/temp/Zhengwei/DG-TWFD-backups/experiment_evidence/baselines_20260426/
+/temp/Zhengwei/projects/DG-TWFD/critical/analysis/baselines
 ```
 
-Regenerate from existing reports:
+Runner summary reports are mirrored under:
+
+```text
+/temp/Zhengwei/projects/DG-TWFD/critical/analysis/baselines/reports
+```
+
+TCM checkpoint backups are kept under:
+
+```text
+/temp/Zhengwei/projects/DG-TWFD/critical/ckpt/baselines/tcm
+```
+
+Regenerate empty placeholders and merged exports from known reports:
 
 ```bash
 python3 scripts/baselines/export_unified_baseline_csv.py --write-empty
@@ -62,10 +70,9 @@ docs/experiments/DG_TWFD_v3/BASELINE_COMPARISON_GUIDE.md
 
 ## Current GPU Constraint
 
-As of 2026-04-28 01:40 Asia/Shanghai, no main training process is active and
-GPU memory was idle before starting CTM ImageNet64. Baseline jobs may use GPU 0
-up to the agreed 75 GiB ceiling, while avoiding code changes to the main
-experiment.
+As of 2026-04-28, the main DG-TWFD training process is active. Baseline jobs may
+use GPU 0 up to the agreed 75 GiB ceiling, but no baseline job is currently
+running. Baseline work must not modify main experiment code or checkpoints.
 
 ## Baseline Roots
 
@@ -83,13 +90,9 @@ refs/tcm
 
 These reference directories are intentionally ignored by git under `refs/*`.
 
-AYS currently has no local repo. The official project page exposes a paper,
-Colab, and quickstart schedules rather than a checked-out project directory:
-
-```text
-https://research.nvidia.com/labs/toronto-ai/AlignYourSteps/
-https://research.nvidia.com/labs/toronto-ai/AlignYourSteps/howto.html
-```
+AYS currently has no local runnable integration for the DG-TWFD CIFAR-10 or
+ImageNet64 EDM/EDM2 setup. Do not fabricate AYS rows without a verified schedule
+source and runner.
 
 Archived CTM reproduction notes remain at:
 
@@ -125,8 +128,8 @@ FID reference:
 https://nvlabs-fi-cdn.nvidia.com/edm/fid-refs/cifar10-32x32.npz
 ```
 
-Current numbers are 1024-sample smoke/reference measurements, not final 50k
-or 5k FID:
+Current numbers are 1024-sample smoke/reference measurements, not final 5k or
+50k FID:
 
 | step | fid |
 |---:|---:|
@@ -190,6 +193,13 @@ CT official 5k FID:
 | 4 | 18.837000 |
 | 8 | 19.034100 |
 
+OpenAI consistency-model baselines require the local compatibility patch
+recorded at:
+
+```text
+patches/consistency_models_unet_baseline_compat.patch
+```
+
 ### CTM Official ImageNet64
 
 Output:
@@ -202,12 +212,6 @@ Source report:
 
 ```text
 eval/ctm_imagenet64_5k/reports/summary.json
-```
-
-Stable evidence backup:
-
-```text
-/temp/Zhengwei/DG-TWFD-backups/experiment_evidence/baselines_ctm_live_20260428/
 ```
 
 Current 5k FID:
@@ -233,18 +237,6 @@ Source report:
 eval/ctm_cifar10_5k/reports/summary.json
 ```
 
-Stable evidence backup:
-
-```text
-/temp/Zhengwei/DG-TWFD-backups/experiment_evidence/baselines_ctm_cifar10_live_20260428/
-```
-
-Stable checkpoint backup:
-
-```text
-/temp/Zhengwei/DG-TWFD-backups/checkpoints/baselines/ctm_cifar10/
-```
-
 Current conditional 5k FID:
 
 | step | fid |
@@ -253,6 +245,114 @@ Current conditional 5k FID:
 | 2 | 6.249970 |
 | 4 | 6.450460 |
 | 8 | 6.848800 |
+
+### TCM Official CIFAR-10
+
+Output:
+
+```text
+results/baselines/baseline_tcm_cifar10.csv
+```
+
+Runner:
+
+```text
+scripts/baselines/run_tcm_eval.py
+```
+
+Current 5k FID:
+
+| step | fid |
+|---:|---:|
+| 1 | 7.168140 |
+| 2 | 6.764130 |
+| 4 | 6.904860 |
+| 8 | 7.387160 |
+
+Notes:
+
+```text
+step 1 uses the official 1-step path.
+step 2 uses the official README mid_t=0.821 setting.
+steps 4/8 use a geometric extension from mid_t=0.821 to sigma_min=0.002.
+```
+
+### TCM Official ImageNet64
+
+Output:
+
+```text
+results/baselines/baseline_tcm_imagenet64.csv
+```
+
+Runner:
+
+```text
+scripts/baselines/run_tcm_eval.py
+```
+
+Current 5k FID:
+
+| step | fid |
+|---:|---:|
+| 1 | 10.960100 |
+| 2 | 9.951880 |
+| 4 | 10.508700 |
+| 8 | 20.957300 |
+
+Notes:
+
+```text
+step 1 uses the official 1-step path.
+step 2 uses the official README mid_t=0.821 setting.
+steps 4/8 use a geometric extension from mid_t=0.821 to sigma_min=0.002.
+```
+
+### Entropic Schedule CIFAR-10
+
+Output:
+
+```text
+results/baselines/schedule_entropic_cifar10.csv
+```
+
+Runner:
+
+```text
+scripts/baselines/run_entropic_schedule_eval.py
+```
+
+Current official schedule 5k FID with SDDIM:
+
+| step | fid |
+|---:|---:|
+| 1 | 387.689000 |
+| 2 | 384.919000 |
+| 4 | 114.771000 |
+| 8 | 56.378900 |
+
+### Entropic Schedule ImageNet64
+
+Output:
+
+```text
+results/baselines/schedule_entropic_imagenet64.csv
+```
+
+Runner:
+
+```text
+scripts/baselines/run_entropic_schedule_eval.py
+```
+
+Current official schedule 5k FID with SDDIM:
+
+| step | fid |
+|---:|---:|
+| 1 | 288.205000 |
+| 2 | 282.971000 |
+| 4 | 80.052900 |
+| 8 | 39.884100 |
 
 ### OptimalSteps-like CIFAR-10
 
@@ -270,8 +370,8 @@ results/time_coordinate_ablation/e405b_optimalsteps_like_vs_timewarp_20260426/co
 
 This is a preliminary OSS-like schedule adapted from `refs/optimalsteps` on the
 old DDPM/DGTD checkpoint `e405b`, which failed the sample-quality gate. It is
-useful for infrastructure validation only and must be replaced before paper
-tables.
+useful for infrastructure validation only and must not be used as a paper table
+baseline without replacement.
 
 | step | fid |
 |---:|---:|
@@ -280,61 +380,27 @@ tables.
 | 4 | 369.488902 |
 | 8 | 369.984571 |
 
-## Pending Outputs
+## Pending or Blocked Outputs
 
 The following files still exist as header-only placeholders under
-`results/baselines` and have no valid baseline rows yet:
+`results/baselines`:
 
 ```text
 schedule_ays_cifar10.csv
 schedule_ays_imagenet64.csv
 schedule_optimalsteps_imagenet64.csv
-schedule_entropic_cifar10.csv
-schedule_entropic_imagenet64.csv
-baseline_tcm_cifar10.csv
-baseline_tcm_imagenet64.csv
 ```
 
 Known blockers:
 
 ```text
-AYS: schedule integration pending; use official schedule values, no training.
-OptimalSteps ImageNet64: search/eval pending on a usable checkpoint.
-Entropic: repo cloned; schedule integration pending.
-TCM: repo cloned; optional checkpoint/eval setup pending.
+AYS CIFAR-10/ImageNet64: no verified local runner or official schedule mapping for this EDM/EDM2 setup.
+OptimalSteps ImageNet64: refs/optimalsteps is present, but no validated runner maps it to the official EDM2 ImageNet64 checkpoint/evaluation flow.
 ```
 
-## Next Safe Execution Order
-
-When GPU 0 is idle and the main watcher is not running, continue remaining
-baseline work by validating TCM checkpoint paths first. The completed CTM
-ImageNet64 command was:
-
-```bash
-.conda_envs/dg_twfd_a100/bin/python scripts/baselines/run_ctm_imagenet64_eval.py \
-  --checkpoint /cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/ctm/ctm_imagenet64_ema_0.999.pt \
-  --method CTM-official \
-  --sample-root runs/ctm_imagenet64_5k/samples \
-  --eval-root eval/ctm_imagenet64_5k \
-  --csv-out results/baselines/baseline_ctm_imagenet64.csv \
-  --steps 1 2 4 8 \
-  --num-samples 5000 \
-  --batch 250 \
-  --fid-batch 512
-```
-
-Then regenerate:
-
-```bash
-python3 scripts/baselines/export_unified_baseline_csv.py --write-empty
-```
-
-OpenAI consistency-model baselines require the local compatibility patch
-recorded at:
-
-```text
-patches/consistency_models_unet_baseline_compat.patch
-```
+These rows should stay empty until the method-specific schedule source and
+sampling path are auditable. The current completed set covers all baseline
+families that are locally runnable without fabricating method behavior.
 
 ## Asset Probe
 
