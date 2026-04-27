@@ -170,7 +170,9 @@ with (out_prefix.with_suffix(".csv")).open("w", encoding="utf-8", newline="") as
 PY
   fi
 
-  backup_root="/temp/Zhengwei/DG-TWFD-backups/experiment_evidence/${eval_tag}"
+  project_name="$(basename "$ROOT_DIR")"
+  project_temp="${DG_TWFD_PROJECT_TEMP:-/temp/Zhengwei/projects/${project_name}}"
+  backup_root="${project_temp}/critical/eval/${eval_tag}"
   if [[ -d "/temp/Zhengwei" ]]; then
     mkdir -p "$backup_root/runs/checkpoints" "$backup_root/eval"
     cp -a "$frozen" "$backup_root/runs/checkpoints/"

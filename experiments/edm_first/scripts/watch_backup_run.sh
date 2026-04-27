@@ -9,7 +9,9 @@ fi
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 run_tag="$1"
 interval="${2:-180}"
-backup_root="${3:-/temp/Zhengwei/DG-TWFD-backups/experiment_evidence/${run_tag}_live}"
+project_name="$(basename "$ROOT_DIR")"
+project_temp="${DG_TWFD_PROJECT_TEMP:-/temp/Zhengwei/projects/${project_name}}"
+backup_root="${3:-${project_temp}/critical/runs/${run_tag}_live}"
 
 cd "$ROOT_DIR"
 run_root="runs/${run_tag}"

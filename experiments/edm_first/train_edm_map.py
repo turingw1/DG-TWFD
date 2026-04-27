@@ -50,6 +50,32 @@ def _save_checkpoint(path: Path, payload: dict) -> None:
     torch.save(payload, path)
 
 
+def _flat_mse_per_sample(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    return (x - y).flatten(1).square().mean(dim=1)
+
+
+def _safe_mean_normalized(numer: torch.Tensor, denom: torch.Tensor) -> torch.Tensor:
+    return (numer / denom.clamp_min(1.0e-6)).mean()
+
+
+def _warp_snapshot_payload(*, step: int, warp, q_base, q_target, warp_stats) -> dict:
+    payload = {"step": int(step)}
+    if warp is not None:
+        density = warp.density().detach().float().cpu()
+        payload["density"] = [float(x) for x in density.tolist()]
+        payload["entropy"] = float((-(density * torch.log(torch.clamp(density, min=1.0e-6))).sum()).item())
+        if q_base is not None:
+            base = q_base.detach().float().cpu()
+            payload["q_base"] = [float(x) for x in base.tolist()]
+            payload["max_qphi_over_qbase"] = float((density / torch.clamp(base, min=1.0e-6)).max().item())
+    if q_target is not None:
+        payload["q_target"] = [float(x) for x in q_target.detach().float().cpu().tolist()]
+    if warp_stats is not None:
+        payload["D_bar"] = [float(x) for x in warp_stats["D_bar"].detach().float().cpu().tolist()]
+        payload["D_count"] = [float(x) for x in warp_stats["D_count"].detach().float().cpu().tolist()]
+    return payload
+
+
 def main() -> None:
     args = parse_args()
     cfg = load_config(args.config)
@@ -82,6 +108,8 @@ def main() -> None:
     match_weight = float(train_cfg.get("match_weight", 1.0))
     defect_weight = float(train_cfg.get("defect_weight", 0.05))
     anchor_weight = float(train_cfg.get("anchor_weight", 0.25))
+    endpoint_weight = float(train_cfg.get("endpoint_weight", match_weight))
+    bridge_weight = float(train_cfg.get("bridge_weight", defect_weight))
     objective = str(train_cfg.get("objective", "triplet"))
     perceptual_weight = float(train_cfg.get("perceptual_weight", cfg.get("loss", {}).get("perceptual_weight", 0.0)))
     amp_enabled = bool(runtime_cfg.get("amp", True)) and device.type == "cuda"
@@ -155,7 +183,7 @@ def main() -> None:
         if max_seconds > 0.0 and time.time() - start_time >= max_seconds:
             break
         batch_size = int(train_cfg.get("batch_size", 64))
-        if objective == "prior_endpoint":
+        if objective in {"prior_endpoint", "prior_fullstack"}:
             labels = sample_labels(teacher, batch_size, device=device)
             sigma_t = sigma_from_u(torch.zeros(batch_size, device=device), sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
             sigma_u = torch.zeros_like(sigma_t)
@@ -182,27 +210,66 @@ def main() -> None:
                     num_steps=int(teacher_cfg.get("rollout_steps", 18)),
                     rho=rho,
                 )
-                x_s_ref = x_u_ref
+                x_s_ref = (
+                    teacher_transition(teacher, x_t, sigma_t, sigma_s, labels)
+                    if objective == "prior_fullstack"
+                    else x_u_ref
+                )
 
             optimizer.zero_grad(set_to_none=True)
             with torch.autocast(device_type="cuda", dtype=torch.float16, enabled=amp_enabled):
-                x_u_direct = student_transition(student, x_t, sigma_t, sigma_u, labels)
-                with torch.no_grad():
+                if objective == "prior_fullstack":
                     x_s = student_transition(student, x_t, sigma_t, sigma_s, labels)
                     x_u_bridge = student_transition(student, x_s, sigma_s, sigma_u, labels)
-                match_per_sample = (x_u_direct - x_u_ref).flatten(1).square().mean(dim=1)
-                anchor_per_sample = match_per_sample
-                match_loss = match_per_sample.mean()
-                anchor_loss = match_loss
-                defect_raw = (x_u_direct - x_u_bridge.detach()).flatten(1).square().mean(dim=1)
-                defect_denom = (x_u_ref - x_t).flatten(1).square().mean(dim=1).clamp_min(1.0e-6)
-                defect_loss = (defect_raw / defect_denom).mean()
-                perceptual_loss = (
-                    perceptual_metric(x_u_direct.float(), x_u_ref.float())
-                    if perceptual_metric is not None
-                    else torch.zeros((), device=device, dtype=match_loss.dtype)
-                )
-                loss = match_weight * match_loss + defect_weight * defect_loss + perceptual_weight * perceptual_loss
+                    x_u_direct = student_transition(student, x_t, sigma_t, sigma_u, labels)
+                    match_per_sample = _flat_mse_per_sample(x_s, x_s_ref)
+                    anchor_per_sample = _flat_mse_per_sample(x_u_direct, x_u_ref)
+                    bridge_per_sample = _flat_mse_per_sample(x_u_bridge, x_u_ref)
+                    defect_raw = _flat_mse_per_sample(x_u_direct, x_u_bridge)
+                    match_denom = _flat_mse_per_sample(x_s_ref, x_t).clamp_min(1.0e-6)
+                    endpoint_denom = _flat_mse_per_sample(x_u_ref, x_t).clamp_min(1.0e-6)
+                    match_loss = _safe_mean_normalized(match_per_sample, match_denom)
+                    anchor_loss = anchor_per_sample.mean()
+                    bridge_loss = bridge_per_sample.mean()
+                    defect_loss = defect_raw.mean()
+                    perceptual_direct = (
+                        perceptual_metric(x_u_direct.float(), x_u_ref.float())
+                        if perceptual_metric is not None
+                        else torch.zeros((), device=device, dtype=anchor_loss.dtype)
+                    )
+                    perceptual_bridge = (
+                        perceptual_metric(x_u_bridge.float(), x_u_ref.float())
+                        if perceptual_metric is not None and float(train_cfg.get("bridge_perceptual_weight", 0.0)) > 0.0
+                        else torch.zeros((), device=device, dtype=anchor_loss.dtype)
+                    )
+                    perceptual_loss = perceptual_direct + float(train_cfg.get("bridge_perceptual_weight", 0.0)) * perceptual_bridge
+                    loss = (
+                        endpoint_weight * anchor_loss
+                        + match_weight * match_loss
+                        + bridge_weight * bridge_loss
+                        + defect_weight * defect_loss
+                        + perceptual_weight * perceptual_loss
+                    )
+                else:
+                    x_u_direct = student_transition(student, x_t, sigma_t, sigma_u, labels)
+                    with torch.no_grad():
+                        x_s = student_transition(student, x_t, sigma_t, sigma_s, labels)
+                        x_u_bridge = student_transition(student, x_s, sigma_s, sigma_u, labels)
+                    match_per_sample = _flat_mse_per_sample(x_u_direct, x_u_ref)
+                    anchor_per_sample = match_per_sample
+                    bridge_per_sample = torch.zeros_like(match_per_sample)
+                    match_loss = match_per_sample.mean()
+                    anchor_loss = match_loss
+                    bridge_loss = torch.zeros((), device=device, dtype=match_loss.dtype)
+                    defect_raw = _flat_mse_per_sample(x_u_direct, x_u_bridge.detach())
+                    endpoint_denom = _flat_mse_per_sample(x_u_ref, x_t).clamp_min(1.0e-6)
+                    defect_loss = _safe_mean_normalized(defect_raw, endpoint_denom)
+                    perceptual_loss = (
+                        perceptual_metric(x_u_direct.float(), x_u_ref.float())
+                        if perceptual_metric is not None
+                        else torch.zeros((), device=device, dtype=match_loss.dtype)
+                    )
+                    loss = match_weight * match_loss + defect_weight * defect_loss + perceptual_weight * perceptual_loss
         else:
             assert data_iter is not None and loader is not None
             try:
@@ -232,6 +299,7 @@ def main() -> None:
                 x_u_bridge = student_transition(student, x_s, sigma_s, sigma_u, labels)
                 match_per_sample = (x_s - x_s_ref).flatten(1).square().mean(dim=1)
                 anchor_per_sample = (x_u_direct - x_u_ref).flatten(1).square().mean(dim=1)
+                bridge_per_sample = torch.zeros_like(anchor_per_sample)
                 match_denom = (x_s_ref - x_t).flatten(1).square().mean(dim=1).clamp_min(1.0e-6)
                 anchor_denom = (x_u_ref - x_t).flatten(1).square().mean(dim=1).clamp_min(1.0e-6)
                 match_loss = (match_per_sample / match_denom).mean()
@@ -244,8 +312,11 @@ def main() -> None:
         scaler.step(optimizer)
         scaler.update()
 
-        denom = (x_u_ref - x_t).flatten(1).square().mean(dim=1).clamp_min(1.0e-6)
-        norm_defect_per_sample = defect_raw.detach().float() / denom.detach().float()
+        denom = endpoint_denom.detach().float() if "endpoint_denom" in locals() else _flat_mse_per_sample(x_u_ref, x_t).clamp_min(1.0e-6).detach().float()
+        if objective == "prior_fullstack" and str(train_cfg.get("warp_defect_signal", "raw")).lower() == "raw":
+            norm_defect_per_sample = defect_raw.detach().float()
+        else:
+            norm_defect_per_sample = defect_raw.detach().float() / denom
         norm_defect = norm_defect_per_sample.mean()
         warp_loss_value = None
         if (
@@ -275,11 +346,14 @@ def main() -> None:
             "loss": float(loss.detach().float().item()),
             "match_loss": float(match_loss.detach().float().item()),
             "anchor_loss": float(anchor_loss.detach().float().item()),
+            "bridge_loss": float(bridge_loss.detach().float().item()) if "bridge_loss" in locals() else 0.0,
             "defect_loss": float(defect_loss.detach().float().item()),
             "perceptual_loss": float(perceptual_loss.detach().float().item()) if "perceptual_loss" in locals() else 0.0,
             "raw_match_mse": float(match_per_sample.detach().float().mean().item()),
             "raw_anchor_mse": float(anchor_per_sample.detach().float().mean().item()),
+            "raw_bridge_mse": float(bridge_per_sample.detach().float().mean().item()) if "bridge_per_sample" in locals() else 0.0,
             "norm_defect": float(norm_defect.detach().float().item()),
+            "warp_defect_signal": str(train_cfg.get("warp_defect_signal", "raw" if objective == "prior_fullstack" else "normalized")),
             "sigma_t_mean": float(sigma_t.detach().float().mean().item()),
             "sigma_s_mean": float(sigma_s.detach().float().mean().item()),
             "sigma_u_mean": float(sigma_u.detach().float().mean().item()),
@@ -315,6 +389,10 @@ def main() -> None:
                 "last_log": record,
             }
             _save_checkpoint(ckpt_dir / "last.pt", ckpt)
+            if warp is not None:
+                warp_payload = _warp_snapshot_payload(step=step, warp=warp, q_base=q_base, q_target=q_target, warp_stats=warp_stats)
+                write_json(log_dir / "warp_latest.json", warp_payload)
+                write_json(log_dir / f"warp_step{step}.json", warp_payload)
             if float(record["loss"]) <= best_loss:
                 best_loss = float(record["loss"])
                 ckpt["best_loss"] = best_loss
