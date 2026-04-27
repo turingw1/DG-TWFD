@@ -5,11 +5,7 @@ Last updated: 2026-04-28
 Active baseline run:
 
 ```text
-launcher: scripts/baselines/run_ctm_imagenet64_eval.py
-scope: CTM official ImageNet64 5k FID at steps 1/2/4/8
-checkpoint: /cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/ctm/ctm_imagenet64_ema_0.999.pt
-sample root: runs/ctm_imagenet64_5k/samples
-eval root: eval/ctm_imagenet64_5k
+none
 ```
 
 Current baseline budget:
@@ -194,6 +190,35 @@ CT official 5k FID:
 | 4 | 18.837000 |
 | 8 | 19.034100 |
 
+### CTM Official ImageNet64
+
+Output:
+
+```text
+results/baselines/baseline_ctm_imagenet64.csv
+```
+
+Source report:
+
+```text
+eval/ctm_imagenet64_5k/reports/summary.json
+```
+
+Stable evidence backup:
+
+```text
+/temp/Zhengwei/DG-TWFD-backups/experiment_evidence/baselines_ctm_live_20260428/
+```
+
+Current 5k FID:
+
+| step | fid |
+|---:|---:|
+| 1 | 8.824660 |
+| 2 | 8.677950 |
+| 4 | 9.262070 |
+| 8 | 10.080900 |
+
 ### OptimalSteps-like CIFAR-10
 
 Output:
@@ -226,7 +251,6 @@ The following files still exist as header-only placeholders under
 `results/baselines` and have no valid baseline rows yet:
 
 ```text
-baseline_ctm_imagenet64.csv
 baseline_ctm_cifar10.csv
 schedule_ays_cifar10.csv
 schedule_ays_imagenet64.csv
@@ -240,7 +264,6 @@ baseline_tcm_imagenet64.csv
 Known blockers:
 
 ```text
-CTM ImageNet64: official checkpoint is cached; 5k run in progress.
 CTM CIFAR-10: repo exists; official checkpoint path still needs validation.
 AYS: schedule integration pending; use official schedule values, no training.
 OptimalSteps ImageNet64: search/eval pending on a usable checkpoint.
@@ -250,8 +273,9 @@ TCM: repo cloned; optional checkpoint/eval setup pending.
 
 ## Next Safe Execution Order
 
-When GPU 0 is idle and the main watcher is not running, continue CTM ImageNet64
-with:
+When GPU 0 is idle and the main watcher is not running, continue remaining
+baseline work by validating CTM CIFAR-10 and TCM checkpoint paths first. The
+completed CTM ImageNet64 command was:
 
 ```bash
 .conda_envs/dg_twfd_a100/bin/python scripts/baselines/run_ctm_imagenet64_eval.py \

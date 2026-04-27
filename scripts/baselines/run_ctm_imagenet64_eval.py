@@ -141,7 +141,7 @@ def _convert_npz_chunks_to_pngs(raw_dir: Path, image_dir: Path, *, expected: int
                 subdir.mkdir(parents=True, exist_ok=True)
                 out = subdir / f"{written:06d}.png"
                 if not out.exists():
-                    Image.fromarray(image.astype(np.uint8), mode="RGB").save(out)
+                    Image.fromarray(image.astype(np.uint8)).save(out)
                 written += 1
     return _count_pngs(image_dir)
 
