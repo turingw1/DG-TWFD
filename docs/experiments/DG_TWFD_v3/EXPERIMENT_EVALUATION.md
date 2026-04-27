@@ -94,8 +94,8 @@ treated as a tuning accident.
   is therefore correctly exposing the composition failure; future full-stack
   experiments must keep `1/2/4/8/16` reporting and identity comparison.
 - Runtime: effective speed is about `17.5s/step` overall, with the latest
-  250-step window around `18.5s/step` before the baseline contention was
-  removed. This makes 250-step milestone evals the right decision cadence.
+  250-step window around `18.5s/step` during mixed server load. This makes
+  250-step milestone evals the right decision cadence.
 
 ## Timewarp Implications
 
@@ -126,34 +126,28 @@ one 250-step checkpoint is about 74 minutes before evaluation overhead. With
 `max_seconds: 28800`, the active run is more like an 8-hour continuation window
 than a 50000-step run.
 
-A low-VRAM ImageNet64 baseline process was found running concurrently with the
-main e504a training. It generated partial EDM ImageNet64 samples while the main
-training was active. This is a runtime confounder because it can steal GPU
-cycles even when memory appears under threshold. The process was stopped.
+User guidance on 2026-04-27 supersedes the earlier operational assumption:
+the baseline experiment and the main DG-TWFD experiment are independent tracks.
+The baseline is not to be killed, paused, or treated as a main-experiment
+confounder merely because main training/evaluation is active.
 
-A second residual relaunch command later restarted the baseline with
-`BASELINE_PAUSE_FOR_MAIN_TRAIN=0` and `BASELINE_PAUSE_FOR_MAIN_EVAL=0`. That
-override is unsafe during the active e504a training window. The relaunch chain
-was terminated, and the guard script should default to pausing whenever the
-main training or main evaluation process is active. Explicit overrides should
-be reserved for runs where baseline throughput, not e504a training quality, is
-the experiment under study.
+The correct baseline policy is:
 
-A third relaunch path was found through the previously untracked
-`scripts/baselines/supervise_low_vram_baseline.sh`. Its defaults also allowed
-baseline work to run during main training and used high memory thresholds. The
-script defaults were corrected to pause for main train/eval and to use the same
-conservative memory thresholds as the guarded baseline script.
+1. Monitor baseline progress and resource status, but do not terminate baseline
+   processes during normal operation.
+2. Do not use main train/eval activity as a default guard condition for
+   baseline shutdown. `BASELINE_PAUSE_FOR_MAIN_TRAIN` and
+   `BASELINE_PAUSE_FOR_MAIN_EVAL` should default to `0`.
+3. Only intervene in baseline processes if the user explicitly asks, or if
+   there is a concrete hard failure such as OOM, disk exhaustion, or corrupt
+   output that threatens recoverability.
+4. Keep baseline outputs and supervision evidence backed up independently under
+   `/temp/Zhengwei/DG-TWFD-backups/experiment_evidence`.
 
-The remaining operational risk was not only the script default; live tmux
-windows `dg_e504a_backup:baseline_guard` and `dg_e504a_backup:baseline_mon`
-kept an older supervisor chain alive. Those windows were closed so the active
-process set returned to main training, eval watcher, and backup watcher only.
-Future supervision should check tmux windows as well as process names.
-
-For future runs, do not run public baseline generation concurrently with the
-main EDM-first training on the same A100 unless the experiment explicitly
-measures throughput under contention.
+The baseline guard that was already running before this policy correction may
+still report an older pause flag in `STATUS.txt`. Do not kill that running
+baseline just to refresh local shell variables; let it continue, and rely on the
+corrected defaults for future launches.
 
 ## Current Recommendations
 
