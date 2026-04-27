@@ -73,6 +73,22 @@ larger than the old normalized defect, and successfully starts updating the
 learned timewarp. The first decision-quality image metric should come from the
 step250 learned-warp vs identity-clock evaluation.
 
+The step250 evaluation completed and gives the first decision-quality signal:
+
+| checkpoint / clock | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 |
+|---|---:|---:|---:|---:|---:|
+| prior endpoint step1750 | 91.325 | 46.693 | 59.096 | 90.190 | 103.199 |
+| full-stack v11a step250 auto warp | 91.244 | 38.037 | 47.949 | 77.666 | 92.325 |
+| full-stack v11a step250 identity | 91.244 | 37.970 | 47.877 | 77.568 | 92.277 |
+
+The important result is that full-stack composition training improves the
+multi-step curve while preserving endpoint quality. The timewarp result is not
+yet a learned-warp win: `max_qphi_over_qbase` is only `1.004` at step250, so
+the learned grid is still effectively identity. This is the correct next
+optimization target. The run should continue so defect statistics can create a
+meaningfully non-uniform density; the evaluation watcher is already set to
+compare auto warp against identity again at step500.
+
 ## Training Signal Interpretation
 
 As of 2026-04-27 20:50 +08:00, the resumed run is live and has reached step725
@@ -207,9 +223,9 @@ corrected defaults for future launches.
 
 1. Let v11a continue to the step250 checkpoint and evaluation. Do not make a
    quality conclusion from train loss alone.
-2. Judge the first milestone on the whole FID curve and on learned-warp vs
-   identity-clock comparison. A useful result should preserve FID@1 while
-   flattening or improving FID@2/4/8/16.
+2. At step500, judge whether q_phi has moved far enough to make learned-warp
+   evaluation differ from identity. If the clocks remain identical, increase
+   timewarp learning pressure before claiming a timewarp advantage.
 3. If FID@1 regresses badly but bridge improves, lower `bridge_weight` or
    `defect_weight`; if multi-step still degrades like endpoint-only, raise the
    bridge target weight or make defect normalized by endpoint scale for student
