@@ -1,6 +1,6 @@
 # DG-TWFD v3 Documentation Registry
 
-Last updated: 2026-04-26
+Last updated: 2026-04-27
 
 This registry classifies active documentation by purpose and lifecycle. Do not
 use filename dates as the primary source of truth; dated names are evidence
@@ -24,10 +24,11 @@ Read these first for current EDM-first work:
 |---:|---|---|
 | 1 | active overview | [README.md](README.md) |
 | 2 | active experiment supervision | [EDM_FIRST_SUPERVISION.md](EDM_FIRST_SUPERVISION.md) |
-| 3 | server/network/recovery | [NETWORK_AND_RECOVERY.md](NETWORK_AND_RECOVERY.md) |
-| 4 | baseline tracking | [BASELINE_STATUS.md](BASELINE_STATUS.md) |
-| 5 | baseline interpretation | [BASELINE_COMPARISON_GUIDE.md](BASELINE_COMPARISON_GUIDE.md) |
-| 6 | active context summary | [../../ACTIVE_CONTEXT.md](../../ACTIVE_CONTEXT.md) |
+| 3 | active experiment evaluation | [EXPERIMENT_EVALUATION.md](EXPERIMENT_EVALUATION.md) |
+| 4 | server/network/recovery | [NETWORK_AND_RECOVERY.md](NETWORK_AND_RECOVERY.md) |
+| 5 | baseline tracking | [BASELINE_STATUS.md](BASELINE_STATUS.md) |
+| 6 | baseline interpretation | [BASELINE_COMPARISON_GUIDE.md](BASELINE_COMPARISON_GUIDE.md) |
+| 7 | active context summary | [../../ACTIVE_CONTEXT.md](../../ACTIVE_CONTEXT.md) |
 
 Read these only when modifying the older DDPM/DGTD path or comparing against
 historical failure cases:
@@ -47,6 +48,7 @@ historical failure cases:
 | lifecycle | document | owner/use |
 |---|---|---|
 | active | [EDM_FIRST_SUPERVISION.md](EDM_FIRST_SUPERVISION.md) | current e504a training/eval supervision, thresholds, commands |
+| active | [EXPERIMENT_EVALUATION.md](EXPERIMENT_EVALUATION.md) | high-signal experiment interpretation and next-direction decisions |
 | active | [BASELINE_STATUS.md](BASELINE_STATUS.md) | external baseline queue, blockers, generated CSV status |
 | reference | [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md) | legacy DGTD run ledger; update only if DDPM/DGTD route is resumed |
 

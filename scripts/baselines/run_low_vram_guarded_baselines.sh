@@ -22,8 +22,8 @@ LOG_FILE="${LOG_ROOT}/guard.log"
 BACKUP_ROOT="${BASELINE_LIVE_BACKUP_ROOT:-/temp/Zhengwei/DG-TWFD-backups/experiment_evidence/baselines_low_vram_live_20260427}"
 
 CHECK_SECONDS="${BASELINE_GUARD_CHECK_SECONDS:-15}"
-START_MAX_MB="${BASELINE_START_MAX_MB:-62000}"
-KILL_MAX_MB="${BASELINE_KILL_MAX_MB:-64000}"
+START_MAX_MB="${BASELINE_START_MAX_MB:-70000}"
+KILL_MAX_MB="${BASELINE_KILL_MAX_MB:-76000}"
 COOLDOWN_SECONDS="${BASELINE_COOLDOWN_SECONDS:-300}"
 EDM_BATCH="${BASELINE_EDM_BATCH:-1}"
 CD_BATCH="${BASELINE_CD_BATCH:-1}"
@@ -31,6 +31,8 @@ FID_BATCH="${BASELINE_FID_BATCH:-1}"
 NUM_SAMPLES="${BASELINE_NUM_SAMPLES:-50000}"
 STEPS=(${BASELINE_STEPS:-1 2 4 8})
 EDM_RESUME_CHUNK_SIZE="${BASELINE_EDM_RESUME_CHUNK_SIZE:-1000}"
+PAUSE_FOR_MAIN_TRAIN="${BASELINE_PAUSE_FOR_MAIN_TRAIN:-0}"
+PAUSE_FOR_MAIN_EVAL="${BASELINE_PAUSE_FOR_MAIN_EVAL:-0}"
 MAIN_RUN_TAG="${BASELINE_MAIN_RUN_TAG:-edm_first_cifar10_onestep_msdefect_e504a_resume_from1250}"
 MAIN_EVAL_PREFIX="${BASELINE_MAIN_EVAL_PREFIX:-${MAIN_RUN_TAG}}"
 MAIN_EVAL_INTERVAL="${BASELINE_MAIN_EVAL_INTERVAL:-250}"
@@ -48,6 +50,18 @@ gpu_mem_used_mb() {
 
 main_eval_active() {
   pgrep -f "experiments/edm_first/eval_edm_map.py.*${MAIN_EVAL_PREFIX}" >/dev/null 2>&1
+}
+
+main_train_active() {
+  pgrep -f "experiments/edm_first/train_edm_map.py.*${MAIN_RUN_TAG}" >/dev/null 2>&1
+}
+
+pause_for_main_train() {
+  [[ "$PAUSE_FOR_MAIN_TRAIN" =~ ^(1|true|yes|on)$ ]]
+}
+
+pause_for_main_eval() {
+  [[ "$PAUSE_FOR_MAIN_EVAL" =~ ^(1|true|yes|on)$ ]]
 }
 
 main_latest_step() {
@@ -117,11 +131,14 @@ sync_backup() {
     echo "updated=$(date -Is)"
     echo "run_tag=${RUN_TAG}"
     echo "gpu_mem_used_mb=$(gpu_mem_used_mb || echo unknown)"
+    echo "main_train_active=$(main_train_active && echo yes || echo no)"
     echo "main_eval_active=$(main_eval_active && echo yes || echo no)"
     echo "main_eval_pending=$(main_eval_pending && echo yes || echo no)"
     echo "main_latest_step=$(main_latest_step 2>/dev/null || echo unknown)"
     echo "main_eval_interval=${MAIN_EVAL_INTERVAL}"
     echo "main_eval_margin=${MAIN_EVAL_MARGIN}"
+    echo "pause_for_main_train=${PAUSE_FOR_MAIN_TRAIN}"
+    echo "pause_for_main_eval=${PAUSE_FOR_MAIN_EVAL}"
     echo "start_max_mb=${START_MAX_MB}"
     echo "kill_max_mb=${KILL_MAX_MB}"
     echo "batch_edm=${EDM_BATCH}"
@@ -137,13 +154,19 @@ wait_until_safe() {
   while true; do
     local mem
     mem="$(gpu_mem_used_mb || echo 999999)"
-    if main_eval_active; then
+    if pause_for_main_train && main_train_active; then
+      log "main e504a train active; waiting ${COOLDOWN_SECONDS}s"
+      sync_backup
+      sleep "$COOLDOWN_SECONDS"
+      continue
+    fi
+    if pause_for_main_eval && main_eval_active; then
       log "main e504a eval active; waiting ${COOLDOWN_SECONDS}s"
       sync_backup
       sleep "$COOLDOWN_SECONDS"
       continue
     fi
-    if main_eval_pending; then
+    if pause_for_main_eval && main_eval_pending; then
       log "main e504a eval pending/near checkpoint; waiting ${COOLDOWN_SECONDS}s"
       sync_backup
       sleep "$COOLDOWN_SECONDS"
@@ -184,9 +207,11 @@ run_guarded() {
       sync_backup
       local mem
       mem="$(gpu_mem_used_mb || echo 999999)"
-      if main_eval_active; then
+      if pause_for_main_train && main_train_active; then
+        guard_reason="main_train_active"
+      elif pause_for_main_eval && main_eval_active; then
         guard_reason="main_eval_active"
-      elif main_eval_pending; then
+      elif pause_for_main_eval && main_eval_pending; then
         guard_reason="main_eval_pending"
       elif [[ "$mem" =~ ^[0-9]+$ ]] && (( mem > KILL_MAX_MB )); then
         guard_reason="gpu_mem_${mem}_gt_${KILL_MAX_MB}"
