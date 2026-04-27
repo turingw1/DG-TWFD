@@ -44,10 +44,12 @@ at `117.980`, or `0.663` of the baseline. It has not reached the target.
 
 ## Training Signal Interpretation
 
-The resumed run has reached at least step650 in the train log. The latest
-logged loss improved to a local minimum around `0.054875`, with match loss
-around `0.028182` and perceptual loss around `0.106768`. This shows the direct
-endpoint objective is still optimizing.
+As of 2026-04-27 20:50 +08:00, the resumed run is live and has reached step725
+in the train log. The latest logged loss is `0.058607`, with match loss
+`0.030704`, perceptual loss `0.111610`, and normalized defect
+`1.234e-05`. The local minimum is still around step650 (`loss=0.054875`).
+This shows the direct endpoint objective is still optimizing, but there is no
+new milestone FID after step500 yet.
 
 The FID trend is more important than loss here. The loss improvement correlates
 with continued 1-step FID improvement, but it does not improve multi-step
@@ -74,6 +76,26 @@ This explains the result pattern: the model becomes a better one-step endpoint
 projector, but repeated application of that projector is not trained to compose.
 The multi-step degradation is therefore not surprising and should not be
 treated as a tuning accident.
+
+## Module-Level Readout For Full Stack
+
+- Objective: endpoint matching is doing what it was asked to do, but the
+  current loss does not define a stable semigroup/composition constraint. This
+  is the most important algorithmic blocker before treating the model as a
+  few-step sampler.
+- Defect signal: `norm_defect` stays around `1e-5`, so the weighted defect term
+  is too small to carry schedule learning or bridge correction. It is useful as
+  an instrument, but not yet as a primary training force.
+- Timewarp: the config keeps `timewarp.enabled: false`; current results are an
+  identity-clock endpoint baseline. Learned timewarp should be launched only
+  after the defect source becomes meaningful or as a controlled diagnostic
+  against identity, not as the next main bet by itself.
+- Evaluation: FID@1 is improving, while FID@4/8/16 is worsening. The evaluator
+  is therefore correctly exposing the composition failure; future full-stack
+  experiments must keep `1/2/4/8/16` reporting and identity comparison.
+- Runtime: effective speed is about `17.5s/step` overall, with the latest
+  250-step window around `18.5s/step` before the baseline contention was
+  removed. This makes 250-step milestone evals the right decision cadence.
 
 ## Timewarp Implications
 
@@ -116,6 +138,12 @@ was terminated, and the guard script should default to pausing whenever the
 main training or main evaluation process is active. Explicit overrides should
 be reserved for runs where baseline throughput, not e504a training quality, is
 the experiment under study.
+
+A third relaunch path was found through the previously untracked
+`scripts/baselines/supervise_low_vram_baseline.sh`. Its defaults also allowed
+baseline work to run during main training and used high memory thresholds. The
+script defaults were corrected to pause for main train/eval and to use the same
+conservative memory thresholds as the guarded baseline script.
 
 For future runs, do not run public baseline generation concurrently with the
 main EDM-first training on the same A100 unless the experiment explicitly

@@ -44,6 +44,16 @@ log() {
   echo "[$(date -Is)] $*" | tee -a "$LOG_FILE"
 }
 
+on_exit() {
+  local rc="$?"
+  log "low-vram baseline guard exiting rc=${rc}"
+  sync_backup >/dev/null 2>&1 || true
+}
+
+trap on_exit EXIT
+trap 'log "low-vram baseline guard received TERM"; exit 143' TERM
+trap 'log "low-vram baseline guard received INT"; exit 130' INT
+
 gpu_mem_used_mb() {
   nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | head -n 1 | tr -d ' '
 }

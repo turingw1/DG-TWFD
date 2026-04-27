@@ -9,6 +9,7 @@ BASELINE_SESSION="${BASELINE_TMUX_SESSION:-baseline_low_vram_20260427}"
 INTERVAL_SECONDS="${BASELINE_MONITOR_INTERVAL_SECONDS:-2400}"
 BACKUP_ROOT="${BASELINE_LIVE_BACKUP_ROOT:-/temp/Zhengwei/DG-TWFD-backups/experiment_evidence/baselines_low_vram_live_20260427}"
 LOG_FILE="${BASELINE_MONITOR_LOG:-${BACKUP_ROOT}/monitor_40min.log}"
+REQUIRE_TMUX="${BASELINE_MONITOR_REQUIRE_TMUX:-0}"
 
 mkdir -p "$(dirname "$LOG_FILE")"
 
@@ -73,7 +74,7 @@ while true; do
     echo "===== monitor $(date -Is): baseline finished =====" >> "$LOG_FILE"
     break
   fi
-  if ! tmux has-session -t "$BASELINE_SESSION" 2>/dev/null; then
+  if [[ "$REQUIRE_TMUX" =~ ^(1|true|yes|on)$ ]] && ! tmux has-session -t "$BASELINE_SESSION" 2>/dev/null; then
     echo "===== monitor $(date -Is): baseline session missing =====" >> "$LOG_FILE"
     break
   fi
