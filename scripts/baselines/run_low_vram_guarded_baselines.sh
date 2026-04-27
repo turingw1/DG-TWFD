@@ -22,14 +22,19 @@ LOG_FILE="${LOG_ROOT}/guard.log"
 BACKUP_ROOT="${BASELINE_LIVE_BACKUP_ROOT:-/temp/Zhengwei/DG-TWFD-backups/experiment_evidence/baselines_low_vram_live_20260427}"
 
 CHECK_SECONDS="${BASELINE_GUARD_CHECK_SECONDS:-15}"
-START_MAX_MB="${BASELINE_START_MAX_MB:-70000}"
-KILL_MAX_MB="${BASELINE_KILL_MAX_MB:-76000}"
+START_MAX_MB="${BASELINE_START_MAX_MB:-62000}"
+KILL_MAX_MB="${BASELINE_KILL_MAX_MB:-64000}"
 COOLDOWN_SECONDS="${BASELINE_COOLDOWN_SECONDS:-300}"
 EDM_BATCH="${BASELINE_EDM_BATCH:-1}"
 CD_BATCH="${BASELINE_CD_BATCH:-1}"
 FID_BATCH="${BASELINE_FID_BATCH:-1}"
 NUM_SAMPLES="${BASELINE_NUM_SAMPLES:-50000}"
 STEPS=(${BASELINE_STEPS:-1 2 4 8})
+EDM_RESUME_CHUNK_SIZE="${BASELINE_EDM_RESUME_CHUNK_SIZE:-1000}"
+MAIN_RUN_TAG="${BASELINE_MAIN_RUN_TAG:-edm_first_cifar10_onestep_msdefect_e504a_resume_from1250}"
+MAIN_EVAL_PREFIX="${BASELINE_MAIN_EVAL_PREFIX:-${MAIN_RUN_TAG}}"
+MAIN_EVAL_INTERVAL="${BASELINE_MAIN_EVAL_INTERVAL:-250}"
+MAIN_EVAL_MARGIN="${BASELINE_MAIN_EVAL_MARGIN:-50}"
 
 mkdir -p "$LOG_ROOT" "$BACKUP_ROOT"
 
@@ -42,7 +47,58 @@ gpu_mem_used_mb() {
 }
 
 main_eval_active() {
-  pgrep -f "experiments/edm_first/eval_edm_map.py.*edm_first_cifar10_onestep_msdefect_e504a_resume_from1250" >/dev/null 2>&1
+  pgrep -f "experiments/edm_first/eval_edm_map.py.*${MAIN_EVAL_PREFIX}" >/dev/null 2>&1
+}
+
+main_latest_step() {
+  local train_log="runs/${MAIN_RUN_TAG}/logs/train.jsonl"
+  [[ -f "$train_log" ]] || {
+    echo 0
+    return 1
+  }
+  "$DG_TWFD_A100_ENV/bin/python" - "$train_log" <<'PY'
+import json
+import sys
+from collections import deque
+
+path = sys.argv[1]
+latest = 0
+try:
+    with open(path, "r", encoding="utf-8") as handle:
+        for line in deque(handle, maxlen=80):
+            try:
+                item = json.loads(line)
+            except Exception:
+                continue
+            latest = max(latest, int(item.get("step", 0) or 0))
+except FileNotFoundError:
+    pass
+print(latest)
+raise SystemExit(0 if latest > 0 else 1)
+PY
+}
+
+main_eval_pending() {
+  local latest
+  latest="$(main_latest_step 2>/dev/null || true)"
+  [[ "$latest" =~ ^[0-9]+$ ]] || return 1
+  (( latest > 0 )) || return 1
+
+  local prev_eval=$(( (latest / MAIN_EVAL_INTERVAL) * MAIN_EVAL_INTERVAL ))
+  local next_eval=$(( ((latest / MAIN_EVAL_INTERVAL) + 1) * MAIN_EVAL_INTERVAL ))
+
+  if (( prev_eval >= MAIN_EVAL_INTERVAL )); then
+    local summary="eval/${MAIN_EVAL_PREFIX}_step${prev_eval}/reports/summary.json"
+    if [[ ! -s "$summary" ]]; then
+      return 0
+    fi
+  fi
+
+  if (( next_eval - latest <= MAIN_EVAL_MARGIN )); then
+    return 0
+  fi
+
+  return 1
 }
 
 sync_backup() {
@@ -62,6 +118,10 @@ sync_backup() {
     echo "run_tag=${RUN_TAG}"
     echo "gpu_mem_used_mb=$(gpu_mem_used_mb || echo unknown)"
     echo "main_eval_active=$(main_eval_active && echo yes || echo no)"
+    echo "main_eval_pending=$(main_eval_pending && echo yes || echo no)"
+    echo "main_latest_step=$(main_latest_step 2>/dev/null || echo unknown)"
+    echo "main_eval_interval=${MAIN_EVAL_INTERVAL}"
+    echo "main_eval_margin=${MAIN_EVAL_MARGIN}"
     echo "start_max_mb=${START_MAX_MB}"
     echo "kill_max_mb=${KILL_MAX_MB}"
     echo "batch_edm=${EDM_BATCH}"
@@ -69,6 +129,7 @@ sync_backup() {
     echo "batch_fid=${FID_BATCH}"
     echo "num_samples=${NUM_SAMPLES}"
     echo "steps=${STEPS[*]}"
+    echo "edm_resume_chunk_size=${EDM_RESUME_CHUNK_SIZE}"
   } > "$BACKUP_ROOT/STATUS.txt"
 }
 
@@ -78,6 +139,12 @@ wait_until_safe() {
     mem="$(gpu_mem_used_mb || echo 999999)"
     if main_eval_active; then
       log "main e504a eval active; waiting ${COOLDOWN_SECONDS}s"
+      sync_backup
+      sleep "$COOLDOWN_SECONDS"
+      continue
+    fi
+    if main_eval_pending; then
+      log "main e504a eval pending/near checkpoint; waiting ${COOLDOWN_SECONDS}s"
       sync_backup
       sleep "$COOLDOWN_SECONDS"
       continue
@@ -119,6 +186,8 @@ run_guarded() {
       mem="$(gpu_mem_used_mb || echo 999999)"
       if main_eval_active; then
         guard_reason="main_eval_active"
+      elif main_eval_pending; then
+        guard_reason="main_eval_pending"
       elif [[ "$mem" =~ ^[0-9]+$ ]] && (( mem > KILL_MAX_MB )); then
         guard_reason="gpu_mem_${mem}_gt_${KILL_MAX_MB}"
       fi
@@ -151,7 +220,7 @@ run_guarded() {
 
 main() {
   log "low-vram baseline guard started"
-  log "steps=${STEPS[*]} samples=${NUM_SAMPLES} edm_batch=${EDM_BATCH} cd_batch=${CD_BATCH} fid_batch=${FID_BATCH}"
+  log "steps=${STEPS[*]} samples=${NUM_SAMPLES} edm_batch=${EDM_BATCH} cd_batch=${CD_BATCH} fid_batch=${FID_BATCH} edm_resume_chunk=${EDM_RESUME_CHUNK_SIZE}"
 
   run_guarded edm_imagenet64 \
     "$DG_TWFD_A100_ENV/bin/python" scripts/run_edm_cifar10_eval.py \
@@ -160,7 +229,8 @@ main() {
       --eval-root eval/edm_imagenet64_public_eval_full \
       --steps "${STEPS[@]}" \
       --num-samples "$NUM_SAMPLES" \
-      --batch "$EDM_BATCH"
+      --batch "$EDM_BATCH" \
+      --resume-chunk-size "$EDM_RESUME_CHUNK_SIZE"
 
   "$DG_TWFD_A100_ENV/bin/python" scripts/baselines/export_unified_baseline_csv.py --write-empty | tee -a "$LOG_FILE"
   sync_backup

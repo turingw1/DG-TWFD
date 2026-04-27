@@ -35,6 +35,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fid-ref", default=None, help="EDM FID reference npz path or URL")
     parser.add_argument("--seeds-start", type=int, default=None, help="First seed for generated images")
     parser.add_argument("--nproc-per-node", type=int, default=None, help="torchrun process count")
+    parser.add_argument(
+        "--resume-chunk-size",
+        type=int,
+        default=0,
+        help="Generate only missing seed files in chunks of this many seeds; 0 keeps legacy full-range behavior",
+    )
     parser.add_argument("--skip-generate", action="store_true", help="Reuse existing generated images")
     parser.add_argument("--skip-fid", action="store_true", help="Only generate images")
     parser.add_argument("--set", action="append", default=[], help="Config override in key=value form")
@@ -107,6 +113,65 @@ def _count_images(path: Path) -> int:
     return sum(1 for item in path.rglob("*.png") if item.is_file())
 
 
+def _image_path_for_seed(root: Path, seed: int, *, subdirs: bool) -> Path:
+    image_dir = root / f"{seed - seed % 1000:06d}" if subdirs else root
+    return image_dir / f"{seed:06d}.png"
+
+
+def _missing_seed_ranges(root: Path, *, seed_start: int, num_samples: int, subdirs: bool) -> list[tuple[int, int]]:
+    missing: list[tuple[int, int]] = []
+    range_start: int | None = None
+    last_missing: int | None = None
+    for seed in range(seed_start, seed_start + num_samples):
+        path = _image_path_for_seed(root, seed, subdirs=subdirs)
+        exists = path.is_file() and path.stat().st_size > 0
+        if exists:
+            if range_start is not None and last_missing is not None:
+                missing.append((range_start, last_missing))
+                range_start = None
+                last_missing = None
+            continue
+        if range_start is None:
+            range_start = seed
+        last_missing = seed
+    if range_start is not None and last_missing is not None:
+        missing.append((range_start, last_missing))
+    return missing
+
+
+def _seed_range_count(ranges: list[tuple[int, int]]) -> int:
+    return sum(end - start + 1 for start, end in ranges)
+
+
+def _format_seed_ranges(ranges: list[tuple[int, int]]) -> str:
+    parts = []
+    for start, end in ranges:
+        parts.append(str(start) if start == end else f"{start}-{end}")
+    return ",".join(parts)
+
+
+def _iter_seed_chunks(ranges: list[tuple[int, int]], chunk_size: int) -> Iterable[list[tuple[int, int]]]:
+    if chunk_size <= 0:
+        yield ranges
+        return
+
+    chunk: list[tuple[int, int]] = []
+    remaining = int(chunk_size)
+    for start, end in ranges:
+        current = start
+        while current <= end:
+            take = min(end - current + 1, remaining)
+            chunk.append((current, current + take - 1))
+            current += take
+            remaining -= take
+            if remaining == 0:
+                yield chunk
+                chunk = []
+                remaining = int(chunk_size)
+    if chunk:
+        yield chunk
+
+
 def _nfe_for_edm_steps(step_count: int, sampler: str) -> int:
     if sampler == "euler":
         return int(step_count)
@@ -165,29 +230,48 @@ def main() -> None:
         t0 = time.time()
 
         existing_images = _count_images(step_sample_dir)
-        if not args.skip_generate and existing_images >= num_samples:
+        missing_ranges = _missing_seed_ranges(
+            step_sample_dir,
+            seed_start=seeds_start,
+            num_samples=num_samples,
+            subdirs=subdirs,
+        )
+        if not args.skip_generate and not missing_ranges:
             print(
                 f"reusing existing images for step_count={step_count}: "
                 f"{existing_images} >= {num_samples} at {step_sample_dir}",
                 flush=True,
             )
         elif not args.skip_generate:
-            generate_args = [
-                f"--outdir={step_sample_dir}",
-                f"--seeds={seeds_start}-{seed_end}",
-                f"--batch={batch}",
-                f"--steps={step_count}",
-                f"--network={network}",
-            ]
-            if subdirs:
-                generate_args.append("--subdirs")
-            generate_cmd = _torchrun_command(nproc_per_node, EDM_ROOT / "generate.py", generate_args)
-            _run_and_tee(
-                generate_cmd,
-                cwd=EDM_ROOT,
-                env=env,
-                log_path=step_eval_dir / "generate.stdout_stderr.txt",
-            )
+            if int(args.resume_chunk_size) > 0:
+                print(
+                    f"generating { _seed_range_count(missing_ranges) } missing images "
+                    f"for step_count={step_count} in chunks of {int(args.resume_chunk_size)}",
+                    flush=True,
+                )
+                seed_chunks = _iter_seed_chunks(missing_ranges, int(args.resume_chunk_size))
+            else:
+                seed_chunks = iter([[(seeds_start, seed_end)]])
+
+            for chunk_ranges in seed_chunks:
+                chunk_spec = _format_seed_ranges(chunk_ranges)
+                generate_args = [
+                    f"--outdir={step_sample_dir}",
+                    f"--seeds={chunk_spec}",
+                    f"--batch={batch}",
+                    f"--steps={step_count}",
+                    f"--network={network}",
+                ]
+                if subdirs:
+                    generate_args.append("--subdirs")
+                generate_cmd = _torchrun_command(nproc_per_node, EDM_ROOT / "generate.py", generate_args)
+                chunk_label = chunk_spec.replace(",", "_").replace("-", "_")
+                _run_and_tee(
+                    generate_cmd,
+                    cwd=EDM_ROOT,
+                    env=env,
+                    log_path=step_eval_dir / f"generate_{chunk_label}.stdout_stderr.txt",
+                )
 
         fid = None
         if not args.skip_fid:
