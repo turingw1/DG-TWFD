@@ -145,6 +145,12 @@ baseline work to run during main training and used high memory thresholds. The
 script defaults were corrected to pause for main train/eval and to use the same
 conservative memory thresholds as the guarded baseline script.
 
+The remaining operational risk was not only the script default; live tmux
+windows `dg_e504a_backup:baseline_guard` and `dg_e504a_backup:baseline_mon`
+kept an older supervisor chain alive. Those windows were closed so the active
+process set returned to main training, eval watcher, and backup watcher only.
+Future supervision should check tmux windows as well as process names.
+
 For future runs, do not run public baseline generation concurrently with the
 main EDM-first training on the same A100 unless the experiment explicitly
 measures throughput under contention.
