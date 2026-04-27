@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import re
+import socket
 import subprocess
 import sys
 import time
@@ -76,6 +77,12 @@ def _run_and_tee(command: list[str], *, cwd: Path, env: dict[str, str], log_path
     if returncode != 0:
         raise subprocess.CalledProcessError(returncode, command, output="".join(captured))
     return "".join(captured)
+
+
+def _find_free_local_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
 
 
 def _torchrun_command(nproc_per_node: int, script: Path, args: list[str]) -> list[str]:
@@ -220,6 +227,12 @@ def main() -> None:
     env = dict(os.environ)
     env.setdefault("DNNLIB_CACHE_DIR", str(Path(env.get("TORCH_HOME", str(ROOT / ".torch"))) / "dnnlib"))
     env["PYTHONPATH"] = str(EDM_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
+    env.setdefault("MASTER_ADDR", "127.0.0.1")
+    env["MASTER_PORT"] = os.environ.get("EDM_MASTER_PORT", str(_find_free_local_port()))
+    print(
+        f"using distributed rendezvous {env['MASTER_ADDR']}:{env['MASTER_PORT']}",
+        flush=True,
+    )
 
     records: list[dict[str, object]] = []
     for step_count in steps:

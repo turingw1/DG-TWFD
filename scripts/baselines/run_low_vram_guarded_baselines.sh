@@ -20,23 +20,34 @@ RUN_TAG="${BASELINE_LOW_VRAM_RUN_TAG:-baseline_low_vram_guarded_20260427}"
 LOG_ROOT="runs/${RUN_TAG}/logs"
 LOG_FILE="${LOG_ROOT}/guard.log"
 BACKUP_ROOT="${BASELINE_LIVE_BACKUP_ROOT:-/temp/Zhengwei/DG-TWFD-backups/experiment_evidence/baselines_low_vram_live_20260427}"
+ACTIVE_CHILD_PGID=""
 
 CHECK_SECONDS="${BASELINE_GUARD_CHECK_SECONDS:-15}"
 START_MAX_MB="${BASELINE_START_MAX_MB:-70000}"
-KILL_MAX_MB="${BASELINE_KILL_MAX_MB:-76000}"
+KILL_MAX_MB="${BASELINE_KILL_MAX_MB:-79000}"
 COOLDOWN_SECONDS="${BASELINE_COOLDOWN_SECONDS:-300}"
-EDM_BATCH="${BASELINE_EDM_BATCH:-1}"
-CD_BATCH="${BASELINE_CD_BATCH:-1}"
-FID_BATCH="${BASELINE_FID_BATCH:-1}"
+EDM_BATCH="${BASELINE_EDM_BATCH:-8}"
+CD_BATCH="${BASELINE_CD_BATCH:-8}"
+FID_BATCH="${BASELINE_FID_BATCH:-32}"
 NUM_SAMPLES="${BASELINE_NUM_SAMPLES:-50000}"
 STEPS=(${BASELINE_STEPS:-1 2 4 8})
 EDM_RESUME_CHUNK_SIZE="${BASELINE_EDM_RESUME_CHUNK_SIZE:-1000}"
+EDM_SAMPLE_ROOT="${BASELINE_EDM_SAMPLE_ROOT:-runs/edm_imagenet64_public_eval_full/samples}"
+EDM_EVAL_ROOT="${BASELINE_EDM_EVAL_ROOT:-eval/edm_imagenet64_public_eval_full}"
+CD_SAMPLE_ROOT="${BASELINE_CD_SAMPLE_ROOT:-runs/cd_imagenet64_lpips_full/samples}"
+CD_EVAL_ROOT="${BASELINE_CD_EVAL_ROOT:-eval/cd_imagenet64_lpips_full}"
+CD_CSV_OUT="${BASELINE_CD_CSV_OUT:-results/baselines/baseline_cd_imagenet64.csv}"
+CD_CHECKPOINT="${BASELINE_CD_CHECKPOINT:-/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/consistency_models/cd_imagenet64_lpips.pt}"
+CD_METHOD="${BASELINE_CD_METHOD:-CD-LPIPS-official}"
 PAUSE_FOR_MAIN_TRAIN="${BASELINE_PAUSE_FOR_MAIN_TRAIN:-0}"
 PAUSE_FOR_MAIN_EVAL="${BASELINE_PAUSE_FOR_MAIN_EVAL:-0}"
 MAIN_RUN_TAG="${BASELINE_MAIN_RUN_TAG:-edm_first_cifar10_onestep_msdefect_e504a_resume_from1250}"
 MAIN_EVAL_PREFIX="${BASELINE_MAIN_EVAL_PREFIX:-${MAIN_RUN_TAG}}"
 MAIN_EVAL_INTERVAL="${BASELINE_MAIN_EVAL_INTERVAL:-250}"
 MAIN_EVAL_MARGIN="${BASELINE_MAIN_EVAL_MARGIN:-50}"
+SYNC_SAMPLES="${BASELINE_SYNC_SAMPLES:-1}"
+SAMPLE_SYNC_SECONDS="${BASELINE_SAMPLE_SYNC_SECONDS:-300}"
+LAST_SAMPLE_SYNC_FILE="${BACKUP_ROOT}/.last_sample_sync_epoch"
 
 mkdir -p "$LOG_ROOT" "$BACKUP_ROOT"
 
@@ -46,7 +57,11 @@ log() {
 
 on_exit() {
   local rc="$?"
+  if [[ -n "${ACTIVE_CHILD_PGID:-}" ]]; then
+    terminate_group "$ACTIVE_CHILD_PGID"
+  fi
   log "low-vram baseline guard exiting rc=${rc}"
+  sync_samples_backup 1 >/dev/null 2>&1 || true
   sync_backup >/dev/null 2>&1 || true
 }
 
@@ -126,16 +141,22 @@ main_eval_pending() {
 }
 
 sync_backup() {
+  local edm_eval_name cd_eval_name
+  edm_eval_name="$(basename "$EDM_EVAL_ROOT")"
+  cd_eval_name="$(basename "$CD_EVAL_ROOT")"
+
   mkdir -p \
     "$BACKUP_ROOT/results" \
     "$BACKUP_ROOT/logs/${RUN_TAG}" \
-    "$BACKUP_ROOT/eval_reports/edm_imagenet64_public_eval_full" \
-    "$BACKUP_ROOT/eval_reports/cd_imagenet64_lpips_full"
+    "$BACKUP_ROOT/eval_reports/${edm_eval_name}" \
+    "$BACKUP_ROOT/eval_reports/${cd_eval_name}" \
+    "$BACKUP_ROOT/sample_archives"
 
   cp -a results/baselines/. "$BACKUP_ROOT/results/" 2>/dev/null || true
   cp -a "$LOG_ROOT"/. "$BACKUP_ROOT/logs/${RUN_TAG}/" 2>/dev/null || true
-  cp -a eval/edm_imagenet64_public_eval_full/reports/. "$BACKUP_ROOT/eval_reports/edm_imagenet64_public_eval_full/" 2>/dev/null || true
-  cp -a eval/cd_imagenet64_lpips_full/reports/. "$BACKUP_ROOT/eval_reports/cd_imagenet64_lpips_full/" 2>/dev/null || true
+  cp -a "$EDM_EVAL_ROOT/reports/." "$BACKUP_ROOT/eval_reports/${edm_eval_name}/" 2>/dev/null || true
+  cp -a "$CD_EVAL_ROOT/reports/." "$BACKUP_ROOT/eval_reports/${cd_eval_name}/" 2>/dev/null || true
+  sync_samples_backup 0
 
   {
     echo "updated=$(date -Is)"
@@ -157,7 +178,56 @@ sync_backup() {
     echo "num_samples=${NUM_SAMPLES}"
     echo "steps=${STEPS[*]}"
     echo "edm_resume_chunk_size=${EDM_RESUME_CHUNK_SIZE}"
+    echo "edm_sample_root=${EDM_SAMPLE_ROOT}"
+    echo "edm_eval_root=${EDM_EVAL_ROOT}"
+    echo "cd_sample_root=${CD_SAMPLE_ROOT}"
+    echo "cd_eval_root=${CD_EVAL_ROOT}"
+    echo "cd_csv_out=${CD_CSV_OUT}"
+    echo "cd_checkpoint=${CD_CHECKPOINT}"
+    echo "cd_method=${CD_METHOD}"
+    echo "sync_samples=${SYNC_SAMPLES}"
+    echo "sample_sync_seconds=${SAMPLE_SYNC_SECONDS}"
   } > "$BACKUP_ROOT/STATUS.txt"
+}
+
+sync_samples_backup() {
+  local force="${1:-0}"
+  [[ "$SYNC_SAMPLES" =~ ^(1|true|yes|on)$ ]] || return 0
+
+  local now last
+  now="$(date +%s)"
+  last=0
+  [[ -s "$LAST_SAMPLE_SYNC_FILE" ]] && last="$(cat "$LAST_SAMPLE_SYNC_FILE" 2>/dev/null || echo 0)"
+  [[ "$last" =~ ^[0-9]+$ ]] || last=0
+
+  if [[ "$force" != "1" ]] && (( now - last < SAMPLE_SYNC_SECONDS )); then
+    return 0
+  fi
+
+  mkdir -p "$BACKUP_ROOT/sample_archives"
+
+  local step src count archive count_file archived_count
+  for step in "${STEPS[@]}"; do
+    src="${EDM_SAMPLE_ROOT}/steps${step}"
+    [[ -d "$src" ]] || continue
+    count="$(find "$src/images" -type f -name '*.png' 2>/dev/null | wc -l | tr -d ' ')"
+    [[ "$count" =~ ^[0-9]+$ ]] || count=0
+    (( count > 0 )) || continue
+
+    archive="$BACKUP_ROOT/sample_archives/edm_step${step}_images.tar"
+    count_file="$BACKUP_ROOT/sample_archives/edm_step${step}_images.count"
+    archived_count=0
+    [[ -s "$count_file" ]] && archived_count="$(cat "$count_file" 2>/dev/null || echo 0)"
+    [[ "$archived_count" =~ ^[0-9]+$ ]] || archived_count=0
+    if (( count >= NUM_SAMPLES && archived_count >= NUM_SAMPLES && count <= archived_count )); then
+      continue
+    fi
+
+    tar --no-xattrs --exclude='.DS_Store' --exclude='._*' --exclude='__MACOSX' -cf "$archive" "$src" 2>/dev/null || true
+    echo "$count" > "$count_file"
+  done
+
+  echo "$now" > "$LAST_SAMPLE_SYNC_FILE"
 }
 
 wait_until_safe() {
@@ -210,6 +280,7 @@ run_guarded() {
 
     setsid nice -n 19 ionice -c3 "$@" >>"$LOG_ROOT/${name}.stdout_stderr.txt" 2>&1 &
     local child="$!"
+    ACTIVE_CHILD_PGID="$child"
     local guard_reason=""
 
     while kill -0 "$child" >/dev/null 2>&1; do
@@ -236,6 +307,7 @@ run_guarded() {
 
     local rc=0
     wait "$child" || rc="$?"
+    ACTIVE_CHILD_PGID=""
     sync_backup
 
     if [[ -n "$guard_reason" ]]; then
@@ -260,8 +332,8 @@ main() {
   run_guarded edm_imagenet64 \
     "$DG_TWFD_A100_ENV/bin/python" scripts/run_edm_cifar10_eval.py \
       --config configs/experiment/edm_imagenet64_public_eval.yaml \
-      --sample-root runs/edm_imagenet64_public_eval_full/samples \
-      --eval-root eval/edm_imagenet64_public_eval_full \
+      --sample-root "$EDM_SAMPLE_ROOT" \
+      --eval-root "$EDM_EVAL_ROOT" \
       --steps "${STEPS[@]}" \
       --num-samples "$NUM_SAMPLES" \
       --batch "$EDM_BATCH" \
@@ -272,10 +344,11 @@ main() {
 
   run_guarded cd_imagenet64_lpips \
     "$DG_TWFD_A100_ENV/bin/python" scripts/baselines/run_cd_imagenet64_eval.py \
-      --checkpoint /cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/consistency_models/cd_imagenet64_lpips.pt \
-      --sample-root runs/cd_imagenet64_lpips_full/samples \
-      --eval-root eval/cd_imagenet64_lpips_full \
-      --csv-out results/baselines/baseline_cd_imagenet64.csv \
+      --checkpoint "$CD_CHECKPOINT" \
+      --method "$CD_METHOD" \
+      --sample-root "$CD_SAMPLE_ROOT" \
+      --eval-root "$CD_EVAL_ROOT" \
+      --csv-out "$CD_CSV_OUT" \
       --steps "${STEPS[@]}" \
       --num-samples "$NUM_SAMPLES" \
       --batch "$CD_BATCH" \

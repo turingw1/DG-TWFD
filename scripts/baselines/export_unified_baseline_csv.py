@@ -89,6 +89,7 @@ def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
 def _edm_cifar10_rows() -> list[dict[str, str]]:
     summary = _best_existing_summary(
         [
+            ROOT / "eval" / "edm_cifar10_public_eval_5k" / "reports" / "summary.json",
             ROOT / "eval" / "edm_cifar10_public_eval_full" / "reports" / "summary.json",
             ROOT / "eval" / "edm_cifar10_public_eval_e501full" / "reports" / "summary.json",
             ROOT / "eval" / "edm_cifar10_public_eval_e501ref" / "reports" / "summary.json",
@@ -106,6 +107,7 @@ def _edm_cifar10_rows() -> list[dict[str, str]]:
 def _edm_imagenet64_rows() -> list[dict[str, str]]:
     summary = _best_existing_summary(
         [
+            ROOT / "eval" / "edm_imagenet64_public_eval_5k" / "reports" / "summary.json",
             ROOT / "eval" / "edm_imagenet64_public_eval_full" / "reports" / "summary.json",
             ROOT / "eval" / "edm_imagenet64_public_eval_e501full" / "reports" / "summary.json",
             ROOT / "eval" / "edm_imagenet64_public_eval_e501ref" / "reports" / "summary.json",
@@ -208,7 +210,10 @@ def _optimalsteps_cifar10_rows() -> list[dict[str, str]]:
 def _cd_imagenet64_rows() -> list[dict[str, str]]:
     summary = _best_existing_summary(
         [
+            ROOT / "eval" / "cd_imagenet64_lpips_5k" / "reports" / "summary.json",
+            ROOT / "eval" / "cd_imagenet64_l2_5k" / "reports" / "summary.json",
             ROOT / "eval" / "cd_imagenet64_lpips_full" / "reports" / "summary.json",
+            ROOT / "eval" / "cd_imagenet64_l2_full" / "reports" / "summary.json",
             ROOT / "eval" / "cd_imagenet64_full" / "reports" / "summary.json",
         ]
     )

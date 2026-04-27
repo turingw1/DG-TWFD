@@ -1,0 +1,35 @@
+diff --git a/cm/unet.py b/cm/unet.py
+index e0fbbab..d060fde 100644
+--- a/cm/unet.py
++++ b/cm/unet.py
+@@ -290,7 +290,11 @@ class AttentionBlock(nn.Module):
+         self.qkv = conv_nd(dims, channels, channels * 3, 1)
+         self.attention_type = attention_type
+         if attention_type == "flash":
+-            self.attention = QKVFlashAttention(channels, self.num_heads)
++            try:
++                self.attention = QKVFlashAttention(channels, self.num_heads)
++            except ModuleNotFoundError:
++                self.attention_type = "legacy"
++                self.attention = QKVAttentionLegacy(self.num_heads)
+         else:
+             # split heads before split qkv
+             self.attention = QKVAttentionLegacy(self.num_heads)
+@@ -413,6 +417,7 @@ class QKVAttentionLegacy(nn.Module):
+         :param qkv: an [N x (H * 3 * C) x T] tensor of Qs, Ks, and Vs.
+         :return: an [N x (H * C) x T] tensor after attention.
+         """
++        out_dtype = qkv.dtype
+         bs, width, length = qkv.shape
+         assert width % (3 * self.n_heads) == 0
+         ch = width // (3 * self.n_heads)
+@@ -432,8 +437,7 @@ class QKVAttentionLegacy(nn.Module):
+         )  # More stable with f16 than dividing afterwards
+         weight = th.softmax(weight, dim=-1).type(weight.dtype)
+         a = th.einsum("bts,bcs->bct", weight, v)
+-        a = a.float()
+-        return a.reshape(bs, -1, length)
++        return a.reshape(bs, -1, length).to(out_dtype)
+ 
+     @staticmethod
+     def count_flops(model, _x, y):

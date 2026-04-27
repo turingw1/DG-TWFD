@@ -1,23 +1,23 @@
 # Baseline Status
 
-Last updated: 2026-04-26
+Last updated: 2026-04-28
 
 Active baseline run:
 
 ```text
-tmux session: baseline_external_full
-run tag: external_baselines_full_20260426
-scope: EDM official CIFAR-10 50k FID, then EDM official ImageNet64 50k FID
-policy: sequential low-batch runner, retry smaller batch on failure
+launcher: scripts/baselines/run_ctm_imagenet64_eval.py
+scope: CTM official ImageNet64 5k FID at steps 1/2/4/8
+checkpoint: /cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/ctm/ctm_imagenet64_ema_0.999.pt
+sample root: runs/ctm_imagenet64_5k/samples
+eval root: eval/ctm_imagenet64_5k
 ```
 
-Queued automatic follow-up:
+Current baseline budget:
 
 ```text
-tmux session: baseline_cd_imagenet64_full
-run tag: cd_imagenet64_lpips_full_20260426
-scope: wait for baseline_external_full, then run OpenAI CD-LPIPS ImageNet64 50k FID at steps 1/2/4/8
-checkpoint: /cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/consistency_models/cd_imagenet64_lpips.pt
+num_fid_samples: 5000
+steps: 1 2 4 8
+policy: run remaining official baselines to completion, keep CSV reports in /temp via results/baselines symlink
 ```
 
 ## Scope
@@ -35,8 +35,10 @@ Unified CSV exports live under:
 results/baselines/
 ```
 
-`results/` is a symlink to `/cache/Zhengwei/DG-TWFD-runtime/results`, so these
-CSV files must be regenerated from tracked code if `/cache` is cleared.
+`results/` is a symlink to `/cache/Zhengwei/DG-TWFD-runtime/results`, and
+`results/baselines` is redirected to `/temp/Zhengwei/DG-TWFD-backups/experiment_evidence/baselines_20260426`.
+The unified CSV reports therefore survive `/cache` loss as long as `/temp`
+remains intact.
 
 Current small CSV exports are also backed up at:
 
@@ -64,10 +66,10 @@ docs/experiments/DG_TWFD_v3/BASELINE_COMPARISON_GUIDE.md
 
 ## Current GPU Constraint
 
-The main experiment `e504a_msdefect` is running on GPU 0, and its watcher
-`watch_eval_checkpoints.sh` may launch intermittent evaluations. No external
-baseline generation/evaluation should be started until that training and watcher
-are stopped or explicitly moved off the GPU.
+As of 2026-04-28 01:40 Asia/Shanghai, no main training process is active and
+GPU memory was idle before starting CTM ImageNet64. Baseline jobs may use GPU 0
+up to the agreed 75 GiB ceiling, while avoiding code changes to the main
+experiment.
 
 ## Baseline Roots
 
@@ -128,7 +130,7 @@ https://nvlabs-fi-cdn.nvidia.com/edm/fid-refs/cifar10-32x32.npz
 ```
 
 Current numbers are 1024-sample smoke/reference measurements, not final 50k
-FID:
+or 5k FID:
 
 | step | fid |
 |---:|---:|
@@ -136,6 +138,61 @@ FID:
 | 2 | 473.607000 |
 | 4 | 115.246000 |
 | 8 | 33.067500 |
+
+### EDM Official ImageNet64
+
+Output:
+
+```text
+results/baselines/baseline_edm_imagenet64.csv
+```
+
+Current 5k FID:
+
+| step | fid |
+|---:|---:|
+| 1 | 623.860000 |
+| 2 | 438.527000 |
+| 4 | 93.126600 |
+| 8 | 11.650400 |
+
+### OpenAI Consistency Models ImageNet64
+
+Outputs:
+
+```text
+results/baselines/baseline_cd_imagenet64.csv
+results/baselines/baseline_cd_imagenet64_5k.csv
+results/baselines/baseline_cd_imagenet64_l2_5k.csv
+results/baselines/baseline_ct_imagenet64_5k.csv
+```
+
+CD-LPIPS official 5k FID:
+
+| step | fid |
+|---:|---:|
+| 1 | 13.025300 |
+| 2 | 11.611200 |
+| 4 | 11.559600 |
+| 8 | 10.879900 |
+
+CD-L2 official 5k FID:
+
+| step | fid |
+|---:|---:|
+| 1 | 20.309900 |
+| 2 | 14.257700 |
+| 4 | 13.835400 |
+| 8 | 12.411900 |
+
+CT official 5k FID:
+
+| step | fid |
+|---:|---:|
+| 1 | 19.141800 |
+| 2 | 17.466500 |
+| 4 | 18.837000 |
+| 8 | 19.034100 |
 
 ### OptimalSteps-like CIFAR-10
 
@@ -165,14 +222,12 @@ tables.
 
 ## Pending Outputs
 
-The following files exist as header-only placeholders under `results/baselines`
-and have no valid baseline rows yet:
+The following files still exist as header-only placeholders under
+`results/baselines` and have no valid baseline rows yet:
 
 ```text
-baseline_edm_imagenet64.csv
 baseline_ctm_imagenet64.csv
 baseline_ctm_cifar10.csv
-baseline_cd_imagenet64.csv
 schedule_ays_cifar10.csv
 schedule_ays_imagenet64.csv
 schedule_optimalsteps_imagenet64.csv
@@ -185,9 +240,8 @@ baseline_tcm_imagenet64.csv
 Known blockers:
 
 ```text
-EDM ImageNet64: official checkpoint/ref not cached; config now exists.
-CTM CIFAR-10/ImageNet64: repos exist, official checkpoints not found locally.
-CD ImageNet64: LPIPS and L2 checkpoints downloaded; queued after EDM baselines.
+CTM ImageNet64: official checkpoint is cached; 5k run in progress.
+CTM CIFAR-10: repo exists; official checkpoint path still needs validation.
 AYS: schedule integration pending; use official schedule values, no training.
 OptimalSteps ImageNet64: search/eval pending on a usable checkpoint.
 Entropic: repo cloned; schedule integration pending.
@@ -196,19 +250,20 @@ TCM: repo cloned; optional checkpoint/eval setup pending.
 
 ## Next Safe Execution Order
 
-When GPU 0 is idle and the main watcher is not running, continue with:
+When GPU 0 is idle and the main watcher is not running, continue CTM ImageNet64
+with:
 
 ```bash
-source scripts/server/activate_a100_runtime.sh
-source scripts/server/network_profiles.sh
-dg_twfd_net_apply proxy
-export PYTHONPATH=$PWD:$PWD/src:$PWD/refs/edm:${PYTHONPATH:-}
-
-$DG_TWFD_A100_ENV/bin/python scripts/run_edm_cifar10_eval.py \
-  --config configs/experiment/edm_imagenet64_public_eval.yaml \
-  --sample-root runs/edm_imagenet64_public_eval_e501ref/samples \
-  --eval-root eval/edm_imagenet64_public_eval_e501ref \
-  --steps 1 2 4 8
+.conda_envs/dg_twfd_a100/bin/python scripts/baselines/run_ctm_imagenet64_eval.py \
+  --checkpoint /cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/ctm/ctm_imagenet64_ema_0.999.pt \
+  --method CTM-official \
+  --sample-root runs/ctm_imagenet64_5k/samples \
+  --eval-root eval/ctm_imagenet64_5k \
+  --csv-out results/baselines/baseline_ctm_imagenet64.csv \
+  --steps 1 2 4 8 \
+  --num-samples 5000 \
+  --batch 250 \
+  --fid-batch 512
 ```
 
 Then regenerate:
@@ -217,14 +272,11 @@ Then regenerate:
 python3 scripts/baselines/export_unified_baseline_csv.py --write-empty
 ```
 
-Do not start CTM/CD/TCM runs until the required official checkpoint paths are
-registered in this page or in a committed config.
+OpenAI consistency-model baselines require the local compatibility patch
+recorded at:
 
-For CD ImageNet64, the required checkpoint is now registered and the queued
-runner is:
-
-```bash
-bash scripts/baselines/run_cd_after_edm.sh
+```text
+patches/consistency_models_unet_baseline_compat.patch
 ```
 
 ## Asset Probe

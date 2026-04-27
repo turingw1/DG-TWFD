@@ -16,10 +16,9 @@ from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[2]
-CM_ROOT = ROOT / "refs" / "consistency_models"
+CTM_ROOT = ROOT / "refs" / "ctm" / "code"
 EDM_ROOT = ROOT / "refs" / "edm"
 FID_RE = re.compile(r"^\s*([0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)\s*$")
-
 
 FIELDNAMES = [
     "dataset",
@@ -35,25 +34,20 @@ FIELDNAMES = [
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run OpenAI CD ImageNet64 samples and EDM FID eval.")
+    parser = argparse.ArgumentParser(description="Run official CTM ImageNet64 samples and EDM FID eval.")
     parser.add_argument(
         "--checkpoint",
-        default="/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/consistency_models/cd_imagenet64_lpips.pt",
+        default="/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/ctm/ctm_imagenet64_ema_0.999.pt",
     )
-    parser.add_argument("--method", default="CD-LPIPS-official")
-    parser.add_argument("--training-mode", default="consistency_distillation")
-    parser.add_argument("--cm-steps-total", type=int, default=40)
-    parser.add_argument("--sample-root", default="runs/cd_imagenet64_lpips_full/samples")
-    parser.add_argument("--eval-root", default="eval/cd_imagenet64_lpips_full")
-    parser.add_argument("--csv-out", default="results/baselines/baseline_cd_imagenet64.csv")
-    parser.add_argument(
-        "--fid-ref",
-        default="https://nvlabs-fi-cdn.nvidia.com/edm/fid-refs/imagenet-64x64.npz",
-    )
+    parser.add_argument("--method", default="CTM-official")
+    parser.add_argument("--sample-root", default="runs/ctm_imagenet64_5k/samples")
+    parser.add_argument("--eval-root", default="eval/ctm_imagenet64_5k")
+    parser.add_argument("--csv-out", default="results/baselines/baseline_ctm_imagenet64.csv")
+    parser.add_argument("--fid-ref", default="https://nvlabs-fi-cdn.nvidia.com/edm/fid-refs/imagenet-64x64.npz")
     parser.add_argument("--steps", nargs="+", type=int, default=[1, 2, 4, 8])
-    parser.add_argument("--num-samples", type=int, default=50000)
-    parser.add_argument("--batch", type=int, default=8)
-    parser.add_argument("--fid-batch", type=int, default=16)
+    parser.add_argument("--num-samples", type=int, default=5000)
+    parser.add_argument("--batch", type=int, default=250)
+    parser.add_argument("--fid-batch", type=int, default=512)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--skip-sample", action="store_true")
     parser.add_argument("--skip-fid", action="store_true")
@@ -92,34 +86,10 @@ def _run_and_tee(command: list[str], *, cwd: Path, env: dict[str, str], log_path
     return "".join(captured)
 
 
-def _ts_for_step_count(step_count: int, *, cm_steps_total: int) -> str:
-    if step_count <= 1:
-        return ""
-    if step_count == 2 and cm_steps_total == 40:
-        return "0,22,39"
-    if step_count == 2 and cm_steps_total == 201:
-        return "0,106,200"
-    values = np.rint(np.linspace(0, cm_steps_total - 1, step_count + 1)).astype(int).tolist()
-    deduped: list[int] = []
-    for value in values:
-        if not deduped or value != deduped[-1]:
-            deduped.append(value)
-    deduped[0] = 0
-    deduped[-1] = cm_steps_total - 1
-    return ",".join(str(value) for value in deduped)
-
-
 def _count_pngs(path: Path) -> int:
     if not path.exists():
         return 0
     return sum(1 for item in path.rglob("*.png") if item.is_file())
-
-
-def _find_sample_npz(log_dir: Path) -> Path | None:
-    candidates = sorted(log_dir.glob("samples_*.npz"))
-    if not candidates:
-        return None
-    return max(candidates, key=lambda path: path.stat().st_mtime)
 
 
 def _load_completed_metric(metrics_path: Path, image_dir: Path, *, expected: int) -> dict[str, Any] | None:
@@ -139,21 +109,40 @@ def _load_completed_metric(metrics_path: Path, image_dir: Path, *, expected: int
     return row
 
 
-def _convert_npz_to_pngs(npz_path: Path, image_dir: Path, *, expected: int) -> int:
+def _ctm_npz_dirs(raw_root: Path) -> list[Path]:
+    dirs: dict[Path, float] = {}
+    for path in raw_root.rglob("sample_*.npz"):
+        dirs[path.parent] = max(dirs.get(path.parent, 0.0), path.stat().st_mtime)
+    return [path for path, _mtime in sorted(dirs.items(), key=lambda item: item[1], reverse=True)]
+
+
+def _count_npz_images(raw_dir: Path) -> int:
+    count = 0
+    for path in sorted(raw_dir.glob("sample_*.npz")):
+        with np.load(path) as data:
+            count += int(data[data.files[0]].shape[0])
+    return count
+
+
+def _convert_npz_chunks_to_pngs(raw_dir: Path, image_dir: Path, *, expected: int) -> int:
     if _count_pngs(image_dir) >= expected:
         return expected
     image_dir.mkdir(parents=True, exist_ok=True)
-    arr = np.load(npz_path)["arr_0"]
-    if arr.ndim != 4 or arr.shape[-1] != 3:
-        raise ValueError(f"Expected NHWC image array, got {arr.shape} from {npz_path}")
-    count = min(expected, int(arr.shape[0]))
-    for idx in range(count):
-        subdir = image_dir / f"{idx - idx % 1000:06d}"
-        subdir.mkdir(parents=True, exist_ok=True)
-        out = subdir / f"{idx:06d}.png"
-        if out.exists():
-            continue
-        Image.fromarray(arr[idx].astype(np.uint8), mode="RGB").save(out)
+    written = 0
+    for path in sorted(raw_dir.glob("sample_*.npz")):
+        with np.load(path) as data:
+            arr = data[data.files[0]]
+            if arr.ndim != 4 or arr.shape[-1] != 3:
+                raise ValueError(f"Expected NHWC image array, got {arr.shape} from {path}")
+            for image in arr:
+                if written >= expected:
+                    return _count_pngs(image_dir)
+                subdir = image_dir / f"{written - written % 1000:06d}"
+                subdir.mkdir(parents=True, exist_ok=True)
+                out = subdir / f"{written:06d}.png"
+                if not out.exists():
+                    Image.fromarray(image.astype(np.uint8), mode="RGB").save(out)
+                written += 1
     return _count_pngs(image_dir)
 
 
@@ -165,58 +154,42 @@ def _parse_fid(stdout: str) -> float | None:
     return None
 
 
-def _sample_command(
-    *,
-    checkpoint: Path,
-    step_count: int,
-    num_samples: int,
-    batch: int,
-    seed: int,
-    training_mode: str,
-    cm_steps_total: int,
-) -> list[str]:
-    sampler = "onestep" if step_count <= 1 else "multistep"
-    args = [
+def _sample_command(*, checkpoint: Path, step_count: int, num_samples: int, batch: int, seed: int, raw_root: Path) -> list[str]:
+    return [
+        "mpiexec",
+        "-n",
+        "1",
         sys.executable,
-        str(CM_ROOT / "scripts" / "image_sample.py"),
-        "--training_mode",
-        training_mode,
-        "--sampler",
-        sampler,
+        str(CTM_ROOT / "image_sample.py"),
+        "--data_name=imagenet64",
+        "--attention_type=legacy",
+        "--class_cond=True",
+        "--num_classes=1000",
+        "--eval_batch",
+        str(batch),
+        "--eval_fid=True",
+        "--eval_similarity=False",
+        "--check_dm_performance=False",
+        "--out_dir",
+        str(raw_root),
         "--model_path",
         str(checkpoint),
-        "--attention_resolutions",
-        "32,16,8",
-        "--class_cond",
-        "True",
-        "--use_scale_shift_norm",
-        "True",
-        "--dropout",
-        "0.0",
-        "--image_size",
-        "64",
-        "--num_channels",
-        "192",
-        "--num_head_channels",
-        "64",
-        "--num_res_blocks",
-        "3",
-        "--num_samples",
+        "--training_mode=ctm",
+        "--eval_num_samples",
         str(num_samples),
         "--batch_size",
         str(batch),
-        "--resblock_updown",
-        "True",
-        "--use_fp16",
-        "True",
-        "--weight_schedule",
-        "uniform",
-        "--seed",
+        "--device_id=0",
+        "--sampler=exact",
+        "--sampling_steps",
+        str(step_count),
+        "--save_format=npz",
+        "--stochastic_seed=False",
+        "--use_MPI=True",
+        "--generator=determ",
+        "--eval_seed",
         str(seed),
     ]
-    if step_count > 1:
-        args.extend(["--steps", str(cm_steps_total), "--ts", _ts_for_step_count(step_count, cm_steps_total=cm_steps_total)])
-    return args
 
 
 def _write_outputs(*, rows: list[dict[str, Any]], eval_root: Path, csv_out: Path) -> None:
@@ -242,7 +215,7 @@ def _write_outputs(*, rows: list[dict[str, Any]], eval_root: Path, csv_out: Path
                     "is": "",
                     "recall": "",
                     "checkpoint": row["checkpoint"],
-                    "eval_script": "scripts/baselines/run_cd_imagenet64_eval.py",
+                    "eval_script": "scripts/baselines/run_ctm_imagenet64_eval.py",
                     "notes": row["notes"],
                 }
             )
@@ -253,8 +226,8 @@ def main() -> None:
     checkpoint = _resolve(args.checkpoint)
     if not checkpoint.exists():
         raise FileNotFoundError(checkpoint)
-    if not CM_ROOT.exists():
-        raise FileNotFoundError(CM_ROOT)
+    if not CTM_ROOT.exists():
+        raise FileNotFoundError(CTM_ROOT)
     if not EDM_ROOT.exists():
         raise FileNotFoundError(EDM_ROOT)
 
@@ -263,20 +236,18 @@ def main() -> None:
     csv_out = _resolve(args.csv_out)
 
     env = dict(os.environ)
-    env["PYTHONPATH"] = str(CM_ROOT) + os.pathsep + str(EDM_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = str(CTM_ROOT) + os.pathsep + str(EDM_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
     env.setdefault("DNNLIB_CACHE_DIR", str(ROOT / ".torch" / "dnnlib"))
-    env.setdefault("OPENAI_LOG_FORMAT", "stdout,log")
     env.setdefault("OMPI_MCA_btl", "^openib")
     env.setdefault("OMPI_MCA_btl_openib_warn_no_device_params_found", "0")
 
     rows: list[dict[str, Any]] = []
     for step_count in args.steps:
         step_dir = eval_root / f"steps{step_count}"
-        log_dir = step_dir / "openai_log"
+        raw_root = step_dir / "ctm_raw"
         image_dir = sample_root / f"steps{step_count}" / "images"
         step_dir.mkdir(parents=True, exist_ok=True)
-        log_dir.mkdir(parents=True, exist_ok=True)
-        env["OPENAI_LOGDIR"] = str(log_dir)
+        raw_root.mkdir(parents=True, exist_ok=True)
         t0 = time.time()
 
         metrics_path = step_dir / "metrics.json"
@@ -284,14 +255,12 @@ def main() -> None:
         if completed_row is not None and not args.skip_fid:
             rows.append(completed_row)
             _write_outputs(rows=rows, eval_root=eval_root, csv_out=csv_out)
-            print(
-                f"reuse cd imagenet64 step_count={step_count} fid={completed_row['fid']}",
-                flush=True,
-            )
+            print(f"reuse ctm imagenet64 step_count={step_count} fid={completed_row['fid']}", flush=True)
             continue
 
-        sample_npz = _find_sample_npz(log_dir)
-        if not args.skip_sample and sample_npz is None:
+        raw_dirs = _ctm_npz_dirs(raw_root)
+        raw_dir = raw_dirs[0] if raw_dirs else None
+        if not args.skip_sample and (raw_dir is None or _count_npz_images(raw_dir) < args.num_samples):
             _run_and_tee(
                 _sample_command(
                     checkpoint=checkpoint,
@@ -299,18 +268,18 @@ def main() -> None:
                     num_samples=args.num_samples,
                     batch=args.batch,
                     seed=args.seed + 1000 * step_count,
-                    training_mode=args.training_mode,
-                    cm_steps_total=args.cm_steps_total,
+                    raw_root=raw_root,
                 ),
-                cwd=CM_ROOT,
+                cwd=CTM_ROOT,
                 env=env,
                 log_path=step_dir / "sample.stdout_stderr.txt",
             )
-            sample_npz = _find_sample_npz(log_dir)
-        if sample_npz is None:
-            raise FileNotFoundError(f"No samples_*.npz found in {log_dir}")
+            raw_dirs = _ctm_npz_dirs(raw_root)
+            raw_dir = raw_dirs[0] if raw_dirs else None
+        if raw_dir is None:
+            raise FileNotFoundError(f"No CTM sample_*.npz found in {raw_root}")
 
-        png_count = _convert_npz_to_pngs(sample_npz, image_dir, expected=args.num_samples)
+        png_count = _convert_npz_chunks_to_pngs(raw_dir, image_dir, expected=args.num_samples)
         if png_count < args.num_samples:
             raise RuntimeError(f"Only converted {png_count}/{args.num_samples} images for step_count={step_count}")
 
@@ -332,31 +301,30 @@ def main() -> None:
             )
             fid = _parse_fid(fid_stdout)
 
-        notes = [
-            "official OpenAI consistency_models checkpoint",
-            f"training_mode={args.training_mode}",
-            f"sampler={'onestep' if step_count <= 1 else 'multistep'}",
-            f"ts={_ts_for_step_count(step_count, cm_steps_total=args.cm_steps_total) or 'onestep'}",
-            f"cm_steps_total={args.cm_steps_total}",
-            f"num_fid_samples={args.num_samples}",
-            "recall pending ImageNet64 reference sample batch",
-        ]
         row = {
             "step_count": int(step_count),
             "fid": fid,
             "num_fid_samples": int(args.num_samples),
             "checkpoint": str(checkpoint),
             "method": args.method,
-            "sample_npz": str(sample_npz),
+            "raw_sample_dir": str(raw_dir),
             "image_dir": str(image_dir),
             "elapsed_sec": time.time() - t0,
-            "notes": "; ".join(notes),
+            "notes": "; ".join(
+                [
+                    "official CTM ImageNet64 checkpoint",
+                    "sampler=exact",
+                    f"sampling_steps={step_count}",
+                    f"num_fid_samples={args.num_samples}",
+                    "recall pending ImageNet64 reference sample batch",
+                ]
+            ),
         }
         with metrics_path.open("w", encoding="utf-8") as handle:
             json.dump(row, handle, indent=2)
         rows.append(row)
         _write_outputs(rows=rows, eval_root=eval_root, csv_out=csv_out)
-        print(f"cd imagenet64 step_count={step_count} fid={fid} elapsed_sec={row['elapsed_sec']:.2f}", flush=True)
+        print(f"ctm imagenet64 step_count={step_count} fid={fid} elapsed_sec={row['elapsed_sec']:.2f}", flush=True)
 
 
 if __name__ == "__main__":
