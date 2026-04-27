@@ -8,24 +8,24 @@ changes the next full-stack direction. It is not a step-by-step run ledger.
 
 - Update after milestone FID evaluations, corrective runtime actions, or
   algorithmic conclusions.
-- Keep raw artifacts in `eval/`, `runs/`, `results/`, and
-  `/temp/Zhengwei/DG-TWFD-backups/experiment_evidence`.
+- Keep raw artifacts in `eval/`, `runs/`, `results/`, and the project-isolated
+  temp tree `/temp/Zhengwei/projects/DG-TWFD/critical`.
 - Record paths and decision-relevant metrics here, not large files.
 
 ## Current Active Track
 
-- Track: EDM-first CIFAR-10 prior-endpoint map.
-- Run tag: `edm_first_cifar10_onestep_msdefect_e504a_resume_from1250`.
-- Config: `experiments/edm_first/configs/cifar10_edm_map_onestep_prior_msdefect_8h.yaml`.
+- Track: EDM-first CIFAR-10 full-stack prior map with learned timewarp.
+- Run tag: `edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750`.
+- Config: `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_12h.yaml`.
 - Initialization checkpoint:
-  `runs/edm_first_cifar10_onestep_msdefect_e504a/checkpoints/step1250.pt`.
-- Important detail: this run loads the step1250 student weights but does not
+  `runs/edm_first_cifar10_onestep_msdefect_e504a_resume_from1250/checkpoints/step1750.pt`.
+- Important detail: this run loads the step1750 student weights but does not
   resume optimizer state or global step count because the config sets
   `resume_optimizer: false` and `resume_step: false`.
 - Live backup:
-  `/temp/Zhengwei/DG-TWFD-backups/experiment_evidence/edm_first_cifar10_onestep_msdefect_e504a_resume_from1250_live`.
+  `/temp/Zhengwei/projects/DG-TWFD/critical/runs/edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750`.
 - Milestone backups:
-  `/temp/Zhengwei/DG-TWFD-backups/experiment_evidence/edm_first_cifar10_onestep_msdefect_e504a_resume_from1250_step*`.
+  `/temp/Zhengwei/projects/DG-TWFD/critical/eval/edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750_step*`.
 
 ## Latest Decision Metrics
 
@@ -37,10 +37,41 @@ FID uses 2048 generated samples for the active watcher.
 | e504a step1250 restored | 135.003 | 44.315 | 52.436 | 81.607 | 96.386 | 1-step improved, multi-step regressed |
 | resume-from1250 step250 | 126.059 | 44.376 | 53.666 | 83.676 | 98.459 | 1-step still improving |
 | resume-from1250 step500 | 117.980 | 44.656 | 54.701 | 85.333 | 100.047 | 1-step improving, composition worsening |
+| resume-from1250 step1750 | 91.325 | 46.693 | 59.096 | 90.190 | 103.199 | endpoint nearly at target, multi-step still regressed |
 
-Primary success target is `FID@1 <= 88.945`, which is a 50% reduction from the
-e504a step250 baseline. The latest evaluated checkpoint, resume step500, is
-at `117.980`, or `0.663` of the baseline. It has not reached the target.
+Primary endpoint target remains `FID@1 <= 88.945`, which is a 50% reduction
+from the e504a step250 baseline. The last endpoint-only checkpoint,
+resume-from1250 step1750, reached `91.325`, close to the endpoint target but
+with worsening multi-step FID. This is why the active track is now full-stack
+composition training rather than more endpoint-only continuation.
+
+## Full-Stack Timewarp Launch
+
+The v11a run started on 2026-04-28 from the endpoint checkpoint at step1750.
+It changes the objective from direct endpoint matching to a full-stack prior
+objective:
+
+- `sigma_max -> sigma_s` is supervised by a one-step teacher transition.
+- `sigma_max -> 0` keeps direct endpoint supervision.
+- `sigma_max -> sigma_s -> 0` is trained against the same high-quality teacher
+  rollout endpoint, so composed inference is no longer only a detached
+  diagnostic.
+- direct-vs-bridge raw defect is used as the timewarp density signal.
+
+Initial training signal is healthy enough to continue the long run:
+
+| follow-up step | loss | match | anchor | bridge | defect | timewarp qmax |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 0.164855 | 0.019213 | 0.026507 | 0.086160 | 0.073551 | 1.0000 |
+| 25 | 0.166869 | 0.068927 | 0.028375 | 0.067120 | 0.059379 | 1.0004 |
+| 50 | 0.157794 | 0.040373 | 0.025856 | 0.072934 | 0.066003 | 1.0008 |
+
+The main interpretation is not that step50 proves image quality yet. It shows
+the full-stack objective is numerically stable, preserves the direct endpoint
+scale, gives bridge/defect a non-trivial signal several orders of magnitude
+larger than the old normalized defect, and successfully starts updating the
+learned timewarp. The first decision-quality image metric should come from the
+step250 learned-warp vs identity-clock evaluation.
 
 ## Training Signal Interpretation
 
@@ -174,13 +205,15 @@ corrected defaults for future launches.
 
 ## Current Recommendations
 
-1. Continue the no-warp resume run through the next milestone evals only to
-   determine whether 1-step FID reaches the target. Do not interpret this route
-   as a complete few-step solution while multi-step FID is worsening.
-2. If FID@1 continues improving but FID@4/8/16 worsens at step750 and step1000,
-   stop treating endpoint-only training as the main path and start the
-   full-stack compositional/timewarp experiment.
-3. Before launching full-stack timewarp, patch the training objective so
-   intermediate transitions receive real teacher supervision.
-4. Keep automatic backups and milestone evals active; raw evidence should stay
-   under `/temp/Zhengwei/DG-TWFD-backups/experiment_evidence`.
+1. Let v11a continue to the step250 checkpoint and evaluation. Do not make a
+   quality conclusion from train loss alone.
+2. Judge the first milestone on the whole FID curve and on learned-warp vs
+   identity-clock comparison. A useful result should preserve FID@1 while
+   flattening or improving FID@2/4/8/16.
+3. If FID@1 regresses badly but bridge improves, lower `bridge_weight` or
+   `defect_weight`; if multi-step still degrades like endpoint-only, raise the
+   bridge target weight or make defect normalized by endpoint scale for student
+   loss while keeping raw defect for timewarp.
+4. Keep v1.1 project backups active under
+   `/temp/Zhengwei/projects/DG-TWFD/critical`, and keep Codex session backups
+   under `/temp/Zhengwei/projects/DG-TWFD/codex`.
