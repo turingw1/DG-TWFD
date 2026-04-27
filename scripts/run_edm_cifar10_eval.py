@@ -226,10 +226,28 @@ def main() -> None:
         step_sample_dir = sample_root / f"steps{step_count}" / "images"
         step_eval_dir = eval_root / f"steps{step_count}"
         step_eval_dir.mkdir(parents=True, exist_ok=True)
+        metrics_path = step_eval_dir / "metrics.json"
         seed_end = seeds_start + num_samples - 1
         t0 = time.time()
 
         existing_images = _count_images(step_sample_dir)
+        if existing_images >= num_samples and metrics_path.exists():
+            try:
+                with metrics_path.open("r", encoding="utf-8") as handle:
+                    existing_record = json.load(handle)
+            except json.JSONDecodeError:
+                existing_record = None
+            if isinstance(existing_record, dict) and (
+                args.skip_fid or existing_record.get("fid") is not None
+            ):
+                print(
+                    f"reusing existing metrics for step_count={step_count}: "
+                    f"{existing_images} >= {num_samples} at {step_sample_dir}",
+                    flush=True,
+                )
+                records.append(existing_record)
+                continue
+
         missing_ranges = _missing_seed_ranges(
             step_sample_dir,
             seed_start=seeds_start,
@@ -311,7 +329,7 @@ def main() -> None:
             "elapsed_sec": elapsed,
             "samples_per_sec": num_samples / max(elapsed, 1.0e-8),
         }
-        with (step_eval_dir / "metrics.json").open("w", encoding="utf-8") as handle:
+        with metrics_path.open("w", encoding="utf-8") as handle:
             json.dump(record, handle, indent=2)
         records.append(record)
         print(
