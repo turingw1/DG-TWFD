@@ -18,6 +18,9 @@ log() {
   echo "[$(date -Is)] $*" | tee -a "$SUP_LOG"
 }
 
+trap 'log "supervisor received TERM"; exit 143' TERM
+trap 'log "supervisor received INT"; exit 130' INT
+
 guard_finished() {
   grep -q "low-vram baseline guard finished" "${LOG_ROOT}/guard.log" 2>/dev/null
 }
@@ -66,14 +69,14 @@ while true; do
 
   pid="$(cat "$PID_FILE" 2>/dev/null || true)"
   if pid_alive "$pid"; then
-    sleep "$CHECK_SECONDS"
+    sleep "$CHECK_SECONDS" || true
     continue
   fi
 
   if [[ -n "${pid:-}" ]]; then
     log "guard pid not alive: ${pid}; restarting after ${RESTART_COOLDOWN_SECONDS}s"
-    sleep "$RESTART_COOLDOWN_SECONDS"
+    sleep "$RESTART_COOLDOWN_SECONDS" || true
   fi
   start_guard
-  sleep "$CHECK_SECONDS"
+  sleep "$CHECK_SECONDS" || true
 done
