@@ -211,6 +211,27 @@ step1000 (`76.821 -> 74.370`), but 2-step identity also drifted worse
 (`34.608 -> 35.778`). The next iteration should therefore add explicit
 low-step preservation pressure instead of increasing global warp strength.
 
+Supervision through step4500 shows that v12a has split into two useful but
+different checkpoints: late checkpoints are endpoint-specialized, while the
+best policy curve for few-step sampling happened much earlier.
+
+| v12a checkpoint | budget FID@1 | budget FID@2 | budget FID@4 | budget FID@8 | budget FID@16 | interpretation |
+|---:|---:|---:|---:|---:|---:|---|
+| 250 | 76.821 | 34.608 | 30.308 | 26.215 | 27.338 | best 2-step and 16-step |
+| 500 | 75.961 | 34.937 | 30.259 | 26.134 | 27.511 | best 4-step |
+| 1000 | 74.370 | 35.778 | 30.392 | 26.037 | 27.831 | best 8-step |
+| 2500 | 71.157 | 38.293 | 31.816 | 26.645 | 29.126 | endpoint improves, multi-step drifts |
+| 4500 | 66.834 | 38.587 | 32.688 | 27.035 | 29.305 | best endpoint so far |
+
+The learned warp itself is still becoming more distinct: by step4500 it helps
+identity by `-3.275/-0.711/-1.005` FID at `4/8/16`, but hurts 2-step by
+`+5.707`. This makes the timewarp claim stronger but also narrows the next
+problem. For a SOTA sprint, the current v12a late checkpoint should be treated
+as an endpoint teacher/reference, not as the best few-step sampler. The next
+branch should start from the early multi-step checkpoint family, or distill the
+late endpoint quality back into the early policy curve with explicit 2-step
+and 4-step preservation.
+
 ## Training Signal Interpretation
 
 As of 2026-04-27 20:50 +08:00, the resumed run is live and has reached step725
@@ -346,14 +367,21 @@ corrected defaults for future launches.
 
 ## Current Recommendations
 
-1. Keep v12a running while the 4/8/16 budget-policy gains continue and the
-   endpoint improves; do not stop only because raw auto-warp 2-step is bad.
-2. Watch 2-step identity as the main bottleneck. If it keeps drifting upward,
-   the next branch should add low-step preservation pressure, such as a small
-   identity-clock composition loss at 2-step or a separate budget-conditioned
-   warp head.
-3. Preserve both v11a key checkpoints: step6750 for composition and step8750
+1. Let v12a continue as an endpoint-specialized long run while it remains
+   stable; endpoint quality is still improving and can become a stronger
+   teacher/reference.
+2. Preserve v12a step250, step500, and step1000 as the current few-step
+   checkpoint family. These are more important for the SOTA sprint than the
+   latest checkpoint if the target is 2/4/8/16-step quality.
+3. Make the next branch explicitly low-step aware: add preservation pressure
+   for 2-step identity, keep 4-step from drifting, and consider a
+   budget-conditioned or per-step warp head instead of one global learned
+   density.
+4. Use the late v12a endpoint checkpoint as a teacher/reference only after
+   guarding the early policy curve. Blind continuation is already shown to
+   improve FID@1 while degrading 2/4/8/16.
+5. Preserve both v11a key checkpoints: step6750 for composition and step8750
    for endpoint. v12a correctly branched from step6750.
-4. Keep v1.1 project backups active under
+6. Keep v1.1 project backups active under
    `/temp/Zhengwei/projects/DG-TWFD/critical`, and keep Codex session backups
    under `/temp/Zhengwei/projects/DG-TWFD/codex`.
