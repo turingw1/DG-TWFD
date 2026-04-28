@@ -43,6 +43,8 @@ if [[ ! -s "$list_file" ]]; then
 fi
 
 COPYFILE_DISABLE=1 tar \
+  --warning=no-file-changed \
+  --ignore-failed-read \
   --exclude='.DS_Store' \
   --exclude='._*' \
   -C "$codex_home" \
