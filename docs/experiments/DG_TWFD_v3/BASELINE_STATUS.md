@@ -73,6 +73,12 @@ The comparison role of each baseline is documented in:
 docs/experiments/DG_TWFD_v3/BASELINE_COMPARISON_GUIDE.md
 ```
 
+The Chinese paper-writing report is documented in:
+
+```text
+docs/experiments/DG_TWFD_v3/BASELINE_REPORT_CN.md
+```
+
 ## Fair-Comparison Protocol
 
 The primary DG-TWFD comparison is an internal fair-comparison protocol, not a
