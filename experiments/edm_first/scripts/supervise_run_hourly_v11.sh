@@ -163,7 +163,8 @@ summary = {
 warnings = []
 if not summary["train_step"]:
     warnings.append("missing_train_log")
-if "v11a_fullstack_tw" not in summary["tmux"]:
+supervise_tmux_session = os.environ.get("DG_TWFD_SUPERVISE_TMUX_SESSION", "").strip()
+if supervise_tmux_session and supervise_tmux_session not in summary["tmux"]:
     warnings.append("train_tmux_missing")
 if summary["train_step"] >= 1000 and summary.get("qmax") and float(summary["qmax"]) < 1.02:
     warnings.append("timewarp_density_still_near_identity")
@@ -203,7 +204,7 @@ jsonl = Path(sys.argv[1])
 md = Path(sys.argv[2])
 rows = [json.loads(line) for line in jsonl.read_text(encoding="utf-8").splitlines() if line.strip()]
 
-lines = ["# 5h Hourly Supervision Report", ""]
+lines = [f"# {len(rows)}-Point Hourly Supervision Report", ""]
 lines.append("| hour | time | train step | loss | anchor | bridge | defect | qmax | eval step | auto FID@1/2/4/8/16 | budget FID@1/2/4/8/16 | warnings |")
 lines.append("|---:|---|---:|---:|---:|---:|---:|---:|---:|---|---|---|")
 for row in rows:

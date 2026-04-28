@@ -379,22 +379,75 @@ corrected defaults for future launches.
 
 ## Current Recommendations
 
-1. Let v12a continue to its configured time limit while it remains stable;
-   endpoint and 8-step quality are still improving and can become a stronger
-   teacher/reference.
-2. Preserve v12a step250, step500, and step1000 as the current few-step
-   checkpoint family. Preserve step8000/8250 as the current endpoint/8-step
-   family. These are different assets and should not be collapsed into a single
-   "best latest" checkpoint.
+1. Treat v12a step10500 as the current best endpoint and budget-policy
+   checkpoint for 1/4/8/16-step evaluation.
+2. Preserve early v12a checkpoints as diagnostics for 2-step identity behavior,
+   but do not treat them as better global checkpoints after the final v12a
+   readout.
 3. Make the next branch explicitly low-step aware: add preservation pressure
    for 2-step identity, keep 4-step from drifting, and consider a
    budget-conditioned or per-step warp head instead of one global learned
    density.
-4. Use the late v12a endpoint checkpoint as a teacher/reference only after
-   guarding the early policy curve. Blind continuation is already shown to
-   improve FID@1 while degrading 2/4/8/16.
+4. Use v12a step10500 as the v13 initialization, but add a targeted midpoint
+   composition constraint rather than blindly extending the same objective.
 5. Preserve both v11a key checkpoints: step6750 for composition and step8750
    for endpoint. v12a correctly branched from step6750.
 6. Keep v1.1 project backups active under
    `/temp/Zhengwei/projects/DG-TWFD/critical`, and keep Codex session backups
    under `/temp/Zhengwei/projects/DG-TWFD/codex`.
+
+## 2026-04-29 V12a Final Readout And V13 Plan
+
+The v12a run completed naturally at train step10650 after the configured
+12-hour wall-clock limit. The last fully evaluated checkpoint is step10500.
+This changes the earlier step8250 interpretation: late training did not merely
+improve the one-step endpoint. It also produced the best observed learned-warp
+quality at 4, 8, and 16 steps under the budget policy.
+
+Selected v12a FID-2048 checkpoints:
+
+| train step | budget FID@1 | budget FID@2 | budget FID@4 | budget FID@8 | budget FID@16 | auto-minus-identity @2/@4/@8/@16 |
+|---:|---:|---:|---:|---:|---:|---|
+| 250 | 76.821 | 34.608 | 30.308 | 26.215 | 27.338 | +2.360 / -1.588 / -0.469 / -0.440 |
+| 2500 | 71.157 | 38.293 | 31.816 | 26.645 | 29.126 | +5.600 / -3.308 / -0.724 / -0.956 |
+| 8250 | 61.686 | 36.659 | 31.483 | 25.961 | 27.541 | +3.927 / -2.771 / -0.562 / -0.869 |
+| 10500 | 59.246 | 34.881 | 29.997 | 24.914 | 26.055 | +3.391 / -2.351 / -0.486 / -0.779 |
+
+The strongest v12a checkpoint is therefore step10500 for endpoint quality and
+for learned-warp 4/8/16-step quality. The remaining failure mode is sharp and
+diagnostic: the learned global warp is consistently harmful at 2 steps, while
+the identity clock is still best for that budget. The current solution is the
+budget policy, which uses identity below 4 steps and learned warp at 4+ steps.
+That policy is not just an evaluation trick; it reflects a real incompatibility
+between a single global density and different inference budgets.
+
+NeurIPS-level bottleneck assessment:
+
+1. The objective now learns useful composition for moderate budgets, but it
+   under-constrains the exact midpoint composition used by 2-step identity
+   inference. This is the most actionable local bottleneck.
+2. The defect signal is informative for schedule density, not yet a sufficient
+   guarantee of all-budget robustness. A global `q_phi` can improve 4/8/16
+   while degrading 2-step because the loss samples a continuum of midpoints
+   and does not explicitly protect the coarse identity midpoint.
+3. The run is still far from CTM-level SOTA on absolute CIFAR-10 FID, so v12a
+   should be treated as a validated diagnostic/training scaffold rather than a
+   final sampler. The next gain must come from a better training constraint,
+   not only from longer continuation.
+4. Runtime is compute-bound. Extra objective terms must be justified by a clear
+   bottleneck. The next experiment adds only one fixed midpoint preservation
+   branch, targeted at the observed 2-step failure.
+
+V13 is launched from v12a step10500 with a fixed midpoint preservation loss at
+`u=0.5`. It keeps the v12 full-stack losses and learned timewarp, but adds
+explicit pressure that the composed path `sigma_max -> sigma(0.5) -> 0` remains
+close to the teacher endpoint, close to the teacher midpoint, and close to the
+direct student endpoint. The intended acceptance criteria are:
+
+1. Do not regress v12a step10500 budget FID@4/8/16 materially.
+2. Improve or at least stabilize identity/budget FID@2 relative to v12a
+   step10500.
+3. Keep the learned timewarp advantage at 4+ steps negative versus identity.
+4. If the extra fixed-midpoint branch slows progress without improving 2-step,
+   the next direction should be budget-conditioned timewarp or a per-budget
+   schedule head rather than more scalar reweighting.

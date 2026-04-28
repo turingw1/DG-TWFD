@@ -113,6 +113,11 @@ def main() -> None:
     objective = str(train_cfg.get("objective", "triplet"))
     defect_grad_mode = str(train_cfg.get("defect_grad_mode", "both")).lower()
     perceptual_weight = float(train_cfg.get("perceptual_weight", cfg.get("loss", {}).get("perceptual_weight", 0.0)))
+    preserve_mid_u_values = [float(value) for value in train_cfg.get("preserve_mid_u_values", [])]
+    preserve_bridge_weight = float(train_cfg.get("preserve_bridge_weight", 0.0))
+    preserve_match_weight = float(train_cfg.get("preserve_match_weight", 0.0))
+    preserve_defect_weight = float(train_cfg.get("preserve_defect_weight", 0.0))
+    preserve_perceptual_weight = float(train_cfg.get("preserve_perceptual_weight", 0.0))
     amp_enabled = bool(runtime_cfg.get("amp", True)) and device.type == "cuda"
 
     teacher = load_edm_network(cfg["paths"]["network"], device=device, use_fp16=bool(teacher_cfg.get("use_fp16", True)))
@@ -184,6 +189,11 @@ def main() -> None:
         if max_seconds > 0.0 and time.time() - start_time >= max_seconds:
             break
         batch_size = int(train_cfg.get("batch_size", 64))
+        preserve_loss = torch.zeros((), device=device)
+        preserve_bridge_loss = torch.zeros((), device=device)
+        preserve_match_loss = torch.zeros((), device=device)
+        preserve_defect_loss = torch.zeros((), device=device)
+        preserve_perceptual_loss = torch.zeros((), device=device)
         if objective in {"prior_endpoint", "prior_fullstack"}:
             labels = sample_labels(teacher, batch_size, device=device)
             sigma_t = sigma_from_u(torch.zeros(batch_size, device=device), sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
@@ -259,6 +269,57 @@ def main() -> None:
                         + defect_weight * defect_loss
                         + perceptual_weight * perceptual_loss
                     )
+                    if preserve_mid_u_values and (
+                        preserve_bridge_weight > 0.0
+                        or preserve_match_weight > 0.0
+                        or preserve_defect_weight > 0.0
+                        or preserve_perceptual_weight > 0.0
+                    ):
+                        preserve_bridge_terms = []
+                        preserve_match_terms = []
+                        preserve_defect_terms = []
+                        preserve_perceptual_terms = []
+                        for preserve_u_value in preserve_mid_u_values:
+                            preserve_u = torch.full(
+                                (batch_size,),
+                                preserve_u_value,
+                                device=device,
+                                dtype=u_mid.dtype,
+                            )
+                            preserve_sigma = sigma_from_u(
+                                preserve_u,
+                                sigma_min=sigma_min,
+                                sigma_max=sigma_max,
+                                rho=rho,
+                                net=teacher,
+                            )
+                            x_s_preserve = student_transition(student, x_t, sigma_t, preserve_sigma, labels)
+                            x_u_preserve = student_transition(student, x_s_preserve, preserve_sigma, sigma_u, labels)
+                            preserve_bridge_terms.append(_flat_mse_per_sample(x_u_preserve, x_u_ref).mean())
+                            preserve_defect_terms.append(_flat_mse_per_sample(x_u_preserve, x_u_direct.detach()).mean())
+                            if preserve_match_weight > 0.0:
+                                with torch.no_grad():
+                                    x_s_preserve_ref = teacher_transition(teacher, x_t, sigma_t, preserve_sigma, labels)
+                                preserve_match_per_sample = _flat_mse_per_sample(x_s_preserve, x_s_preserve_ref)
+                                preserve_match_denom = _flat_mse_per_sample(x_s_preserve_ref, x_t).clamp_min(1.0e-6)
+                                preserve_match_terms.append(_safe_mean_normalized(preserve_match_per_sample, preserve_match_denom))
+                            if preserve_perceptual_weight > 0.0 and perceptual_metric is not None:
+                                preserve_perceptual_terms.append(
+                                    perceptual_metric(x_u_preserve.float(), x_u_ref.float())
+                                )
+                        preserve_bridge_loss = torch.stack(preserve_bridge_terms).mean()
+                        preserve_defect_loss = torch.stack(preserve_defect_terms).mean()
+                        if preserve_match_terms:
+                            preserve_match_loss = torch.stack(preserve_match_terms).mean()
+                        if preserve_perceptual_terms:
+                            preserve_perceptual_loss = torch.stack(preserve_perceptual_terms).mean()
+                        preserve_loss = (
+                            preserve_bridge_weight * preserve_bridge_loss
+                            + preserve_match_weight * preserve_match_loss
+                            + preserve_defect_weight * preserve_defect_loss
+                            + preserve_perceptual_weight * preserve_perceptual_loss
+                        )
+                        loss = loss + preserve_loss
                 else:
                     x_u_direct = student_transition(student, x_t, sigma_t, sigma_u, labels)
                     with torch.no_grad():
@@ -370,6 +431,12 @@ def main() -> None:
             "anchor_loss": float(anchor_loss.detach().float().item()),
             "bridge_loss": float(bridge_loss.detach().float().item()) if "bridge_loss" in locals() else 0.0,
             "defect_loss": float(defect_loss.detach().float().item()),
+            "preserve_loss": float(preserve_loss.detach().float().item()),
+            "preserve_bridge_loss": float(preserve_bridge_loss.detach().float().item()),
+            "preserve_match_loss": float(preserve_match_loss.detach().float().item()),
+            "preserve_defect_loss": float(preserve_defect_loss.detach().float().item()),
+            "preserve_perceptual_loss": float(preserve_perceptual_loss.detach().float().item()),
+            "preserve_mid_u_values": preserve_mid_u_values,
             "defect_grad_mode": defect_grad_mode,
             "perceptual_loss": float(perceptual_loss.detach().float().item()) if "perceptual_loss" in locals() else 0.0,
             "raw_match_mse": float(match_per_sample.detach().float().mean().item()),
