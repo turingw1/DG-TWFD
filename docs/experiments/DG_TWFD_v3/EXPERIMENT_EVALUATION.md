@@ -172,6 +172,25 @@ The success criterion for v12a is not only lower FID@1. The first useful
 outcome is a better policy curve than v11a step6750, especially preserving
 2-step identity behavior while improving or at least holding 4/8/16.
 
+The first v12a milestone at step250 is positive enough to keep running. It was
+evaluated with auto, identity, and budget policy at 2048 samples while the
+independent CTM baseline revalidation was also using the GPU.
+
+| v12a step250 mode | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 |
+|---|---:|---:|---:|---:|---:|
+| auto learned warp | 76.821 | 36.969 | 30.308 | 26.215 | 27.338 |
+| identity | 76.821 | 34.608 | 31.896 | 26.684 | 27.778 |
+| budget policy | 76.821 | 34.608 | 30.308 | 26.215 | 27.338 |
+
+This confirms the diagnosis from v11a: the learned warp is still harmful for
+2-step (`+2.360` FID vs identity), but useful at 4/8/16 (`-1.588/-0.469/-0.440`
+vs identity). The budget policy gives the intended curve by using identity for
+2-step and learned warp from 4-step onward. Compared with the v11a step6750
+auto checkpoint, v12a step250 is already slightly better at 4/8 and clearly
+better at 16, while endpoint is essentially preserved within small-sample FID
+noise. Training should continue; the next decision point is step500 and then
+whether the 4/8/16 gains keep improving without reintroducing 2-step damage.
+
 ## Training Signal Interpretation
 
 As of 2026-04-27 20:50 +08:00, the resumed run is live and has reached step725
