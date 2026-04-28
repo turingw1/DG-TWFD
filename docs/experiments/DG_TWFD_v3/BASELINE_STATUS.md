@@ -40,6 +40,58 @@ or use a DG-TWFD student map. `steps=1` is explicitly defined in the runner as a
 single `sigma_max -> 0` EDM transition to avoid the official EDM `num_steps=1`
 grid degeneracy.
 
+CTM checkpoint schedule/time-warp follow-up is complete:
+
+```text
+runner: scripts/baselines/run_ctm_schedule_warp_eval.py
+run root: runs/ctm_schedule_warp_5k_20260428/samples/{dataset}/{strategy}/steps{1,2,4,8}/images
+eval root: eval/ctm_schedule_warp_5k_20260428/{dataset}
+summary CSVs:
+  eval/ctm_schedule_warp_5k_20260428/cifar10/reports/summary.csv
+  eval/ctm_schedule_warp_5k_20260428/imagenet64/reports/summary.csv
+stable-style CSV exports:
+  results/baselines/ctm_schedule_warp_5k_20260428/ctm_schedule_warp_cifar10_5k_summary.csv
+  results/baselines/ctm_schedule_warp_5k_20260428/ctm_schedule_warp_imagenet64_5k_summary.csv
+previews: eval/ctm_schedule_warp_5k_20260428/{dataset}/previews/{strategy}_steps{1,2,4,8}.png
+schedules: eval/ctm_schedule_warp_5k_20260428/{dataset}/schedules/{strategy}/steps{1,2,4,8}.json
+sample count check: all 32 image directories contain 5000 PNG files
+```
+
+Protocol: the runner loads the CTM checkpoints directly and applies custom
+sigma nodes by calling CTM exact transitions `G_theta(x_t, t, s)` for every
+interval. These are CTM-specific schedule diagnostics, not EDM sampler runs.
+The four strategies are:
+
+```text
+optimalsteps_ctm: dynamic programming on a dense CTM exact trajectory.
+entropic_ctm: transfer the precomputed entropic time function to CTM sigma nodes.
+piecewise_linear_ctm: inverse-CDF warp from a CTM self-consistency residual proxy.
+spline_warp_ctm: same proxy with monotone PCHIP inverse-CDF interpolation.
+```
+
+CTM schedule/time-warp CIFAR-10 FID-5k:
+
+| Method | Step 1 | Step 2 | Step 4 | Step 8 | Note |
+|---|---:|---:|---:|---:|---|
+| CTM + OptimalSteps-adapted schedule | 6.39022 | 6.33884 | 6.41577 | 6.62873 | DP against dense CTM exact chain |
+| CTM + Entropic schedule | 6.39022 | 6.31943 | 6.66228 | 6.98590 | Entropic schedule transfer to CTM |
+| CTM + piecewise-linear time warp | 6.39022 | 6.37918 | 6.37642 | 6.37383 | CTM residual-proxy inverse-CDF warp |
+| CTM + spline time warp | 6.39022 | 6.37878 | 6.37888 | 6.37933 | Same proxy with monotone PCHIP inverse-CDF |
+
+CTM schedule/time-warp ImageNet64 FID-5k:
+
+| Method | Step 1 | Step 2 | Step 4 | Step 8 | Note |
+|---|---:|---:|---:|---:|---|
+| CTM + OptimalSteps-adapted schedule | 8.85793 | 8.93934 | 9.24441 | 9.82932 | DP against dense CTM exact chain |
+| CTM + Entropic schedule | 8.85793 | 9.42372 | 9.80729 | 11.01760 | Entropic schedule transfer to CTM |
+| CTM + piecewise-linear time warp | 8.85793 | 9.51683 | 8.93845 | 8.84899 | CTM residual-proxy inverse-CDF warp |
+| CTM + spline time warp | 8.85793 | 9.46341 | 8.92669 | 8.84654 | Same proxy with monotone PCHIP inverse-CDF |
+
+These CTM rows use a deterministic per-seed local generation protocol and EDM
+FID references. They are useful for isolating the effect of CTM time-node
+selection under the shared DG-TWFD 5k protocol, but they do not replace the
+official CTM 50k audit rows above.
+
 Current baseline budget:
 
 ```text
@@ -263,6 +315,41 @@ and ImageNet64 steps 1/2. ImageNet64 steps 4/8 come from the recovery root,
 where batch size was lowered to 100 only to fit alongside the current main
 experiment. The sampling rule, checkpoint, step count, FID implementation, and
 FID reference remain the CTM 50k audit standard.
+
+### CTM Schedule/Time-Warp Follow-up
+
+Fair-comparison role:
+
+```text
+diagnose whether CTM quality changes when only the CTM exact-transition sigma nodes are changed by external schedule/time-warp rules.
+```
+
+Current status:
+
+```text
+CIFAR-10 and ImageNet64 are complete at 5000 samples for steps 1/2/4/8.
+The dedicated runner uses CTM's exact G_theta(x_t,t,s) transition for each custom interval.
+All 32 sample directories contain 5000 PNG files.
+These rows are FID-5k diagnostics and do not replace the CTM 50k official-code audit.
+```
+
+Artifact paths:
+
+```text
+scripts/baselines/run_ctm_schedule_warp_eval.py
+eval/ctm_schedule_warp_5k_20260428/cifar10/reports/summary.csv
+eval/ctm_schedule_warp_5k_20260428/imagenet64/reports/summary.csv
+results/baselines/ctm_schedule_warp_5k_20260428/ctm_schedule_warp_cifar10_5k_summary.csv
+results/baselines/ctm_schedule_warp_5k_20260428/ctm_schedule_warp_imagenet64_5k_summary.csv
+```
+
+Interpretation:
+
+```text
+optimalsteps_ctm and entropic_ctm test whether externally designed schedules transfer to CTM exact transitions.
+piecewise_linear_ctm and spline_warp_ctm test fixed-form time-warp parameterizations using a CTM self-consistency residual proxy.
+Unlike DG-TWFD, these baselines do not train a student map or optimize the model; they only change the evaluation-time sigma grid.
+```
 
 ### TCM Official
 

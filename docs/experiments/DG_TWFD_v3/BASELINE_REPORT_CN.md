@@ -186,7 +186,106 @@ eval/edm_schedule_warp_5k_20260428/previews/{strategy}_steps{1,2,4,8}.png
 3. `piecewise_linear` 与 `spline_warp` 是负向控制：当前 proxy density 将大量节点放在高噪声区，预览图也明显偏模糊，因此 FID 很差。它们不代表 DG-TWFD 的 learned warp 效果。
 4. DG-TWFD 与这几组 baseline 的根本区别是：DG-TWFD 学习 student transition/map，并用 defect/consistency 信号优化；本 follow-up 只改变 teacher sampler 的时间坐标，不改变模型函数。
 
-## 7. 各 baseline 的论文解释口径
+## 7. CTM checkpoint 上的 schedule / time-warp follow-up
+
+本轮进一步把相同的 schedule/time-warp 问题放到 CTM 模型上测试。由于 CTM 的采样接口不是 EDM/Heun solver，不能简单复用 EDM runner；因此新增了 CTM 专用 runner，直接调用 CTM 的 exact transition：
+
+```text
+scripts/baselines/run_ctm_schedule_warp_eval.py
+```
+
+核心实验口径是：固定 CTM checkpoint、固定 FID 实现和 seeds，只改变 CTM 每一次 `G_theta(x_t,t,s)` transition 的 `t -> s` sigma 节点。也就是说，这组实验是真实作用在 CTM 模型的时间节点上，而不是把 EDM sampler 套到 CTM 上。
+
+产物位置：
+
+```text
+eval/ctm_schedule_warp_5k_20260428/cifar10/reports/summary.csv
+eval/ctm_schedule_warp_5k_20260428/imagenet64/reports/summary.csv
+results/baselines/ctm_schedule_warp_5k_20260428/ctm_schedule_warp_cifar10_5k_summary.csv
+results/baselines/ctm_schedule_warp_5k_20260428/ctm_schedule_warp_imagenet64_5k_summary.csv
+runs/ctm_schedule_warp_5k_20260428/samples/{dataset}/{strategy}/steps{1,2,4,8}/images
+eval/ctm_schedule_warp_5k_20260428/{dataset}/previews/{strategy}_steps{1,2,4,8}.png
+eval/ctm_schedule_warp_5k_20260428/{dataset}/schedules/{strategy}/steps{1,2,4,8}.json
+```
+
+完整性检查：
+
+| 项目 | 结果 |
+|---|---|
+| 数据集 | CIFAR-10、ImageNet64 |
+| 方法数 | 4 |
+| step 数 | 1、2、4、8 |
+| 样本目录 | 32 个 |
+| 每个目录图片数 | 5000 PNG |
+| FID 样本数 | 5000 |
+
+四个方法的定义：
+
+| 方法 | 在 CTM 上的具体含义 |
+|---|---|
+| `optimalsteps_ctm` | 在 dense CTM exact trajectory 上做动态规划，最小化 sparse direct transition 与 dense CTM chain 的 image-space MSE |
+| `entropic_ctm` | 读取 Entropic Time Scheduler 的预计算 time function，将其转换为 CTM sigma 节点，再用 CTM exact transition 执行 |
+| `piecewise_linear_ctm` | 用 CTM 自身的 two-step vs one-step residual 作为 proxy density，通过 piecewise-linear inverse-CDF 生成时间 warp |
+| `spline_warp_ctm` | 使用同一个 CTM residual proxy，但用单调 PCHIP spline inverse-CDF 生成更平滑的 warp |
+
+实验标准：
+
+| 项目 | CIFAR-10 | ImageNet64 |
+|---|---|---|
+| checkpoint | `model043000.pt` | `ctm_imagenet64_ema_0.999.pt` |
+| transition | CTM exact `G_theta(x_t,t,s)` | CTM exact `G_theta(x_t,t,s)` |
+| FID reference | EDM `cifar10-32x32.npz` | EDM `imagenet-64x64.npz` |
+| sample count | 5000 | 5000 |
+| generation batch | 500 | 250 |
+| FID batch | 512 | 512 |
+
+CIFAR-10 FID-5k：
+
+| Method | Step 1 | Step 2 | Step 4 | Step 8 | Best |
+|---|---:|---:|---:|---:|---:|
+| CTM + OptimalSteps-adapted schedule | 6.39022 | 6.33884 | 6.41577 | 6.62873 | 6.33884 |
+| CTM + Entropic schedule | 6.39022 | 6.31943 | 6.66228 | 6.98590 | 6.31943 |
+| CTM + piecewise-linear time warp | 6.39022 | 6.37918 | 6.37642 | 6.37383 | 6.37383 |
+| CTM + spline time warp | 6.39022 | 6.37878 | 6.37888 | 6.37933 | 6.37878 |
+
+ImageNet64 FID-5k：
+
+| Method | Step 1 | Step 2 | Step 4 | Step 8 | Best |
+|---|---:|---:|---:|---:|---:|
+| CTM + OptimalSteps-adapted schedule | 8.85793 | 8.93934 | 9.24441 | 9.82932 | 8.85793 |
+| CTM + Entropic schedule | 8.85793 | 9.42372 | 9.80729 | 11.01760 | 8.85793 |
+| CTM + piecewise-linear time warp | 8.85793 | 9.51683 | 8.93845 | 8.84899 | 8.84899 |
+| CTM + spline time warp | 8.85793 | 9.46341 | 8.92669 | 8.84654 | 8.84654 |
+
+结果解释：
+
+1. CIFAR-10 上四类 CTM schedule 的差异很小，说明在当前 checkpoint 和 FID-5k 协议下，CTM exact transition 对这些外部节点变化并不敏感；`entropic_ctm` 的 step 2 略低，但 step 4/8 变差。
+2. ImageNet64 上 `piecewise_linear_ctm` 和 `spline_warp_ctm` 在 step 8 略优于单步和其他 schedule，但增益很小；`optimalsteps_ctm` 和 `entropic_ctm` 随步数增加反而变差。
+3. 这组实验不能替代 CTM 50k audit。它的用途是回答“只改变 CTM 的时间节点是否足够带来显著收益”。当前证据显示，单纯 schedule/warp 的收益有限且不稳定。
+4. 与 DG-TWFD 的区别在于：DG-TWFD 学习或优化 student transition/map，并使用 defect/consistency 相关目标；本组 CTM follow-up 不训练模型，只在评估时改变 `t -> s` 节点。因此它是 schedule-only 对照，而不是 DG-TWFD 的消融替代。
+
+论文使用建议：
+
+```text
+We additionally evaluate schedule-only variants on top of CTM by directly
+changing the sigma nodes of CTM exact transitions. These diagnostics isolate
+the effect of evaluation-time node selection from model training. Under the
+5k DG-TWFD protocol, changing CTM time nodes gives only marginal and unstable
+improvements, suggesting that the gains of DG-TWFD should not be attributed to
+schedule changes alone.
+```
+
+中文可以写作：
+
+```text
+为了验证收益是否仅来自采样时间节点的重新分配，我们在固定 CTM checkpoint 的条件下，
+直接改变 CTM exact transition 的 sigma 节点，并比较 OptimalSteps、Entropic、
+piecewise-linear warp 与 spline warp。结果显示，在 FID-5k 协议下，这些
+schedule-only 改动只带来很小且不稳定的变化，因此 DG-TWFD 的优势不能简单解释为
+外部 schedule/warp 的效果。
+```
+
+## 8. 各 baseline 的论文解释口径
 
 ### EDM official
 
@@ -212,7 +311,7 @@ Entropic 结果是将官方预计算 schedule 放入本地 SDDIM evaluation path
 
 AYS CIFAR-10、AYS ImageNet64、OptimalSteps ImageNet64 目前没有 verified local runner 或 schedule mapping。OptimalSteps-like CIFAR-10 只是在旧 e405b failed checkpoint 上做的基础设施验证。相关结果不应进入论文主表。
 
-## 8. 建议的论文表格组织
+## 9. 建议的论文表格组织
 
 推荐至少分两张表或在 caption 中清楚区分：
 
@@ -242,9 +341,10 @@ locally available official checkpoints.
 快速公平对比，不等同于官方论文表格复现。
 ```
 
-## 9. 当前结论
+## 10. 当前结论
 
 1. CTM 已完成严格 50k audit，是当前最可靠的外部 baseline 结果。
 2. CD/CT、TCM、Entropic、EDM ImageNet64 可作为 5k fast comparison，但应明确样本预算和协议差异。
-3. EDM CIFAR-10 smoke、AYS、OptimalSteps-like 不能作为最终论文主表 baseline。
-4. 如果最终论文要求所有 baseline 与 DG-TWFD 使用完全相同样本预算，则需要对尚未 50k 的 5k fast baselines 继续复评；否则必须在表格标题或 caption 中明确区分 FID-5k 与 FID-50k。
+3. CTM schedule/time-warp follow-up 已完成，可作为 schedule-only 诊断表或补充材料，用来说明固定 CTM checkpoint 时单纯改时间节点的收益有限。
+4. EDM CIFAR-10 smoke、AYS、OptimalSteps-like 不能作为最终论文主表 baseline。
+5. 如果最终论文要求所有 baseline 与 DG-TWFD 使用完全相同样本预算，则需要对尚未 50k 的 5k fast baselines 继续复评；否则必须在表格标题或 caption 中明确区分 FID-5k 与 FID-50k。
