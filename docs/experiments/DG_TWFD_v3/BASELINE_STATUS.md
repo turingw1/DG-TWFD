@@ -12,6 +12,34 @@ completed records: CIFAR-10 and ImageNet64, steps 1/2/4/8, 50000 samples per rec
 invalidated partial: original CTM ImageNet64 50k step 4 stopped at 192/200 npz shards and is excluded from final records
 ```
 
+EDM checkpoint schedule/time-warp follow-up is complete:
+
+```text
+run root: eval/edm_schedule_warp_5k_20260428
+summary CSV: eval/edm_schedule_warp_5k_20260428/reports/summary.csv
+stable-style CSV export: results/baselines/edm_schedule_warp_5k_20260428/edm_schedule_warp_cifar10_5k_summary.csv
+stable full archive: /temp/Zhengwei/projects/DG-TWFD/critical/analysis/edm_schedule_warp_5k_20260428.tar.gz
+samples: eval/edm_schedule_warp_5k_20260428/samples/{strategy}/steps{1,2,4,8}/images
+previews: eval/edm_schedule_warp_5k_20260428/previews/{strategy}_steps{1,2,4,8}.png
+schedules: eval/edm_schedule_warp_5k_20260428/schedules/{strategy}/steps{1,2,4,8}.json
+runner: scripts/baselines/run_edm_schedule_warp_eval.py
+protocol: CIFAR-10, official EDM cond-VP checkpoint, EDM fid.py, 5000 samples, deterministic custom EDM/Heun sigma grid
+```
+
+EDM schedule/time-warp FID-5k:
+
+| Method | Step 1 | Step 2 | Step 4 | Step 8 | Note |
+|---|---:|---:|---:|---:|---|
+| EDM + OptimalSteps-adapted schedule | 315.41200 | 235.05800 | 34.77990 | 9.90991 | DP over 64-step dense EDM teacher trajectory |
+| EDM + Entropic schedule | 315.41200 | 467.56400 | 135.38000 | 26.78320 | Entropic uncond-VP time function transferred to cond-VP checkpoint |
+| EDM + piecewise-linear time warp | 315.41200 | 280.95100 | 229.90400 | 182.19500 | Fixed proxy-density inverse-CDF warp; negative-control quality |
+| EDM + spline time warp | 315.41200 | 281.01300 | 229.96700 | 182.28300 | Same proxy with monotone PCHIP inverse-CDF |
+
+These rows are schedule-only baselines on the EDM checkpoint. They do not train
+or use a DG-TWFD student map. `steps=1` is explicitly defined in the runner as a
+single `sigma_max -> 0` EDM transition to avoid the official EDM `num_steps=1`
+grid degeneracy.
+
 Current baseline budget:
 
 ```text

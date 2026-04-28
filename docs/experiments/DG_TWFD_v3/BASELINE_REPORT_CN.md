@@ -130,7 +130,63 @@ CTM 是当前唯一已经完成严格 50k audit 的 baseline。重跑原因是 C
 | TCM official | 10.960100 | 9.951880 | 10.508700 | 20.957300 | 1/2 step 接近官方用法；4/8 是几何扩展 |
 | Entropic schedule + SDDIM | 288.205000 | 282.971000 | 80.052900 | 39.884100 | 本地 SDDIM 配置下的 schedule baseline |
 
-## 6. 各 baseline 的论文解释口径
+## 6. EDM checkpoint 上的 schedule / time-warp follow-up
+
+本轮新增 4 组 CIFAR-10 follow-up，目标是隔离“只改变 EDM teacher sampler 的时间网格”能带来的收益。它们不训练 DG-TWFD student，也不使用 DG-TWFD 的 learned map；所有方法共享同一个官方 EDM CIFAR-10 cond-VP checkpoint、同一批 seeds 和同一个 EDM FID reference。
+
+产物位置：
+
+```text
+eval/edm_schedule_warp_5k_20260428/reports/summary.csv
+results/baselines/edm_schedule_warp_5k_20260428/edm_schedule_warp_cifar10_5k_summary.csv
+/temp/Zhengwei/projects/DG-TWFD/critical/analysis/edm_schedule_warp_5k_20260428.tar.gz
+eval/edm_schedule_warp_5k_20260428/schedules/{strategy}/steps{1,2,4,8}.json
+eval/edm_schedule_warp_5k_20260428/samples/{strategy}/steps{1,2,4,8}/images
+eval/edm_schedule_warp_5k_20260428/previews/{strategy}_steps{1,2,4,8}.png
+```
+
+实验标准：
+
+| 项目 | 设置 |
+|---|---|
+| checkpoint | `https://nvlabs-fi-cdn.nvidia.com/edm/pretrained/edm-cifar10-32x32-cond-vp.pkl` |
+| FID reference | `https://nvlabs-fi-cdn.nvidia.com/edm/fid-refs/cifar10-32x32.npz` |
+| FID implementation | `refs/edm/fid.py` |
+| sample count | 5000，seeds 0-4999 |
+| step grid | 1、2、4、8 |
+| NFE | `2 * steps - 1` |
+| solver | deterministic EDM/Heun with custom sigma grid |
+| batch | generation 512，FID 512 |
+| runner | `scripts/baselines/run_edm_schedule_warp_eval.py` |
+
+重要口径：
+
+| 方法 | 实验含义 |
+|---|---|
+| `optimalsteps_edm` | 将 OptimalSteps 的 DP schedule search 适配到 EDM：64-step dense EDM/Heun teacher trajectory，search batch=8，用一次自定义 EDM interval 的 image-space MSE 作为 DP cost |
+| `entropic_edm` | 只取 Entropic Time Scheduler 的预计算 CIFAR-10 time function，转换为 sigma grid 后仍用同一个 EDM cond-VP checkpoint 和同一个 EDM/Heun solver；该 schedule 文件标注为 uncond-VP，因此这是 schedule transfer，不是 Entropic 官方完整复现 |
+| `piecewise_linear` | 用同一 EDM checkpoint 的 dense-grid 局部 proxy density 生成 piecewise-linear inverse-CDF time warp；proxy 是 Euler-Heun gap 加少量 step magnitude |
+| `spline_warp` | 与 piecewise-linear 使用相同 proxy density，但用单调 PCHIP inverse-CDF spline 生成更平滑的 time warp |
+
+`steps=1` 在该 runner 中明确定义为 `sigma_max -> 0` 的单次 EDM transition；这是为了避免官方 EDM `num_steps=1` 网格退化。该结果应作为本 follow-up 的自洽单步定义，不应直接与旧 EDM CIFAR-10 1024-sample smoke 行混用。
+
+结果：
+
+| Method | Step 1 | Step 2 | Step 4 | Step 8 | Best |
+|---|---:|---:|---:|---:|---:|
+| EDM + OptimalSteps-adapted schedule | 315.41200 | 235.05800 | 34.77990 | 9.90991 | 9.90991 |
+| EDM + Entropic schedule | 315.41200 | 467.56400 | 135.38000 | 26.78320 | 26.78320 |
+| EDM + piecewise-linear time warp | 315.41200 | 280.95100 | 229.90400 | 182.19500 | 182.19500 |
+| EDM + spline time warp | 315.41200 | 281.01300 | 229.96700 | 182.28300 | 182.28300 |
+
+解释：
+
+1. `optimalsteps_edm` 是四组中最强的 schedule-only baseline，说明在相同 EDM checkpoint 下，仅通过 DP 选取 sigma grid 就能明显改善少步 EDM 采样，尤其是 step 4/8。
+2. `entropic_edm` 在 step 8 有改善，但 step 2/4 不稳定。由于使用的是 uncond-VP 预计算 schedule transfer 到 cond-VP checkpoint，这一行只能说明该 schedule 在本协议下的表现。
+3. `piecewise_linear` 与 `spline_warp` 是负向控制：当前 proxy density 将大量节点放在高噪声区，预览图也明显偏模糊，因此 FID 很差。它们不代表 DG-TWFD 的 learned warp 效果。
+4. DG-TWFD 与这几组 baseline 的根本区别是：DG-TWFD 学习 student transition/map，并用 defect/consistency 信号优化；本 follow-up 只改变 teacher sampler 的时间坐标，不改变模型函数。
+
+## 7. 各 baseline 的论文解释口径
 
 ### EDM official
 
@@ -156,7 +212,7 @@ Entropic 结果是将官方预计算 schedule 放入本地 SDDIM evaluation path
 
 AYS CIFAR-10、AYS ImageNet64、OptimalSteps ImageNet64 目前没有 verified local runner 或 schedule mapping。OptimalSteps-like CIFAR-10 只是在旧 e405b failed checkpoint 上做的基础设施验证。相关结果不应进入论文主表。
 
-## 7. 建议的论文表格组织
+## 8. 建议的论文表格组织
 
 推荐至少分两张表或在 caption 中清楚区分：
 
@@ -186,7 +242,7 @@ locally available official checkpoints.
 快速公平对比，不等同于官方论文表格复现。
 ```
 
-## 8. 当前结论
+## 9. 当前结论
 
 1. CTM 已完成严格 50k audit，是当前最可靠的外部 baseline 结果。
 2. CD/CT、TCM、Entropic、EDM ImageNet64 可作为 5k fast comparison，但应明确样本预算和协议差异。
