@@ -14,6 +14,12 @@ MICROBATCH="${MICROBATCH:-4}"
 EVAL_NUM_SAMPLES="${EVAL_NUM_SAMPLES:-5000}"
 EVAL_BATCH="${EVAL_BATCH:-500}"
 VRAM_LIMIT_MB="${VRAM_LIMIT_MB:-50000}"
+RESUME_CHECKPOINT="${RESUME_CHECKPOINT:-}"
+
+EXTRA_ARGS=()
+if [ -n "${RESUME_CHECKPOINT}" ]; then
+  EXTRA_ARGS+=(--resume_checkpoint="${RESUME_CHECKPOINT}")
+fi
 
 mkdir -p "${OUT_DIR}"
 
@@ -51,4 +57,5 @@ cd "${ROOT}/refs/ctm-cifar10"
   --teacher_model_path="${TEACHER}" \
   --data_dir="${DATA_DIR}" \
   --ref_path="${REF}" \
-  --out_dir="${OUT_DIR}"
+  --out_dir="${OUT_DIR}" \
+  "${EXTRA_ARGS[@]}"
