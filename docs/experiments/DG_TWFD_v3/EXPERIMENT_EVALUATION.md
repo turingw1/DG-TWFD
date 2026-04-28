@@ -126,6 +126,22 @@ The final auto-vs-identity deltas at step8750 are `0.000 / +3.210 / -2.417 /
 harmful for 2. This is the strongest evidence so far that a single global
 timewarp density is the wrong abstraction for all step budgets.
 
+Follow-up check at 2026-04-28 14:54 +08:00 confirms that the v11a run and its
+step8750 auto/identity evaluations have finished, and the GPU is idle. This
+turns the active decision from supervision to checkpoint selection and next
+experiment design. The correct interpretation is:
+
+- v11a is a successful full-stack student experiment.
+- v11a is not a sufficient timewarp solution, because its single global density
+  creates a real 2-step regression while helping 4/8/16.
+- step6750 should be preserved as the current best composition checkpoint.
+- step8750 should be preserved as the endpoint-specialized checkpoint.
+- the next main experiment should not be a blind continuation from step8750;
+  it should branch from step6750 when optimizing few-step robustness.
+- the next timewarp experiment should become step-budget aware, either through
+  separate `q_phi_N` schedules or an explicit policy that uses identity/fixed
+  schedule for 2-step and learned warp for 4/8/16.
+
 ## Training Signal Interpretation
 
 As of 2026-04-27 20:50 +08:00, the resumed run is live and has reached step725
