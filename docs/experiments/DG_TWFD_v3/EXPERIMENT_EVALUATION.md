@@ -89,6 +89,27 @@ optimization target. The run should continue so defect statistics can create a
 meaningfully non-uniform density; the evaluation watcher is already set to
 compare auto warp against identity again at step500.
 
+The 5-hour supervision window confirms that this was not a transient early
+effect:
+
+| eval step | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 | qmax near window |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1000 | 94.337 | 34.858 | 36.965 | 58.766 | 72.993 | 1.020 |
+| 1750 | 90.969 | 36.391 | 32.514 | 46.440 | 56.961 | 1.035 |
+| 2500 | 87.346 | 38.694 | 32.064 | 39.203 | 46.004 | 1.052 |
+| 3250 | 85.789 | 38.741 | 31.897 | 34.647 | 39.106 | 1.070 |
+| 4000 | 84.491 | 37.870 | 31.609 | 31.562 | 34.770 | 1.086 |
+
+The run later continued to eval step6750 with `76.251 / 36.578 / 30.516 /
+26.536 / 28.459`. The current bottleneck has shifted: full-stack composition
+training is working, but learned timewarp is not uniformly better than identity.
+By step6750, auto warp improves FID@4/8/16 over identity by about
+`1.204/0.414/0.414`, but it worsens FID@2 by about `1.797`. The density is
+moving (`qmax` about `1.13` in the train log), yet it is still too weak and not
+step-budget aware enough. The next useful optimization should target the
+timewarp objective or evaluation schedule, not replace the full-stack student
+training.
+
 ## Training Signal Interpretation
 
 As of 2026-04-27 20:50 +08:00, the resumed run is live and has reached step725
@@ -221,15 +242,13 @@ corrected defaults for future launches.
 
 ## Current Recommendations
 
-1. Let v11a continue to the step250 checkpoint and evaluation. Do not make a
-   quality conclusion from train loss alone.
-2. At step500, judge whether q_phi has moved far enough to make learned-warp
-   evaluation differ from identity. If the clocks remain identical, increase
-   timewarp learning pressure before claiming a timewarp advantage.
-3. If FID@1 regresses badly but bridge improves, lower `bridge_weight` or
-   `defect_weight`; if multi-step still degrades like endpoint-only, raise the
-   bridge target weight or make defect normalized by endpoint scale for student
-   loss while keeping raw defect for timewarp.
+1. Continue v11a while FID@1/4/8/16 keep improving and train loss stays stable.
+   Do not stop only because FID@2 has plateaued.
+2. Treat the timewarp objective as the next bottleneck. The learned clock is now
+   useful for `4/8/16` but harmful for `2`; add step-budget-aware pressure or
+   per-step schedule selection before claiming a general timewarp advantage.
+3. Keep endpoint/bridge weights unchanged unless anchor loss rises sharply.
+   The full-stack student objective is currently improving the right behavior.
 4. Keep v1.1 project backups active under
    `/temp/Zhengwei/projects/DG-TWFD/critical`, and keep Codex session backups
    under `/temp/Zhengwei/projects/DG-TWFD/codex`.
