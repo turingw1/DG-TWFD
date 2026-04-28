@@ -182,11 +182,20 @@ auto = ",".join(f"{k}:{v}" for k, v in summary["auto_fid"].items()) or "-"
 budget = ",".join(f"{k}:{v}" for k, v in summary["budget_fid"].items()) or "-"
 delta = ",".join(f"{k}:{v}" for k, v in summary["timewarp_delta"].items()) or "-"
 warn = ",".join(warnings) or "ok"
+
+def fmt(value, digits: int = 6) -> str:
+    if value is None:
+        return "-"
+    try:
+        return f"{float(value):.{digits}f}"
+    except Exception:
+        return str(value)
+
 print(
     f"[hour {iteration}] step={summary['train_step']} "
-    f"loss={summary['loss']:.6f} anchor={summary['anchor_loss']:.6f} "
-    f"bridge={summary['bridge_loss']:.6f} defect={summary['defect_loss']:.6f} "
-    f"qmax={summary['qmax']:.4f} eval_step={summary['latest_auto_eval_step']} "
+    f"loss={fmt(summary['loss'])} anchor={fmt(summary['anchor_loss'])} "
+    f"bridge={fmt(summary['bridge_loss'])} defect={fmt(summary['defect_loss'])} "
+    f"qmax={fmt(summary['qmax'], 4)} eval_step={summary['latest_auto_eval_step']} "
     f"auto_fid={auto} budget_fid={budget} warp_delta={delta} status={warn}"
 )
 PY
@@ -212,11 +221,20 @@ for row in rows:
     fid_text = "/".join(str(fids.get(str(step), "-")) for step in [1, 2, 4, 8, 16])
     budget_fids = row.get("budget_fid", {})
     budget_text = "/".join(str(budget_fids.get(str(step), "-")) for step in [1, 2, 4, 8, 16])
+
+    def fmt(value, digits: int = 6) -> str:
+        if value is None:
+            return "-"
+        try:
+            return f"{float(value):.{digits}f}"
+        except Exception:
+            return str(value)
+
     lines.append(
         f"| {row['iteration']} | {row['time']} | {row['train_step']} | "
-        f"{float(row['loss']):.6f} | {float(row['anchor_loss']):.6f} | "
-        f"{float(row['bridge_loss']):.6f} | {float(row['defect_loss']):.6f} | "
-        f"{float(row['qmax']):.4f} | {row.get('latest_auto_eval_step') or '-'} | "
+        f"{fmt(row['loss'])} | {fmt(row['anchor_loss'])} | "
+        f"{fmt(row['bridge_loss'])} | {fmt(row['defect_loss'])} | "
+        f"{fmt(row['qmax'], 4)} | {row.get('latest_auto_eval_step') or '-'} | "
         f"{fid_text} | {budget_text} | {', '.join(row.get('warnings') or ['ok'])} |"
     )
 
