@@ -21,7 +21,7 @@ train:
   resume_step: false
   max_steps: 100000
   max_seconds: 43200
-  batch_size: 128
+  batch_size: 64
   num_workers: 0
   lr: 6.0e-7
   weight_decay: 0.0

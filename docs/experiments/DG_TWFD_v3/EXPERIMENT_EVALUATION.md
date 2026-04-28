@@ -165,6 +165,8 @@ The v12a changes are intentionally narrow:
 - The new timewarp target is flattened with `flatten_mix=0.20` and lower
   `beta=0.60`, preventing a single global density from over-specializing while
   budget-aware eval handles the known 2-step conflict.
+- The launch config uses `batch_size=64` so the run can coexist with the
+  independent CTM baseline revalidation without killing or pausing that track.
 
 The success criterion for v12a is not only lower FID@1. The first useful
 outcome is a better policy curve than v11a step6750, especially preserving
