@@ -64,7 +64,17 @@ def eval_step_from_path(path: Path) -> int:
 
 def latest_eval_summary(suffix: str = "") -> tuple[int | None, list[dict]]:
     pattern = f"{run_tag}_step*{suffix}/reports/summary.csv"
-    paths = sorted((root / "eval").glob(pattern), key=eval_step_from_path)
+    paths = list((root / "eval").glob(pattern))
+    if suffix:
+        paths = [path for path in paths if path.parent.parent.name.endswith(suffix)]
+    else:
+        paths = [
+            path
+            for path in paths
+            if not path.parent.parent.name.endswith("_identity")
+            and not path.parent.parent.name.endswith("_budget")
+        ]
+    paths = sorted(paths, key=eval_step_from_path)
     if not paths:
         return None, []
     path = paths[-1]
