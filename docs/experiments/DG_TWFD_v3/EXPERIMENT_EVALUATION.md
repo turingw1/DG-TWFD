@@ -15,17 +15,18 @@ changes the next full-stack direction. It is not a step-by-step run ledger.
 ## Current Active Track
 
 - Track: EDM-first CIFAR-10 full-stack prior map with learned timewarp.
-- Run tag: `edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750`.
-- Config: `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_12h.yaml`.
+- Run tag: `edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750`.
+- Config: `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_v12a_budget.yaml`.
 - Initialization checkpoint:
-  `runs/edm_first_cifar10_onestep_msdefect_e504a_resume_from1250/checkpoints/step1750.pt`.
-- Important detail: this run loads the step1750 student weights but does not
-  resume optimizer state or global step count because the config sets
-  `resume_optimizer: false` and `resume_step: false`.
+  `runs/edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step6750.pt`.
+- Important detail: v12a branches from the best v11a composition checkpoint,
+  not the later endpoint-specialized checkpoint. It keeps the main full-stack
+  objective but changes the defect/timewarp policy to test step-budget-aware
+  learned warp.
 - Live backup:
-  `/temp/Zhengwei/projects/DG-TWFD/critical/runs/edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750`.
+  `/temp/Zhengwei/projects/DG-TWFD/critical/runs/edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750`.
 - Milestone backups:
-  `/temp/Zhengwei/projects/DG-TWFD/critical/eval/edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750_step*`.
+  `/temp/Zhengwei/projects/DG-TWFD/critical/eval/edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750_step*`.
 
 ## Latest Decision Metrics
 
@@ -191,6 +192,25 @@ better at 16, while endpoint is essentially preserved within small-sample FID
 noise. Training should continue; the next decision point is step500 and then
 whether the 4/8/16 gains keep improving without reintroducing 2-step damage.
 
+The step1000 milestone gives a stronger decision signal. It confirms that the
+budget policy is not just a step250 artifact; it is the right inference policy
+for the current single learned density.
+
+| v12a step1000 mode | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 |
+|---|---:|---:|---:|---:|---:|
+| auto learned warp | 74.370 | 39.810 | 30.392 | 26.037 | 27.831 |
+| identity | 74.370 | 35.778 | 32.850 | 26.685 | 28.546 |
+| budget policy | 74.370 | 35.778 | 30.392 | 26.037 | 27.831 |
+
+The learned warp advantage over identity has widened to
+`-2.458/-0.648/-0.715` FID at `4/8/16`, while the auto-warp penalty at 2-step
+has also widened to `+4.032`. This is now a clean separation: timewarp is useful
+for mid/high step budgets, but the low-budget path needs identity or a
+separate learned policy. The endpoint has improved from v12a step250 to
+step1000 (`76.821 -> 74.370`), but 2-step identity also drifted worse
+(`34.608 -> 35.778`). The next iteration should therefore add explicit
+low-step preservation pressure instead of increasing global warp strength.
+
 ## Training Signal Interpretation
 
 As of 2026-04-27 20:50 +08:00, the resumed run is live and has reached step725
@@ -293,10 +313,13 @@ The implementation implication is:
 
 ## Runtime And Supervision Notes
 
-The current training is expensive: latest logs imply roughly `17.8s/step`, so
-one 250-step checkpoint is about 74 minutes before evaluation overhead. With
-`max_seconds: 28800`, the active run is more like an 8-hour continuation window
-than a 50000-step run.
+The current v12a training is compute-bound rather than memory-bound. During the
+step1000 window the GPU reported about `39GB / 80GB` memory usage but `100%`
+GPU utilization and roughly `385W` power. The lower memory footprint comes from
+`batch_size=64`, CIFAR-10 resolution, and coexistence with the independent CTM
+baseline; it is not evidence that the run is idle. Training speed is roughly
+`5.3s/step` in the first 1000 steps, and every 250-step checkpoint is evaluated
+with auto, identity, and budget policies.
 
 User guidance on 2026-04-27 supersedes the earlier operational assumption:
 the baseline experiment and the main DG-TWFD experiment are independent tracks.
@@ -323,14 +346,14 @@ corrected defaults for future launches.
 
 ## Current Recommendations
 
-1. Do not continue the same v11a objective blindly from step8750. Endpoint
-   improves, but multi-step quality peaked earlier.
-2. Treat the timewarp objective as the next bottleneck. The learned clock is now
-   useful for `4/8/16` but harmful for `2`; add step-budget-aware pressure or
-   per-step schedule selection before claiming a general timewarp advantage.
-3. Preserve both key checkpoints: step6750 for composition and step8750 for
-   endpoint. The next run should branch from step6750 if the goal is few-step
-   quality, or use step8750 only for endpoint-focused comparison.
+1. Keep v12a running while the 4/8/16 budget-policy gains continue and the
+   endpoint improves; do not stop only because raw auto-warp 2-step is bad.
+2. Watch 2-step identity as the main bottleneck. If it keeps drifting upward,
+   the next branch should add low-step preservation pressure, such as a small
+   identity-clock composition loss at 2-step or a separate budget-conditioned
+   warp head.
+3. Preserve both v11a key checkpoints: step6750 for composition and step8750
+   for endpoint. v12a correctly branched from step6750.
 4. Keep v1.1 project backups active under
    `/temp/Zhengwei/projects/DG-TWFD/critical`, and keep Codex session backups
    under `/temp/Zhengwei/projects/DG-TWFD/codex`.
