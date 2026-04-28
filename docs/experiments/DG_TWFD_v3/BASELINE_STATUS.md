@@ -5,15 +5,19 @@ Last updated: 2026-04-28 Asia/Shanghai
 Active baseline run:
 
 ```text
-none
+CTM 50k revalidation is running under baselines_revalidated_20260428; keep existing 5k CSVs unchanged.
+current phase: CTM CIFAR-10 50k, exact sampler, steps 1/2/4/8
+stable root: /temp/Zhengwei/projects/DG-TWFD/critical/analysis/baselines_revalidated_20260428
+log root: /temp/Zhengwei/projects/DG-TWFD/logs/baselines_revalidated_20260428
 ```
 
 Current baseline budget:
 
 ```text
-num_fid_samples: 5000
+fast comparison num_fid_samples: 5000 unless explicitly marked otherwise
+official-audit num_fid_samples: 50000 when a baseline's own reproduction notes require it
 steps: 1 2 4 8
-policy: run valid official baselines to completion, keep CSV reports in the stable per-project /temp tree
+policy: keep the old fast table immutable; write stricter follow-up runs into a new /temp result folder
 ```
 
 ## Scope
@@ -66,6 +70,187 @@ The comparison role of each baseline is documented in:
 
 ```text
 docs/experiments/DG_TWFD_v3/BASELINE_COMPARISON_GUIDE.md
+```
+
+## Fair-Comparison Protocol
+
+The primary DG-TWFD comparison is an internal fair-comparison protocol, not a
+claim to reproduce every baseline paper table exactly. Fair comparison here
+means:
+
+```text
+same dataset label and image resolution
+same reported step counts: 1, 2, 4, 8
+same FID implementation and reference statistics when possible: refs/edm/fid.py with EDM fid-refs
+same fast FID budget when possible: 5000 generated samples
+official public checkpoint and public sampling code when locally available
+no method-specific hyperparameter search unless documented as an official sampling setting
+old results are not overwritten; stricter follow-up runs use a new output root
+```
+
+This protocol is useful for comparing methods under the same practical
+constraints as DG-TWFD evaluation. It should not be described as an official
+paper reproduction when a baseline's own repo requires a different sample
+count, reference statistic, checkpoint variant, or sampling option.
+
+When a baseline's official notes require a stricter evaluation that is still
+compatible with the fair-comparison setup, run it separately as an audit. The
+current audit root is:
+
+```text
+/temp/Zhengwei/projects/DG-TWFD/critical/analysis/baselines_revalidated_20260428
+```
+
+The corresponding cache-only sample and eval roots are:
+
+```text
+runs/baselines_revalidated_20260428/
+eval/baselines_revalidated_20260428/
+```
+
+These cache roots are intentionally not treated as durable evidence; the stable
+CSV, summary reports, logs, and manifest must be copied to `/temp`.
+
+## Baseline Audit Matrix
+
+### EDM Official
+
+Fair-comparison role:
+
+```text
+teacher/sampler anchor using official EDM sampler and EDM FID references.
+```
+
+Current status:
+
+```text
+CIFAR-10 row is only a 1024-sample smoke/reference run and must not be used as a final table row.
+ImageNet64 row is a 5k fast-comparison run.
+```
+
+Follow-up requirement:
+
+```text
+If EDM is included in final quantitative tables, rerun the relevant dataset at the same sample budget used for DG-TWFD and label that budget explicitly.
+```
+
+### OpenAI Consistency Models CD/CT
+
+Fair-comparison role:
+
+```text
+official checkpoint and official ImageNet64 sampling code, evaluated at the shared 1/2/4/8 step grid.
+```
+
+Current status:
+
+```text
+CD-LPIPS, CD-L2, and CT ImageNet64 are 5k fast-comparison rows.
+The multistep timestamp grids are recorded in each CSV notes field.
+These are fair internal comparisons, but not a full official 50k reproduction.
+```
+
+Follow-up requirement:
+
+```text
+No immediate rerun is required for the fast table. Run 50k only if the paper table needs official-reproduction-grade CD/CT numbers.
+```
+
+### CTM Official
+
+Fair-comparison role:
+
+```text
+official CTM sampling code with exact sampler on the shared 1/2/4/8 step grid.
+```
+
+Current status:
+
+```text
+Existing CTM rows are 5k fast-comparison runs and are retained unchanged.
+CIFAR-10 uses the downloaded official-folder checkpoint model043000.pt.
+The downloaded CIFAR-10 folder does not contain the EMA checkpoint files referenced by the training log.
+The CIFAR-10 log records sub-2 FID-50k for EMA variants, so the current 5k model043000.pt result must not be interpreted as the CTM paper-best reproduction.
+ImageNet64 uses ctm_imagenet64_ema_0.999.pt, but the current internal FID uses EDM imagenet-64x64 reference stats, not the CTM repo's author-provided ImageNet64 stats.
+```
+
+Official-audit requirement:
+
+```text
+The CTM CIFAR-10 README requires >=50k samples for correct FID evaluation.
+Run CTM 50k revalidation into baselines_revalidated_20260428 without overwriting the 5k rows.
+Keep the result labeled as "current local checkpoint, 50k EDM-FID audit" unless the exact EMA paper checkpoint and author reference stats are available.
+```
+
+Current revalidation launcher:
+
+```bash
+bash scripts/baselines/run_ctm_50k_revalidation.sh
+```
+
+### TCM Official
+
+Fair-comparison role:
+
+```text
+official TCM checkpoint and sampling code, evaluated with the shared FID implementation and step grid.
+```
+
+Current status:
+
+```text
+1-step uses the official 1-step path.
+2-step uses the official README midpoint mid_t=0.821.
+4-step and 8-step are clearly marked as a geometric extension from the official midpoint to sigma_min=0.002.
+The 4/8-step rows are fair engineering comparisons at the shared step grid, but they are not official TCM schedule claims.
+```
+
+Follow-up requirement:
+
+```text
+No immediate rerun is required for the fast table. If TCM is used as a primary paper baseline, run a separate audit for the official step counts and keep 4/8 extensions labeled.
+```
+
+### Entropic Time Scheduler
+
+Fair-comparison role:
+
+```text
+official precomputed Entropic schedules inserted into the local SDDIM evaluation path.
+```
+
+Current status:
+
+```text
+CIFAR-10 and ImageNet64 are 5k fast-comparison rows.
+The results are valid for the implemented SDDIM schedule baseline, but the large FID values should be described as this implementation/solver configuration, not as a universal limit of the Entropic method.
+```
+
+Follow-up requirement:
+
+```text
+No immediate rerun is required unless a different official solver configuration is identified and mapped cleanly to the same datasets.
+```
+
+### OptimalSteps and AYS
+
+Fair-comparison role:
+
+```text
+schedule baselines only after a verified schedule source and runnable local mapping exist.
+```
+
+Current status:
+
+```text
+OptimalSteps-like CIFAR-10 is infrastructure validation on an old failed e405b checkpoint, not a paper-ready baseline.
+AYS CIFAR-10, AYS ImageNet64, and OptimalSteps ImageNet64 remain header-only because no verified runner/schedule mapping is available.
+```
+
+Follow-up requirement:
+
+```text
+Do not fabricate rows. Add rows only after the schedule source, checkpoint mapping, and evaluation path are auditable.
 ```
 
 ## Current GPU Constraint
