@@ -211,7 +211,7 @@ step1000 (`76.821 -> 74.370`), but 2-step identity also drifted worse
 (`34.608 -> 35.778`). The next iteration should therefore add explicit
 low-step preservation pressure instead of increasing global warp strength.
 
-Supervision through step4500 shows that v12a has split into two useful but
+Supervision through step8250 shows that v12a has split into two useful but
 different checkpoints: late checkpoints are endpoint-specialized, while the
 best policy curve for few-step sampling happened much earlier.
 
@@ -219,18 +219,28 @@ best policy curve for few-step sampling happened much earlier.
 |---:|---:|---:|---:|---:|---:|---|
 | 250 | 76.821 | 34.608 | 30.308 | 26.215 | 27.338 | best 2-step and 16-step |
 | 500 | 75.961 | 34.937 | 30.259 | 26.134 | 27.511 | best 4-step |
-| 1000 | 74.370 | 35.778 | 30.392 | 26.037 | 27.831 | best 8-step |
+| 1000 | 74.370 | 35.778 | 30.392 | 26.037 | 27.831 | early balanced policy |
 | 2500 | 71.157 | 38.293 | 31.816 | 26.645 | 29.126 | endpoint improves, multi-step drifts |
-| 4500 | 66.834 | 38.587 | 32.688 | 27.035 | 29.305 | best endpoint so far |
+| 5000 | 65.810 | 38.450 | 32.753 | 27.039 | 29.217 | drift plateau begins |
+| 8000 | 61.872 | 36.668 | 31.511 | 26.029 | 27.645 | best complete endpoint and 8-step |
+| 8250 | 61.686 | 36.659 | 31.483 | 25.961 | 27.542 | latest complete eval; 8-step improves |
 
-The learned warp itself is still becoming more distinct: by step4500 it helps
-identity by `-3.275/-0.711/-1.005` FID at `4/8/16`, but hurts 2-step by
-`+5.707`. This makes the timewarp claim stronger but also narrows the next
-problem. For a SOTA sprint, the current v12a late checkpoint should be treated
-as an endpoint teacher/reference, not as the best few-step sampler. The next
-branch should start from the early multi-step checkpoint family, or distill the
-late endpoint quality back into the early policy curve with explicit 2-step
-and 4-step preservation.
+The learned warp itself is still becoming more distinct: by step8250 it helps
+identity by `-2.771/-0.562/-0.869` FID at `4/8/16`, but hurts 2-step by
+`+3.928`. The direction is stable: learned timewarp is genuinely useful for
+mid/high step budgets, while one global density remains wrong for the lowest
+step budget. For a SOTA sprint, the current v12a late checkpoint should be
+treated as an endpoint teacher/reference and a strong 8-step candidate, not as
+the best 2/4-step sampler. The next branch should either start from the early
+multi-step checkpoint family, or distill the late endpoint quality back into
+the early policy curve with explicit 2-step and 4-step preservation.
+
+The external baseline gap is still large. CTM 50k audit on CIFAR-10 reports
+`1.743/1.617/1.830/2.101` at `1/2/4/8`, so v12a is not yet a competitive final
+sampler. Its value for the SOTA sprint is diagnostic: it proves the project can
+learn a non-trivial timewarp advantage over identity at selected budgets, and
+it exposes exactly where the next architecture/objective must become
+budget-conditioned.
 
 ## Training Signal Interpretation
 
@@ -336,11 +346,13 @@ The implementation implication is:
 
 The current v12a training is compute-bound rather than memory-bound. During the
 step1000 window the GPU reported about `39GB / 80GB` memory usage but `100%`
-GPU utilization and roughly `385W` power. The lower memory footprint comes from
-`batch_size=64`, CIFAR-10 resolution, and coexistence with the independent CTM
-baseline; it is not evidence that the run is idle. Training speed is roughly
-`5.3s/step` in the first 1000 steps, and every 250-step checkpoint is evaluated
-with auto, identity, and budget policies.
+GPU utilization and roughly `385W` power. At the 2026-04-29 00:41 +08:00
+supervision point it still reported about `28.8GB / 80GB` and `100%`
+utilization. The lower memory footprint comes from `batch_size=64`, CIFAR-10
+resolution, and coexistence with independent baseline/eval work; it is not
+evidence that the run is idle. The run is configured for `max_seconds=43200`,
+and every 250-step checkpoint is evaluated with auto, identity, and budget
+policies.
 
 User guidance on 2026-04-27 supersedes the earlier operational assumption:
 the baseline experiment and the main DG-TWFD experiment are independent tracks.
@@ -367,12 +379,13 @@ corrected defaults for future launches.
 
 ## Current Recommendations
 
-1. Let v12a continue as an endpoint-specialized long run while it remains
-   stable; endpoint quality is still improving and can become a stronger
+1. Let v12a continue to its configured time limit while it remains stable;
+   endpoint and 8-step quality are still improving and can become a stronger
    teacher/reference.
 2. Preserve v12a step250, step500, and step1000 as the current few-step
-   checkpoint family. These are more important for the SOTA sprint than the
-   latest checkpoint if the target is 2/4/8/16-step quality.
+   checkpoint family. Preserve step8000/8250 as the current endpoint/8-step
+   family. These are different assets and should not be collapsed into a single
+   "best latest" checkpoint.
 3. Make the next branch explicitly low-step aware: add preservation pressure
    for 2-step identity, keep 4-step from drifting, and consider a
    budget-conditioned or per-step warp head instead of one global learned
