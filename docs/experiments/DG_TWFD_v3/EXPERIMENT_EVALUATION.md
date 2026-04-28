@@ -110,6 +110,22 @@ step-budget aware enough. The next useful optimization should target the
 timewarp objective or evaluation schedule, not replace the full-stack student
 training.
 
+The 12-hour v11a run ended normally at train step8878 due `max_seconds`.
+The final evaluated checkpoint is step8750:
+
+| checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 |
+|---|---:|---:|---:|---:|---:|
+| v11a step8750 auto warp | 68.851 | 43.673 | 32.686 | 28.092 | 30.602 |
+| v11a best per column | 68.851 @8750 | 35.051 @1000 | 30.516 @6750 | 26.536 @6750 | 28.459 @6750 |
+
+The final endpoint is much stronger, but late training regresses the 2-step
+and the best multi-step checkpoints. The best all-around composition checkpoint
+is currently step6750, while step8750 is the endpoint-specialized checkpoint.
+The final auto-vs-identity deltas at step8750 are `0.000 / +3.210 / -2.417 /
+-0.752 / -0.927`: learned warp is now clearly beneficial for 4/8/16, but
+harmful for 2. This is the strongest evidence so far that a single global
+timewarp density is the wrong abstraction for all step budgets.
+
 ## Training Signal Interpretation
 
 As of 2026-04-27 20:50 +08:00, the resumed run is live and has reached step725
@@ -242,13 +258,14 @@ corrected defaults for future launches.
 
 ## Current Recommendations
 
-1. Continue v11a while FID@1/4/8/16 keep improving and train loss stays stable.
-   Do not stop only because FID@2 has plateaued.
+1. Do not continue the same v11a objective blindly from step8750. Endpoint
+   improves, but multi-step quality peaked earlier.
 2. Treat the timewarp objective as the next bottleneck. The learned clock is now
    useful for `4/8/16` but harmful for `2`; add step-budget-aware pressure or
    per-step schedule selection before claiming a general timewarp advantage.
-3. Keep endpoint/bridge weights unchanged unless anchor loss rises sharply.
-   The full-stack student objective is currently improving the right behavior.
+3. Preserve both key checkpoints: step6750 for composition and step8750 for
+   endpoint. The next run should branch from step6750 if the goal is few-step
+   quality, or use step8750 only for endpoint-focused comparison.
 4. Keep v1.1 project backups active under
    `/temp/Zhengwei/projects/DG-TWFD/critical`, and keep Codex session backups
    under `/temp/Zhengwei/projects/DG-TWFD/codex`.
