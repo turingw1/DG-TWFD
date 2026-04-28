@@ -109,6 +109,7 @@ def avg(key: str) -> float | None:
 
 auto_step, auto_rows = latest_eval_summary("")
 identity_step, identity_rows = latest_eval_summary("_identity")
+budget_step, budget_rows = latest_eval_summary("_budget")
 comparison_step, comparison_rows = latest_comparison()
 
 ckpt_dir = run_root / "checkpoints"
@@ -136,6 +137,8 @@ summary = {
     "auto_fid": compact_fids(auto_rows),
     "latest_identity_eval_step": identity_step,
     "identity_fid": compact_fids(identity_rows),
+    "latest_budget_eval_step": budget_step,
+    "budget_fid": compact_fids(budget_rows),
     "latest_comparison_step": comparison_step,
     "timewarp_delta": {
         str(int(float(row["step_count"]))): round(float(row["fid_delta_auto_minus_identity"]), 4)
@@ -165,6 +168,7 @@ with jsonl.open("a", encoding="utf-8") as handle:
     handle.write(json.dumps(summary, ensure_ascii=False) + "\n")
 
 auto = ",".join(f"{k}:{v}" for k, v in summary["auto_fid"].items()) or "-"
+budget = ",".join(f"{k}:{v}" for k, v in summary["budget_fid"].items()) or "-"
 delta = ",".join(f"{k}:{v}" for k, v in summary["timewarp_delta"].items()) or "-"
 warn = ",".join(warnings) or "ok"
 print(
@@ -172,7 +176,7 @@ print(
     f"loss={summary['loss']:.6f} anchor={summary['anchor_loss']:.6f} "
     f"bridge={summary['bridge_loss']:.6f} defect={summary['defect_loss']:.6f} "
     f"qmax={summary['qmax']:.4f} eval_step={summary['latest_auto_eval_step']} "
-    f"auto_fid={auto} warp_delta={delta} status={warn}"
+    f"auto_fid={auto} budget_fid={budget} warp_delta={delta} status={warn}"
 )
 PY
 }
@@ -190,17 +194,19 @@ md = Path(sys.argv[2])
 rows = [json.loads(line) for line in jsonl.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 lines = ["# 5h Hourly Supervision Report", ""]
-lines.append("| hour | time | train step | loss | anchor | bridge | defect | qmax | eval step | FID@1/2/4/8/16 | warnings |")
-lines.append("|---:|---|---:|---:|---:|---:|---:|---:|---:|---|---|")
+lines.append("| hour | time | train step | loss | anchor | bridge | defect | qmax | eval step | auto FID@1/2/4/8/16 | budget FID@1/2/4/8/16 | warnings |")
+lines.append("|---:|---|---:|---:|---:|---:|---:|---:|---:|---|---|---|")
 for row in rows:
     fids = row.get("auto_fid", {})
     fid_text = "/".join(str(fids.get(str(step), "-")) for step in [1, 2, 4, 8, 16])
+    budget_fids = row.get("budget_fid", {})
+    budget_text = "/".join(str(budget_fids.get(str(step), "-")) for step in [1, 2, 4, 8, 16])
     lines.append(
         f"| {row['iteration']} | {row['time']} | {row['train_step']} | "
         f"{float(row['loss']):.6f} | {float(row['anchor_loss']):.6f} | "
         f"{float(row['bridge_loss']):.6f} | {float(row['defect_loss']):.6f} | "
         f"{float(row['qmax']):.4f} | {row.get('latest_auto_eval_step') or '-'} | "
-        f"{fid_text} | {', '.join(row.get('warnings') or ['ok'])} |"
+        f"{fid_text} | {budget_text} | {', '.join(row.get('warnings') or ['ok'])} |"
     )
 
 lines.extend(["", "## Final Snapshot", ""])
@@ -209,6 +215,7 @@ if rows:
     lines.append(f"- Latest train step: {last['train_step']}")
     lines.append(f"- Latest auto eval step: {last.get('latest_auto_eval_step')}")
     lines.append(f"- Latest identity eval step: {last.get('latest_identity_eval_step')}")
+    lines.append(f"- Latest budget eval step: {last.get('latest_budget_eval_step')}")
     lines.append(f"- Timewarp deltas auto-minus-identity: {last.get('timewarp_delta')}")
     lines.append(f"- Backup last sync: {last.get('backup_last_sync')}")
     lines.append(f"- GPU: `{last.get('gpu')}`")
