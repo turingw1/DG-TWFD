@@ -42,6 +42,11 @@ cfg = load_config(sys.argv[1])
 print("1" if bool(cfg.get("timewarp", {}).get("enabled", True)) else "0")
 PY
 )"
+compare_budget="${DG_TWFD_EVAL_COMPARE_BUDGET:-0}"
+case "$(printf '%s' "$compare_budget" | tr '[:upper:]' '[:lower:]')" in
+  1|true|yes|always|on) compare_budget=1 ;;
+  *) compare_budget=0 ;;
+esac
 
 run_root="runs/${run_tag}"
 ckpt_dir="${run_root}/checkpoints"
@@ -49,7 +54,7 @@ last_ckpt="${ckpt_dir}/last.pt"
 watch_log="${run_root}/logs/watch_eval.log"
 mkdir -p "${run_root}/logs"
 
-echo "watch_eval started run_tag=${run_tag} next_step=${next_step} interval=${interval} fid_samples=${fid_samples} steps=${steps[*]} compare_identity=${compare_identity}" | tee -a "$watch_log"
+echo "watch_eval started run_tag=${run_tag} next_step=${next_step} interval=${interval} fid_samples=${fid_samples} steps=${steps[*]} compare_identity=${compare_identity} compare_budget=${compare_budget}" | tee -a "$watch_log"
 
 while true; do
   if [[ ! -f "$last_ckpt" ]]; then
@@ -114,6 +119,7 @@ PY
   fi
 
   identity_eval_root=""
+  budget_eval_root=""
   if [[ "$compare_identity" == "1" ]]; then
     identity_eval_root="eval/${eval_tag}_identity"
     mkdir -p "$identity_eval_root"
@@ -170,6 +176,70 @@ with (out_prefix.with_suffix(".csv")).open("w", encoding="utf-8", newline="") as
 PY
   fi
 
+  if [[ "$compare_budget" == "1" ]]; then
+    budget_eval_root="eval/${eval_tag}_budget"
+    mkdir -p "$budget_eval_root"
+    echo "evaluating budget-clock comparison step=${step} eval_tag=${eval_tag}_budget" | tee -a "$watch_log"
+    CUDA_VISIBLE_DEVICES="${INFER_CUDA_VISIBLE_DEVICES:-0}" "$DG_TWFD_A100_ENV/bin/python" \
+      experiments/edm_first/eval_edm_map.py \
+      --config "$config" \
+      --checkpoint "$frozen" \
+      --eval-root "$budget_eval_root" \
+      --warp-mode budget \
+      --steps "${steps[@]}" \
+      --fid-samples "$fid_samples" \
+      2>&1 | tee "$budget_eval_root/eval.stdout_stderr.txt"
+
+    if [[ -n "$identity_eval_root" && -f "$identity_eval_root/reports/summary.json" ]]; then
+      "$DG_TWFD_A100_ENV/bin/python" - "$eval_root/reports/summary.json" "$identity_eval_root/reports/summary.json" "$budget_eval_root/reports/summary.json" "$eval_root/reports/budget_comparison" <<'PY'
+import csv
+import json
+import sys
+from pathlib import Path
+
+auto_path = Path(sys.argv[1])
+identity_path = Path(sys.argv[2])
+budget_path = Path(sys.argv[3])
+out_prefix = Path(sys.argv[4])
+auto = json.loads(auto_path.read_text(encoding="utf-8"))
+identity = json.loads(identity_path.read_text(encoding="utf-8"))
+budget = json.loads(budget_path.read_text(encoding="utf-8"))
+auto_by_step = {int(item["step_count"]): item for item in auto["records"]}
+identity_by_step = {int(item["step_count"]): item for item in identity["records"]}
+rows = []
+for budget_row in budget["records"]:
+    step = int(budget_row["step_count"])
+    if step not in auto_by_step or step not in identity_by_step:
+        continue
+    auto_row = auto_by_step[step]
+    identity_row = identity_by_step[step]
+    budget_fid = float(budget_row["fid"])
+    auto_fid = float(auto_row["fid"])
+    identity_fid = float(identity_row["fid"])
+    rows.append(
+        {
+            "step_count": step,
+            "budget_fid": budget_fid,
+            "auto_fid": auto_fid,
+            "identity_fid": identity_fid,
+            "budget_minus_auto": budget_fid - auto_fid,
+            "budget_minus_identity": budget_fid - identity_fid,
+            "effective_warp_mode": budget_row.get("effective_warp_mode"),
+            "budget_u_grid": budget_row.get("u_grid"),
+            "auto_u_grid": auto_row.get("u_grid"),
+            "identity_u_grid": identity_row.get("u_grid"),
+        }
+    )
+out_prefix.parent.mkdir(parents=True, exist_ok=True)
+(out_prefix.with_suffix(".json")).write_text(json.dumps({"records": rows}, indent=2), encoding="utf-8")
+with (out_prefix.with_suffix(".csv")).open("w", encoding="utf-8", newline="") as handle:
+    writer = csv.DictWriter(handle, fieldnames=list(rows[0].keys()) if rows else ["step_count"])
+    writer.writeheader()
+    writer.writerows(rows)
+PY
+    fi
+  fi
+
   project_name="$(basename "$ROOT_DIR")"
   project_temp="${DG_TWFD_PROJECT_TEMP:-/temp/Zhengwei/projects/${project_name}}"
   backup_root="${project_temp}/critical/eval/${eval_tag}"
@@ -192,7 +262,17 @@ PY
         cp -a "$step_dir/metrics.json" "$step_dir/fixed_seed_grid.png" "$backup_root/eval_identity/$name/" 2>/dev/null || true
       done
     fi
+    if [[ -n "$budget_eval_root" && -d "$budget_eval_root" ]]; then
+      cp -a "$budget_eval_root/reports" "$backup_root/eval_budget/" 2>/dev/null || true
+      for step_dir in "$budget_eval_root"/steps*; do
+        [[ -d "$step_dir" ]] || continue
+        name="$(basename "$step_dir")"
+        mkdir -p "$backup_root/eval_budget/$name"
+        cp -a "$step_dir/metrics.json" "$step_dir/fixed_seed_grid.png" "$backup_root/eval_budget/$name/" 2>/dev/null || true
+      done
+    fi
     cp -a "$eval_root/reports/timewarp_comparison."* "$backup_root/eval/reports/" 2>/dev/null || true
+    cp -a "$eval_root/reports/budget_comparison."* "$backup_root/eval/reports/" 2>/dev/null || true
     find "$backup_root" -maxdepth 4 -type f | sort > "$backup_root/MANIFEST.txt"
   fi
 

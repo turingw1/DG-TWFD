@@ -111,6 +111,7 @@ def main() -> None:
     endpoint_weight = float(train_cfg.get("endpoint_weight", match_weight))
     bridge_weight = float(train_cfg.get("bridge_weight", defect_weight))
     objective = str(train_cfg.get("objective", "triplet"))
+    defect_grad_mode = str(train_cfg.get("defect_grad_mode", "both")).lower()
     perceptual_weight = float(train_cfg.get("perceptual_weight", cfg.get("loss", {}).get("perceptual_weight", 0.0)))
     amp_enabled = bool(runtime_cfg.get("amp", True)) and device.type == "cuda"
 
@@ -226,12 +227,20 @@ def main() -> None:
                     anchor_per_sample = _flat_mse_per_sample(x_u_direct, x_u_ref)
                     bridge_per_sample = _flat_mse_per_sample(x_u_bridge, x_u_ref)
                     defect_raw = _flat_mse_per_sample(x_u_direct, x_u_bridge)
+                    if defect_grad_mode in {"bridge_to_direct", "bridge", "bridge_only"}:
+                        defect_per_sample = _flat_mse_per_sample(x_u_bridge, x_u_direct.detach())
+                    elif defect_grad_mode in {"direct_to_bridge", "direct", "direct_only"}:
+                        defect_per_sample = _flat_mse_per_sample(x_u_direct, x_u_bridge.detach())
+                    elif defect_grad_mode in {"none", "off", "disabled"}:
+                        defect_per_sample = torch.zeros_like(defect_raw)
+                    else:
+                        defect_per_sample = defect_raw
                     match_denom = _flat_mse_per_sample(x_s_ref, x_t).clamp_min(1.0e-6)
                     endpoint_denom = _flat_mse_per_sample(x_u_ref, x_t).clamp_min(1.0e-6)
                     match_loss = _safe_mean_normalized(match_per_sample, match_denom)
                     anchor_loss = anchor_per_sample.mean()
                     bridge_loss = bridge_per_sample.mean()
-                    defect_loss = defect_raw.mean()
+                    defect_loss = defect_per_sample.mean()
                     perceptual_direct = (
                         perceptual_metric(x_u_direct.float(), x_u_ref.float())
                         if perceptual_metric is not None
@@ -313,10 +322,23 @@ def main() -> None:
         scaler.update()
 
         denom = endpoint_denom.detach().float() if "endpoint_denom" in locals() else _flat_mse_per_sample(x_u_ref, x_t).clamp_min(1.0e-6).detach().float()
-        if objective == "prior_fullstack" and str(train_cfg.get("warp_defect_signal", "raw")).lower() == "raw":
-            norm_defect_per_sample = defect_raw.detach().float()
+        raw_defect_per_sample = defect_raw.detach().float()
+        warp_signal_mode = str(train_cfg.get("warp_defect_signal", "raw" if objective == "prior_fullstack" else "normalized")).lower()
+        if objective == "prior_fullstack" and warp_signal_mode in {"raw", "direct_bridge"}:
+            norm_defect_per_sample = raw_defect_per_sample
+        elif objective == "prior_fullstack" and warp_signal_mode in {"bridge_error", "bridge"}:
+            norm_defect_per_sample = bridge_per_sample.detach().float()
+        elif objective == "prior_fullstack" and warp_signal_mode in {"composition_gap", "gap"}:
+            gap = torch.clamp(bridge_per_sample.detach().float() - anchor_per_sample.detach().float(), min=0.0)
+            norm_defect_per_sample = (
+                raw_defect_per_sample
+                + float(train_cfg.get("warp_composition_gap_weight", 1.0)) * gap
+                + float(train_cfg.get("warp_bridge_error_weight", 0.0)) * bridge_per_sample.detach().float()
+            )
+        elif objective == "prior_fullstack" and warp_signal_mode in {"teacher_blend", "teacher"}:
+            norm_defect_per_sample = raw_defect_per_sample + float(train_cfg.get("warp_bridge_error_weight", 0.25)) * bridge_per_sample.detach().float()
         else:
-            norm_defect_per_sample = defect_raw.detach().float() / denom
+            norm_defect_per_sample = raw_defect_per_sample / denom
         norm_defect = norm_defect_per_sample.mean()
         warp_loss_value = None
         if (
@@ -348,12 +370,13 @@ def main() -> None:
             "anchor_loss": float(anchor_loss.detach().float().item()),
             "bridge_loss": float(bridge_loss.detach().float().item()) if "bridge_loss" in locals() else 0.0,
             "defect_loss": float(defect_loss.detach().float().item()),
+            "defect_grad_mode": defect_grad_mode,
             "perceptual_loss": float(perceptual_loss.detach().float().item()) if "perceptual_loss" in locals() else 0.0,
             "raw_match_mse": float(match_per_sample.detach().float().mean().item()),
             "raw_anchor_mse": float(anchor_per_sample.detach().float().mean().item()),
             "raw_bridge_mse": float(bridge_per_sample.detach().float().mean().item()) if "bridge_per_sample" in locals() else 0.0,
             "norm_defect": float(norm_defect.detach().float().item()),
-            "warp_defect_signal": str(train_cfg.get("warp_defect_signal", "raw" if objective == "prior_fullstack" else "normalized")),
+            "warp_defect_signal": warp_signal_mode,
             "sigma_t_mean": float(sigma_t.detach().float().mean().item()),
             "sigma_s_mean": float(sigma_s.detach().float().mean().item()),
             "sigma_u_mean": float(sigma_u.detach().float().mean().item()),

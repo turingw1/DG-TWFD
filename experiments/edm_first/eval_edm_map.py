@@ -30,9 +30,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fid-samples", type=int, default=None)
     parser.add_argument(
         "--warp-mode",
-        choices=("auto", "identity"),
+        choices=("auto", "identity", "budget"),
         default="auto",
-        help="auto loads the learned checkpoint warp when present; identity disables time warp for schedule comparison.",
+        help="auto loads the learned checkpoint warp; identity disables it; budget uses identity below eval.budget_warp_min_steps and learned warp at/above it.",
     )
     return parser.parse_args()
 
@@ -118,15 +118,24 @@ def main() -> None:
     sample_batch_size = int(eval_cfg.get("sample_batch_size", fid_batch_size))
     fixed_grid_size = int(eval_cfg.get("fixed_grid_size", 64))
     fixed_seed = int(eval_cfg.get("fixed_seed", 42))
+    budget_warp_min_steps = int(eval_cfg.get("budget_warp_min_steps", cfg.get("timewarp", {}).get("budget_warp_min_steps", 4)))
     fid_stats = cfg["paths"]["fid_stats"]
 
     records = []
     for step_count in steps:
+        effective_warp = warp
+        effective_warp_mode = args.warp_mode
+        if args.warp_mode == "budget":
+            if step_count < budget_warp_min_steps or not warp_loaded:
+                effective_warp = None
+                effective_warp_mode = "identity"
+            else:
+                effective_warp_mode = "auto"
         step_dir = eval_root / f"steps{step_count}"
         step_dir.mkdir(parents=True, exist_ok=True)
         grid_samples, u_grid, sigma_grid = sample_with_student(
             student=student,
-            warp=warp,
+            warp=effective_warp,
             cfg=cfg,
             step_count=step_count,
             batch_size=fixed_grid_size,
@@ -140,7 +149,7 @@ def main() -> None:
 
         all_samples = _sample_many(
             student=student,
-            warp=warp,
+            warp=effective_warp,
             cfg=cfg,
             step_count=step_count,
             total=fid_samples,
@@ -157,6 +166,8 @@ def main() -> None:
             "num_fid_samples": fid_samples,
             "checkpoint": str(args.checkpoint),
             "warp_mode": args.warp_mode,
+            "effective_warp_mode": effective_warp_mode,
+            "budget_warp_min_steps": budget_warp_min_steps if args.warp_mode == "budget" else None,
             "timewarp_enabled": timewarp_enabled,
             "checkpoint_has_warp": checkpoint_has_warp,
             "warp_loaded": warp_loaded,

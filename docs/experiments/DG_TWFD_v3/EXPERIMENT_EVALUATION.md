@@ -142,6 +142,34 @@ experiment design. The correct interpretation is:
   separate `q_phi_N` schedules or an explicit policy that uses identity/fixed
   schedule for 2-step and learned warp for 4/8/16.
 
+## v12a Improvement Plan
+
+The next run is `edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750`.
+It branches from v11a step6750, because that checkpoint is the best current
+composition checkpoint. The endpoint-specialized step8750 checkpoint is kept as
+an endpoint reference, but should not be the default initialization for
+few-step robustness.
+
+The v12a changes are intentionally narrow:
+
+- Evaluation gains a `budget` warp policy: use identity below
+  `budget_warp_min_steps=4`, and learned warp at 4/8/16. This directly tests
+  the observed fact that learned warp helps 4/8/16 but hurts 2-step.
+- Full-stack training can use `defect_grad_mode: bridge_to_direct`, so the
+  direct endpoint branch is not pulled around by a weaker composed branch.
+  Defect becomes a bridge consistency regularizer rather than a two-way tug.
+- The warp density signal can use `composition_gap`: direct-vs-bridge gap plus
+  teacher bridge error, instead of only raw direct/bridge disagreement. This
+  makes the learned density respond to where composition is actually worse than
+  the direct endpoint.
+- The new timewarp target is flattened with `flatten_mix=0.20` and lower
+  `beta=0.60`, preventing a single global density from over-specializing while
+  budget-aware eval handles the known 2-step conflict.
+
+The success criterion for v12a is not only lower FID@1. The first useful
+outcome is a better policy curve than v11a step6750, especially preserving
+2-step identity behavior while improving or at least holding 4/8/16.
+
 ## Training Signal Interpretation
 
 As of 2026-04-27 20:50 +08:00, the resumed run is live and has reached step725

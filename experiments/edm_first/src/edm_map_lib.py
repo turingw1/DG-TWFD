@@ -325,7 +325,13 @@ def update_warp_from_defect(
         hf_weight=float(warp_cfg.get("hf_weight", 0.0)),
         ratio_cap=float(warp_cfg.get("ratio_cap", 0.0)),
     )
-    q_target.copy_(smooth_density(q_target_new).detach())
+    q_target_new = smooth_density(q_target_new)
+    flatten_mix = float(warp_cfg.get("flatten_mix", 0.0))
+    if flatten_mix > 0.0:
+        flatten_mix = min(max(flatten_mix, 0.0), 1.0)
+        q_target_new = (1.0 - flatten_mix) * q_target_new + flatten_mix * q_base
+        q_target_new = q_target_new / torch.clamp(q_target_new.sum(), min=1.0e-6)
+    q_target.copy_(q_target_new.detach())
     warp_optimizer.zero_grad(set_to_none=True)
     warp_loss = warp.kl_to_target_density(q_target)
     warp_loss.backward()
