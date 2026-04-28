@@ -5,10 +5,11 @@ Last updated: 2026-04-28 Asia/Shanghai
 Active baseline run:
 
 ```text
-CTM 50k revalidation is running under baselines_revalidated_20260428; keep existing 5k CSVs unchanged.
-current phase: CTM CIFAR-10 50k, exact sampler, steps 1/2/4/8
-stable root: /temp/Zhengwei/projects/DG-TWFD/critical/analysis/baselines_revalidated_20260428
-log root: /temp/Zhengwei/projects/DG-TWFD/logs/baselines_revalidated_20260428
+CTM 50k revalidation is complete; keep existing 5k CSVs unchanged.
+final CTM 50k audit root: /temp/Zhengwei/projects/DG-TWFD/critical/analysis/baselines_revalidated_20260428_final
+final CTM 50k CSV: /temp/Zhengwei/projects/DG-TWFD/critical/analysis/baselines_revalidated_20260428_final/baseline_ctm_50k_final.csv
+completed records: CIFAR-10 and ImageNet64, steps 1/2/4/8, 50000 samples per record
+invalidated partial: original CTM ImageNet64 50k step 4 stopped at 192/200 npz shards and is excluded from final records
 ```
 
 Current baseline budget:
@@ -101,11 +102,25 @@ current audit root is:
 /temp/Zhengwei/projects/DG-TWFD/critical/analysis/baselines_revalidated_20260428
 ```
 
+The current ImageNet64 recovery root is:
+
+```text
+/temp/Zhengwei/projects/DG-TWFD/critical/analysis/baselines_revalidated_20260428_recovery
+```
+
+The final merged CTM 50k audit root is:
+
+```text
+/temp/Zhengwei/projects/DG-TWFD/critical/analysis/baselines_revalidated_20260428_final
+```
+
 The corresponding cache-only sample and eval roots are:
 
 ```text
 runs/baselines_revalidated_20260428/
 eval/baselines_revalidated_20260428/
+runs/baselines_revalidated_20260428_recovery/
+eval/baselines_revalidated_20260428_recovery/
 ```
 
 These cache roots are intentionally not treated as durable evidence; the stable
@@ -187,6 +202,33 @@ Current revalidation launcher:
 ```bash
 bash scripts/baselines/run_ctm_50k_revalidation.sh
 ```
+
+Final 50k audit records:
+
+```text
+CIFAR-10,  step 1: FID 1.743220
+CIFAR-10,  step 2: FID 1.616910
+CIFAR-10,  step 4: FID 1.830040
+CIFAR-10,  step 8: FID 2.101430
+ImageNet64, step 1: FID 2.379590
+ImageNet64, step 2: FID 2.212310
+ImageNet64, step 4: FID 2.893610
+ImageNet64, step 8: FID 3.867740
+```
+
+Final audit artifact paths:
+
+```text
+/temp/Zhengwei/projects/DG-TWFD/critical/analysis/baselines_revalidated_20260428_final/baseline_ctm_50k_final.csv
+/temp/Zhengwei/projects/DG-TWFD/critical/analysis/baselines_revalidated_20260428_final/reports/baseline_ctm_50k_final_summary.json
+/temp/Zhengwei/projects/DG-TWFD/critical/analysis/baselines_revalidated_20260428_final/reports/baseline_ctm_50k_final_summary.csv
+```
+
+The final merged report uses the original 50k root for CIFAR-10 steps 1/2/4/8
+and ImageNet64 steps 1/2. ImageNet64 steps 4/8 come from the recovery root,
+where batch size was lowered to 100 only to fit alongside the current main
+experiment. The sampling rule, checkpoint, step count, FID implementation, and
+FID reference remain the CTM 50k audit standard.
 
 ### TCM Official
 
