@@ -451,3 +451,46 @@ direct student endpoint. The intended acceptance criteria are:
 4. If the extra fixed-midpoint branch slows progress without improving 2-step,
    the next direction should be budget-conditioned timewarp or a per-budget
    schedule head rather than more scalar reweighting.
+
+## 2026-04-29 V13 Seven-Hour Supervision
+
+The v13 midpoint-preservation run is a successful next iteration. It started
+from v12a step10500 and was supervised for seven hourly intervals. At the
+seventh-hour readout, the latest fully evaluated checkpoint is step4250.
+
+Budget-policy FID-2048 progression:
+
+| checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 |
+|---:|---:|---:|---:|---:|---:|
+| v12a step10500 | 59.246 | 34.881 | 29.997 | 24.914 | 26.055 |
+| v13 step750 | 60.328 | 34.884 | 28.808 | 25.844 | 27.343 |
+| v13 step1750 | 59.706 | 34.381 | 28.592 | 25.525 | 27.006 |
+| v13 step3000 | 58.936 | 33.977 | 28.270 | 25.174 | 26.481 |
+| v13 step3500 | 58.631 | 33.702 | 27.831 | 24.820 | 26.032 |
+| v13 step4250 | 58.396 | 33.407 | 27.450 | 24.521 | 25.739 |
+
+This is the first checkpoint family in the current sequence that improves over
+the v12a final checkpoint at every reported budget. The key result is not only
+the lower endpoint FID; it is that explicit midpoint preservation fixed the
+previous 2-step identity/budget weakness while preserving and strengthening the
+learned-timewarp advantage at 4/8/16 steps.
+
+At step4250, learned timewarp is still harmful at 2 steps and beneficial at
+4/8/16: auto-minus-identity is approximately `+2.76 / -1.84 / -0.48 / -0.69`
+for `2/4/8/16`. This validates the budget policy as a necessary inference-time
+adapter: identity remains the right low-step clock, while learned timewarp is
+the right 4+ step clock. The remaining SOTA-facing bottleneck is absolute FID,
+not the local schedule/composition failure that blocked v12a.
+
+Next iteration guidance:
+
+1. Let v13 continue to its time limit while the loss stays stable and the
+   budget curve keeps improving.
+2. Preserve v13 step3500 and step4250 as the first all-budget-improving
+   checkpoints relative to v12a.
+3. For the next code iteration, avoid increasing scalar loss complexity first.
+   The more promising move is budget-conditioned timewarp, because the data
+   repeatedly show that a single global warp cannot serve 2-step and 4+ step
+   inference equally well.
+4. Keep the `u=0.5` preservation branch in the default full-stack recipe until
+   a more explicit per-budget schedule module replaces it.
