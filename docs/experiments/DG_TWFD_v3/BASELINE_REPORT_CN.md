@@ -63,6 +63,9 @@ CTM no-GAN CIFAR-10 诊断性重训结果：
 /temp/Zhengwei/projects/DG-TWFD/critical/analysis/ctm_nogan_20260429/cifar10_ema010000_5k/eval/reports/summary.csv
 /temp/Zhengwei/projects/DG-TWFD/critical/analysis/ctm_nogan_20260429/cifar10_ema010000_5k/results/ctm_nogan_20260429/baseline_ctm_nogan_cifar10_ema010000_5k.csv
 /temp/Zhengwei/projects/DG-TWFD/critical/analysis/ctm_nogan_20260429/cifar10_ema010000_5k/samples_steps1_2_4_8.tar.gz
+/temp/Zhengwei/projects/DG-TWFD/critical/analysis/ctm_nogan_20260429/cifar10_ema010000_50k/eval/reports/summary.csv
+/temp/Zhengwei/projects/DG-TWFD/critical/analysis/ctm_nogan_20260429/cifar10_ema010000_50k/results/ctm_nogan_20260429/baseline_ctm_nogan_cifar10_ema010000_50k.csv
+/temp/Zhengwei/projects/DG-TWFD/critical/analysis/ctm_nogan_20260429/cifar10_ema010000_50k/samples_steps1_2_4_8.tar.gz
 ```
 
 CTM 50k 样本目录：
@@ -122,7 +125,7 @@ CTM 是当前唯一已经完成严格 50k audit 的 baseline。重跑原因是 C
 |---|---:|---:|---:|---:|---|
 | EDM official | 679.611000 | 473.607000 | 115.246000 | 33.067500 | 1024-sample smoke，不进最终表 |
 | CTM-official-cond | 6.444080 | 6.249970 | 6.450460 | 6.848800 | 5k fast；已被 50k audit 替代为 CTM 主引用 |
-| CTM-noGAN-DSM-10k-EMA0.999 | 11.862200 | 9.486860 | 9.441320 | 8.918910 | 本地 no-GAN CTM+DSM 10k 诊断性重训；不等同官方充分收敛模型 |
+| CTM-noGAN-DSM-10k-EMA0.999 | 11.862200 | 9.486860 | 9.441320 | 8.918910 | 5k；本地 no-GAN CTM+DSM 10k 诊断性重训；不等同官方充分收敛模型 |
 | TCM official | 7.168140 | 6.764130 | 6.904860 | 7.387160 | 1/2 step 接近官方用法；4/8 是几何扩展 |
 | Entropic schedule + SDDIM | 387.689000 | 384.919000 | 114.771000 | 56.378900 | 本地 SDDIM 配置下的 schedule baseline |
 | OptimalSteps-like | 377.867701 | 366.215745 | 369.488902 | 369.984571 | 旧 e405b failed checkpoint 上的基础设施验证，不进论文表 |
@@ -321,6 +324,20 @@ checkpoint 与日志稳定位置：
 /temp/Zhengwei/projects/DG-TWFD/critical/logs/ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/log.txt
 ```
 
+实验算法与代码规划：
+
+| 目标 | 实施方式 | 标准性判断 |
+|---|---|---|
+| 去除 GAN 辅助训练 | 采用 CTM CIFAR-10 `CTM+DSM` 路径，不传入 `gan_training=True`、discriminator loss 或 GAN fake type 参数 | 符合 CTM repo 中 no-GAN CTM+DSM 的训练分支 |
+| 保持 CTM 模型结构 | 使用 `refs/ctm-cifar10/cm_train.py` 创建原 CTM CIFAR-10 class-conditional 模型 | 符合官方代码路径 |
+| teacher distillation | 使用本地 EDM CIFAR-10 cond-VP teacher checkpoint 作为 `teacher_model_path` | 符合 CTM CIFAR-10 command 对 teacher 的要求 |
+| 数据输入 | 将 CIFAR-10 Python batches 转成 class-directory PNG 数据集 | 符合 `data_dir` 图像目录加载方式 |
+| 评估采样 | 使用 `refs/ctm-cifar10/image_sample.py`，`sampler=exact`，`sampling_steps=1/2/4/8` | 与已完成 CTM official baseline 的采样标准一致 |
+| FID 计算 | 使用 `refs/edm/fid.py` 与 EDM CIFAR-10 reference | 与 DG-TWFD baseline 协议一致 |
+| 记录策略 | 5k 作为快速诊断；50k 作为更稳定审计结果；二者分开保存，不覆盖旧结果 | 符合当前 baseline 管理规则 |
+
+因此，这个实验的算法定义是“本地短预算 no-GAN CTM+DSM 训练 + CTM exact sampler 评估”，不是新方法，也不是 CTM 官方 fully converged checkpoint 的复现。
+
 评估设置：
 
 | 项目 | 设置 |
@@ -329,7 +346,7 @@ checkpoint 与日志稳定位置：
 | sampling code | `refs/ctm-cifar10/image_sample.py` |
 | sampler | official CTM `exact` |
 | step grid | 1、2、4、8 |
-| sample count | 5000 |
+| sample count | 5000 fast diagnostic；50000 audit |
 | batch | 500 |
 | FID implementation | `refs/edm/fid.py` |
 | FID reference | EDM `cifar10-32x32.npz` |
@@ -340,6 +357,12 @@ FID-5k 结果：
 |---|---|---:|---:|---:|---:|---:|
 | CIFAR-10 | CTM-noGAN-DSM-10k-EMA0.999 | 11.862200 | 9.486860 | 9.441320 | 8.918910 | 8.918910 |
 
+FID-50k 结果：
+
+| Dataset | Method | Step 1 | Step 2 | Step 4 | Step 8 | Best |
+|---|---|---:|---:|---:|---:|---:|
+| CIFAR-10 | CTM-noGAN-DSM-10k-EMA0.999 | 7.100460 | 4.725580 | 4.827430 | 4.331010 | 4.331010 |
+
 产物位置：
 
 ```text
@@ -347,6 +370,10 @@ eval/ctm_nogan_20260429/cifar10_ema010000_5k/reports/summary.csv
 results/baselines/ctm_nogan_20260429/baseline_ctm_nogan_cifar10_ema010000_5k.csv
 runs/ctm_nogan_20260429/cifar10_ema010000_5k/samples/steps{1,2,4,8}/images
 /temp/Zhengwei/projects/DG-TWFD/critical/analysis/ctm_nogan_20260429/cifar10_ema010000_5k/
+eval/ctm_nogan_20260429/cifar10_ema010000_50k/reports/summary.csv
+results/baselines/ctm_nogan_20260429/baseline_ctm_nogan_cifar10_ema010000_50k.csv
+runs/ctm_nogan_20260429/cifar10_ema010000_50k/samples/steps{1,2,4,8}/images
+/temp/Zhengwei/projects/DG-TWFD/critical/analysis/ctm_nogan_20260429/cifar10_ema010000_50k/
 ```
 
 完整性检查：
@@ -354,16 +381,17 @@ runs/ctm_nogan_20260429/cifar10_ema010000_5k/samples/steps{1,2,4,8}/images
 | 项目 | 结果 |
 |---|---|
 | step 数 | 1、2、4、8 |
-| 每个 step PNG 数 | 5000 |
+| 5k 每个 step PNG 数 | 5000 |
+| 50k 每个 step PNG 数 | 50000 |
 | summary | `summary.csv`、`summary.json` 均存在 |
-| stable 样本归档 | `samples_steps1_2_4_8.tar.gz` |
+| stable 样本归档 | 5k 与 50k 均有 `samples_steps1_2_4_8.tar.gz` |
 
-ImageNet64 no-GAN 当前未启动。原因是本地只找到 ImageNet64 评估/样本残留和官方 CTM checkpoint，未找到可用于重新训练的真实 ImageNet64 train set，也未找到 CTM 训练命令要求的 EDM ImageNet64 teacher checkpoint。因此当前环境下直接启动 ImageNet64 no-GAN 训练会变成不可审计实验，不符合 baseline 记录标准。
+ImageNet64 no-GAN 当前未启动。refs 中确实有 ImageNet64 CTM+DSM 训练入口，例如 `refs/ctm/README.md` 说明训练需要用户提供 `args.teacher_model_path` 与 `args.data_dir`，`refs/ctm/code/cmd/ImageNet64/...` 中的训练命令也指向 `edm_imagenet64_ema.pt` 和 ImageNet train 目录。但本地只确认到官方 CTM ImageNet64 评估 checkpoint、EDM ImageNet64 `.pkl` 采样 teacher/评估资产、FID reference 以及少量评估样本残留；没有可审计的真实 ImageNet64 train set，也没有命令所需格式的 `edm_imagenet64_ema.pt` teacher。因此当前环境下直接启动 ImageNet64 no-GAN 训练会变成未验证资产/未验证 teacher 适配实验，不符合 baseline 记录标准。
 
 解释：
 
-1. 该 no-GAN 结果明显弱于 CTM official 50k audit，符合“短预算本地重训未充分收敛”的预期。
-2. step 数增加时 FID 有改善，说明 checkpoint 仍能从多步 exact transition 受益。
+1. 该 no-GAN 50k 结果明显弱于 CTM official 50k audit，符合“短预算本地重训未充分收敛”的预期。
+2. step 数增加时 FID 有改善，说明 checkpoint 仍能从多步 exact transition 受益；在 50k 下 step 8 最优。
 3. 论文中只能把该结果写为 diagnostic retraining baseline，用于说明当前 no-GAN CTM+DSM 本地训练路径；不能用它替代官方 CTM 主 baseline。
 
 ## 9. 各 baseline 的论文解释口径
@@ -402,7 +430,7 @@ AYS CIFAR-10、AYS ImageNet64、OptimalSteps ImageNet64 目前没有 verified lo
 |---|---|---|
 | 主表或强 baseline 表 | DG-TWFD vs CTM 50k audit；必要时加入 DG-TWFD 同预算结果 | FID-50k；shared DG-TWFD evaluation protocol |
 | fast comparison 表/附表 | CD/CT/TCM/Entropic/EDM ImageNet64 等 5k fast baseline | FID-5k；not official full reproduction |
-| diagnostic 表/附表 | CTM no-GAN 10k、schedule-only 诊断实验 | FID-5k；diagnostic retraining or schedule-only |
+| diagnostic 表/附表 | CTM no-GAN 10k、schedule-only 诊断实验 | FID-5k/FID-50k 按预算标注；diagnostic retraining or schedule-only |
 | ablation/support 表 | OptimalSteps-like、smoke runs、blocked schedule placeholders | 仅作基础设施或失败路径说明，不作为 SOTA 对比 |
 
 推荐表述：
@@ -430,6 +458,6 @@ locally available official checkpoints.
 1. CTM 已完成严格 50k audit，是当前最可靠的外部 baseline 结果。
 2. CD/CT、TCM、Entropic、EDM ImageNet64 可作为 5k fast comparison，但应明确样本预算和协议差异。
 3. CTM schedule/time-warp follow-up 已完成，可作为 schedule-only 诊断表或补充材料，用来说明固定 CTM checkpoint 时单纯改时间节点的收益有限。
-4. CTM no-GAN CIFAR-10 10k 重训已完成，可作为诊断性 no-GAN 训练路径结果；ImageNet64 no-GAN 因训练数据和 teacher 资产缺失暂不启动。
+4. CTM no-GAN CIFAR-10 10k 重训已完成，5k fast diagnostic 和 50k audit 均已完成；ImageNet64 no-GAN 因训练数据和 teacher 资产缺失暂不启动。
 5. EDM CIFAR-10 smoke、AYS、OptimalSteps-like 不能作为最终论文主表 baseline。
 6. 如果最终论文要求所有 baseline 与 DG-TWFD 使用完全相同样本预算，则需要对尚未 50k 的 5k fast baselines 继续复评；否则必须在表格标题或 caption 中明确区分 FID-5k 与 FID-50k。

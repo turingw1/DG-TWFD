@@ -98,17 +98,25 @@ CTM no-GAN CIFAR-10 diagnostic retraining is complete:
 training root: /cache/Zhengwei/DG-TWFD-runtime/runs/ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000
 stable checkpoint root: /temp/Zhengwei/projects/DG-TWFD/critical/ckpt/ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000
 evaluated checkpoint: ema_0.999_010000.pt
-eval root: eval/ctm_nogan_20260429/cifar10_ema010000_5k
-sample root: runs/ctm_nogan_20260429/cifar10_ema010000_5k/samples
-CSV export: results/baselines/ctm_nogan_20260429/baseline_ctm_nogan_cifar10_ema010000_5k.csv
-stable analysis root: /temp/Zhengwei/projects/DG-TWFD/critical/analysis/ctm_nogan_20260429/cifar10_ema010000_5k
+eval roots:
+  eval/ctm_nogan_20260429/cifar10_ema010000_5k
+  eval/ctm_nogan_20260429/cifar10_ema010000_50k
+sample roots:
+  runs/ctm_nogan_20260429/cifar10_ema010000_5k/samples
+  runs/ctm_nogan_20260429/cifar10_ema010000_50k/samples
+CSV exports:
+  results/baselines/ctm_nogan_20260429/baseline_ctm_nogan_cifar10_ema010000_5k.csv
+  results/baselines/ctm_nogan_20260429/baseline_ctm_nogan_cifar10_ema010000_50k.csv
+stable analysis roots:
+  /temp/Zhengwei/projects/DG-TWFD/critical/analysis/ctm_nogan_20260429/cifar10_ema010000_5k
+  /temp/Zhengwei/projects/DG-TWFD/critical/analysis/ctm_nogan_20260429/cifar10_ema010000_50k
 ```
 
 Protocol: local CIFAR-10 CTM+DSM no-GAN training used the CTM CIFAR-10 code path
 without `gan_training` or discriminator loss. Evaluation uses the same official
 CTM CIFAR-10 sampling script and exact sampler as the CTM official baseline,
-with EDM `fid.py`, EDM CIFAR-10 reference statistics, 5000 samples, and steps
-1/2/4/8.
+with EDM `fid.py`, EDM CIFAR-10 reference statistics, steps 1/2/4/8, and both
+5000-sample fast diagnostic plus 50000-sample audit budgets.
 
 CTM no-GAN CIFAR-10 FID-5k:
 
@@ -116,21 +124,42 @@ CTM no-GAN CIFAR-10 FID-5k:
 |---|---:|---:|---:|---:|---|
 | CTM-noGAN-DSM-10k-EMA0.999 | 11.86220 | 9.48686 | 9.44132 | 8.91891 | diagnostic 10k retraining, not an official fully converged CTM checkpoint |
 
+CTM no-GAN CIFAR-10 FID-50k:
+
+| Method | Step 1 | Step 2 | Step 4 | Step 8 | Note |
+|---|---:|---:|---:|---:|---|
+| CTM-noGAN-DSM-10k-EMA0.999 | 7.10046 | 4.72558 | 4.82743 | 4.33101 | 50k audit of the same diagnostic 10k no-GAN checkpoint |
+
 Completeness:
 
 ```text
-steps1/2/4/8: each image directory contains 5000 PNG files
-summary: eval/ctm_nogan_20260429/cifar10_ema010000_5k/reports/summary.csv
-stable sample archive: /temp/Zhengwei/projects/DG-TWFD/critical/analysis/ctm_nogan_20260429/cifar10_ema010000_5k/samples_steps1_2_4_8.tar.gz
+5k steps1/2/4/8: each image directory contains 5000 PNG files
+50k steps1/2/4/8: each image directory contains 50000 PNG files
+5k summary: eval/ctm_nogan_20260429/cifar10_ema010000_5k/reports/summary.csv
+50k summary: eval/ctm_nogan_20260429/cifar10_ema010000_50k/reports/summary.csv
+5k stable sample archive: /temp/Zhengwei/projects/DG-TWFD/critical/analysis/ctm_nogan_20260429/cifar10_ema010000_5k/samples_steps1_2_4_8.tar.gz
+50k stable sample archive: /temp/Zhengwei/projects/DG-TWFD/critical/analysis/ctm_nogan_20260429/cifar10_ema010000_50k/samples_steps1_2_4_8.tar.gz
+```
+
+Experiment design / standards:
+
+```text
+training algorithm: CTM+DSM no-GAN, using refs/ctm-cifar10/cm_train.py and no gan_training/discriminator flags
+training data: CIFAR-10 class-directory images converted from local CIFAR batches
+teacher: EDM CIFAR-10 cond-VP checkpoint
+evaluation algorithm: official CTM CIFAR-10 image_sample.py, sampler=exact, sampling_steps=1/2/4/8
+FID algorithm: refs/edm/fid.py with EDM CIFAR-10 reference stats
+standard judgment: valid diagnostic baseline under DG-TWFD protocol; not an official fully converged CTM reproduction
 ```
 
 ImageNet64 no-GAN retraining is blocked for now:
 
 ```text
 missing: real ImageNet64 training dataset
-missing: EDM ImageNet64 teacher checkpoint required by the CTM ImageNet64 training command
-available locally: official CTM ImageNet64 evaluation checkpoint and small eval/sample residues only
-decision: do not start ImageNet64 no-GAN training until the required train data and teacher checkpoint are available
+missing: EDM ImageNet64 teacher checkpoint in the edm_imagenet64_ema.pt format used by CTM commands
+available locally: official CTM ImageNet64 evaluation checkpoint, EDM ImageNet64 pkl sampling asset, FID reference, small eval/sample residues
+refs status: refs/ctm README and ImageNet64 command files do provide training entrypoints, but they require user-provided data_dir and teacher_model_path
+decision: do not start ImageNet64 no-GAN training until the required train data and a verified teacher checkpoint/adapter are available
 ```
 
 Current baseline budget:
@@ -370,7 +399,7 @@ Current status:
 ```text
 CIFAR-10 no-GAN training completed at 10000 steps.
 The evaluated EMA checkpoint is ema_0.999_010000.pt.
-Evaluation is complete for steps 1/2/4/8 with 5000 samples per step.
+Evaluation is complete for steps 1/2/4/8 with both 5000 and 50000 samples per step.
 The result is diagnostic only and must not be described as a fully converged official CTM no-GAN reproduction.
 ImageNet64 no-GAN training is blocked by missing train data and missing EDM ImageNet64 teacher checkpoint.
 ```
@@ -384,12 +413,24 @@ CIFAR-10, step 4: FID 9.441320
 CIFAR-10, step 8: FID 8.918910
 ```
 
+Final FID-50k records:
+
+```text
+CIFAR-10, step 1: FID 7.100460
+CIFAR-10, step 2: FID 4.725580
+CIFAR-10, step 4: FID 4.827430
+CIFAR-10, step 8: FID 4.331010
+```
+
 Artifact paths:
 
 ```text
 eval/ctm_nogan_20260429/cifar10_ema010000_5k/reports/summary.csv
 results/baselines/ctm_nogan_20260429/baseline_ctm_nogan_cifar10_ema010000_5k.csv
 /temp/Zhengwei/projects/DG-TWFD/critical/analysis/ctm_nogan_20260429/cifar10_ema010000_5k/
+eval/ctm_nogan_20260429/cifar10_ema010000_50k/reports/summary.csv
+results/baselines/ctm_nogan_20260429/baseline_ctm_nogan_cifar10_ema010000_50k.csv
+/temp/Zhengwei/projects/DG-TWFD/critical/analysis/ctm_nogan_20260429/cifar10_ema010000_50k/
 ```
 
 ### CTM Schedule/Time-Warp Follow-up
