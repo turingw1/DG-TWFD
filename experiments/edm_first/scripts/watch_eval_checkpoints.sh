@@ -57,6 +57,8 @@ mkdir -p "${run_root}/logs"
 echo "watch_eval started run_tag=${run_tag} next_step=${next_step} interval=${interval} fid_samples=${fid_samples} steps=${steps[*]} compare_identity=${compare_identity} compare_budget=${compare_budget}" | tee -a "$watch_log"
 
 while true; do
+  final_eval=0
+  final_marker=""
   if [[ ! -f "$last_ckpt" ]]; then
     echo "last checkpoint missing: ${last_ckpt}" | tee -a "$watch_log"
     sleep 180
@@ -82,6 +84,23 @@ PY
   fi
 
   if (( step < next_step )); then
+    if [[ "${DG_TWFD_EVAL_FINAL_WHEN_TRAIN_EXIT:-0}" =~ ^(1|true|yes|on)$ && -n "${DG_TWFD_EVAL_TMUX_SESSION:-}" ]] && ! tmux has-session -t "${DG_TWFD_EVAL_TMUX_SESSION}" 2>/dev/null; then
+      final_marker="${run_root}/logs/final_eval_step${step}.done"
+      if [[ -f "$final_marker" ]]; then
+        echo "final checkpoint step=${step} already evaluated; exiting watcher" | tee -a "$watch_log"
+        break
+      fi
+      final_eval=1
+      echo "training session ${DG_TWFD_EVAL_TMUX_SESSION} ended; evaluating final checkpoint step=${step}" | tee -a "$watch_log"
+    else
+      sleep 180
+      continue
+    fi
+  fi
+
+  if [[ "$final_eval" == "0" && -d "eval/${eval_prefix}_step${step}/reports" ]]; then
+    echo "checkpoint step=${step} already has evaluation; advancing" | tee -a "$watch_log"
+    next_step=$(( ((step / interval) + 1) * interval ))
     sleep 180
     continue
   fi
@@ -278,5 +297,10 @@ PY
 
   next_step=$(( ((step / interval) + 1) * interval ))
   echo "evaluation complete step=${step}; next_step=${next_step}" | tee -a "$watch_log"
+  if [[ "$final_eval" == "1" ]]; then
+    touch "$final_marker"
+    echo "final checkpoint evaluation complete step=${step}; exiting watcher" | tee -a "$watch_log"
+    break
+  fi
   sleep 180
 done

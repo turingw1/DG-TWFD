@@ -15,18 +15,19 @@ changes the next full-stack direction. It is not a step-by-step run ledger.
 ## Current Active Track
 
 - Track: EDM-first CIFAR-10 full-stack prior map with learned timewarp.
-- Run tag: `edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750`.
-- Config: `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_v12a_budget.yaml`.
+- Run tag: `edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750`.
+- Config:
+  `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_v14_guarded_continue.yaml`.
 - Initialization checkpoint:
-  `runs/edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step6750.pt`.
-- Important detail: v12a branches from the best v11a composition checkpoint,
-  not the later endpoint-specialized checkpoint. It keeps the main full-stack
-  objective but changes the defect/timewarp policy to test step-budget-aware
-  learned warp.
+  `runs/edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step7750.pt`.
+- Important detail: v14 is a guarded continuation from the best fully
+  evaluated v13 checkpoint. It keeps the inference policy fixed, lowers LR, and
+  slightly strengthens bridge/preserve pressure because v13 was still improving
+  but had entered a lower-slope regime.
 - Live backup:
-  `/temp/Zhengwei/projects/DG-TWFD/critical/runs/edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750`.
+  `/temp/Zhengwei/projects/DG-TWFD/critical/runs/edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750`.
 - Milestone backups:
-  `/temp/Zhengwei/projects/DG-TWFD/critical/eval/edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750_step*`.
+  `/temp/Zhengwei/projects/DG-TWFD/critical/eval/edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750_step*`.
 
 ## Latest Decision Metrics
 
@@ -520,3 +521,45 @@ for insufficient 4-eval progress. If the guard reports less than `0.05` mean
 FID drop across the last four budget evaluations, the next move should be to
 preserve the best v13 checkpoint and branch into budget-conditioned timewarp
 rather than spend more time on scalar reweighting.
+
+## 2026-04-29 V13 Final Readout And V14 Guarded Continuation
+
+The v13 run completed normally at the configured wall-clock limit. The last
+training log entry is step7828, but the last fully saved and evaluated
+checkpoint is step7750. GPU was idle after completion, so the remaining v13
+eval/hourly watcher sessions were waiting on a step8000 checkpoint that would
+not appear.
+
+Final v13 budget-policy FID-2048:
+
+| checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 | mean FID@4/8/16 |
+|---:|---:|---:|---:|---:|---:|---:|
+| v12a step10500 | 59.246 | 34.881 | 29.997 | 24.914 | 26.055 | 26.989 |
+| v13 step6000 | 57.283 | 32.574 | 26.468 | 23.748 | 24.660 | 24.959 |
+| v13 step7000 | 56.600 | 32.076 | 26.139 | 23.359 | 24.192 | 24.563 |
+| v13 step7500 | 56.598 | 32.080 | 25.978 | 23.255 | 24.013 | 24.415 |
+| v13 step7750 | 56.569 | 32.050 | 26.009 | 23.229 | 23.920 | 24.386 |
+
+The plateau concern is valid but not confirmed. The final one-step interval is
+shallow, and FID@4 locally prefers step7500 by about `0.031`, but the aggregate
+`4/8/16` curve still improves from step7000 through step7750. The run should
+therefore be treated as a lower-slope continuation point, not as a dead end.
+
+Decision:
+
+1. Preserve v13 step7750 as the current best all-around checkpoint; preserve
+   step7500 as the best isolated FID@4 checkpoint.
+2. Do not keep sleeping on the completed v13 watcher stack; that only monitors
+   an idle GPU.
+3. Start v14 from v13 step7750 with a lower LR (`4e-7`), slightly stronger
+   bridge/defect/preserve pressure, the same budget inference policy, and a
+   final-checkpoint evaluation guard. This is less risky than a full
+   budget-conditioned timewarp rewrite while the curve is still descending.
+4. If v14 fails to beat the v13 step7750 `4/8/16` mean after four evaluated
+   checkpoints, the next algorithmic move should be budget-conditioned
+   timewarp/per-budget schedule heads, not further scalar loss tuning.
+
+The code now saves a final checkpoint when the wall-clock limit stops training
+between save intervals, and the eval watcher can evaluate that final checkpoint
+when the train tmux session exits. This directly addresses the v13 issue where
+the final logged step had no evaluable checkpoint.

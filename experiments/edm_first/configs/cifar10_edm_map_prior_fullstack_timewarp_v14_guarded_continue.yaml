@@ -1,0 +1,74 @@
+experiment:
+  name: cifar10_edm_map_prior_fullstack_timewarp_v14_guarded_continue
+
+paths:
+  data_root: ${DATA_ROOT:-datasets}/cifar10
+  network: ${EDM_CIFAR10_NETWORK:-https://nvlabs-fi-cdn.nvidia.com/edm/pretrained/edm-cifar10-32x32-cond-vp.pkl}
+  fid_stats: ${DATA_ROOT:-datasets}/cifar10/.dgfm_cache/fid_stats_cifar10_test_32_torch_fidelity_inceptionv3_2048.npz
+
+runtime:
+  device: cuda
+  amp: false
+  seed: 46
+
+teacher:
+  use_fp16: false
+  rollout_steps: 18
+
+train:
+  objective: prior_fullstack
+  resume_optimizer: false
+  resume_step: false
+  max_steps: 100000
+  max_seconds: 43200
+  batch_size: 64
+  num_workers: 0
+  lr: 4.0e-7
+  weight_decay: 0.0
+  log_every: 25
+  save_every: 250
+  endpoint_weight: 0.58
+  match_weight: 0.65
+  bridge_weight: 1.20
+  defect_weight: 0.28
+  defect_grad_mode: bridge_to_direct
+  perceptual_weight: 0.15
+  bridge_perceptual_weight: 0.50
+  perceptual_levels: 3
+  preserve_mid_u_values: [0.5]
+  preserve_bridge_weight: 0.40
+  preserve_match_weight: 0.08
+  preserve_defect_weight: 0.12
+  preserve_perceptual_weight: 0.02
+  warp_defect_signal: composition_gap
+  warp_composition_gap_weight: 2.0
+  warp_bridge_error_weight: 0.25
+  prior_mid_u_low: 0.05
+  prior_mid_u_high: 0.95
+  sigma_data: 0.5
+  sigma_min: 0.002
+  sigma_max: 80.0
+  rho: 7.0
+
+timewarp:
+  enabled: true
+  num_bins: 32
+  init: uniform
+  lr: 5.0e-4
+  update_every: 10
+  ema_mu: 0.985
+  beta: 0.60
+  ratio_cap: 2.5
+  flatten_mix: 0.20
+  curvature_weight: 0.0
+  hf_weight: 0.0
+  budget_warp_min_steps: 4
+
+eval:
+  steps: [1, 2, 4, 8, 16]
+  num_fid_samples: 4096
+  fid_batch_size: 32
+  sample_batch_size: 64
+  fixed_grid_size: 64
+  fixed_seed: 46
+  budget_warp_min_steps: 4

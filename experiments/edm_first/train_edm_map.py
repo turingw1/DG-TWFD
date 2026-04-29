@@ -175,6 +175,7 @@ def main() -> None:
     history_path = log_dir / "train.jsonl"
     start_time = time.time()
     last_log = {}
+    last_saved_step = 0
     stop_requested = {"value": False}
 
     def _request_stop(_signum, _frame) -> None:
@@ -479,6 +480,8 @@ def main() -> None:
                 "last_log": record,
             }
             _save_checkpoint(ckpt_dir / "last.pt", ckpt)
+            _save_checkpoint(ckpt_dir / f"step{step}.pt", ckpt)
+            last_saved_step = step
             if warp is not None:
                 warp_payload = _warp_snapshot_payload(step=step, warp=warp, q_base=q_base, q_target=q_target, warp_stats=warp_stats)
                 write_json(log_dir / "warp_latest.json", warp_payload)
@@ -487,6 +490,31 @@ def main() -> None:
                 best_loss = float(record["loss"])
                 ckpt["best_loss"] = best_loss
                 _save_checkpoint(ckpt_dir / "best.pt", ckpt)
+
+    if last_log and int(last_log.get("step", 0) or 0) > last_saved_step:
+        step = int(last_log["step"])
+        ckpt = {
+            "step": step,
+            "student": student.state_dict(),
+            "optimizer": optimizer.state_dict(),
+            "warp": warp.state_dict() if warp is not None else None,
+            "warp_optimizer": warp_optimizer.state_dict() if warp_optimizer is not None else None,
+            "q_target": q_target.detach().cpu() if q_target is not None else None,
+            "warp_stats": {key: value.detach().cpu() for key, value in (warp_stats or {}).items()} if warp_stats is not None else None,
+            "config": cfg,
+            "best_loss": best_loss,
+            "last_log": last_log,
+        }
+        if float(last_log["loss"]) <= best_loss:
+            best_loss = float(last_log["loss"])
+            ckpt["best_loss"] = best_loss
+            _save_checkpoint(ckpt_dir / "best.pt", ckpt)
+        _save_checkpoint(ckpt_dir / "last.pt", ckpt)
+        _save_checkpoint(ckpt_dir / f"step{step}.pt", ckpt)
+        if warp is not None:
+            warp_payload = _warp_snapshot_payload(step=step, warp=warp, q_base=q_base, q_target=q_target, warp_stats=warp_stats)
+            write_json(log_dir / "warp_latest.json", warp_payload)
+            write_json(log_dir / f"warp_step{step}.json", warp_payload)
 
     write_json(run_root / "train_summary.json", {"last": last_log, "best_loss": best_loss})
     print(f"edm-first training completed: {run_root}")
