@@ -563,3 +563,29 @@ The code now saves a final checkpoint when the wall-clock limit stops training
 between save intervals, and the eval watcher can evaluate that final checkpoint
 when the train tmux session exits. This directly addresses the v13 issue where
 the final logged step had no evaluable checkpoint.
+
+## 2026-04-29 V14 Two-Hour Supervision
+
+The v14 guarded continuation is not wasting compute. At the first two-hour
+supervision point, training is live around step2400 with GPU utilization at
+100%. The completed budget-policy evaluations through step2000 show that the
+lower-LR guarded continuation improves endpoint, 4-step, 8-step, and 16-step
+quality over v13 step7750, while 2-step remains the main regression to monitor.
+
+Budget-policy FID-2048:
+
+| checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 | mean FID@4/8/16 |
+|---:|---:|---:|---:|---:|---:|---:|
+| v13 step7750 | 56.569 | 32.050 | 26.009 | 23.229 | 23.920 | 24.386 |
+| v14 step250 | 54.536 | 32.688 | 26.370 | 22.262 | 23.803 | 24.145 |
+| v14 step1000 | 54.632 | 32.760 | 26.222 | 22.177 | 23.650 | 24.017 |
+| v14 step1500 | 54.110 | 32.437 | 25.909 | 22.048 | 23.424 | 23.793 |
+| v14 step2000 | 54.443 | 32.592 | 25.773 | 21.996 | 23.361 | 23.710 |
+
+Interpretation: v14 successfully extends the v13 gains and pulls the
+`4/8/16` mean down by about `0.676` FID from the previous best. The persistent
+2-step weakness confirms the earlier diagnosis that low-budget inference needs
+a budget-conditioned schedule or extra low-step preservation; however, because
+the high-budget curve is still descending and the 2-step regression is not
+exploding, the correct action is to continue the current run and reassess on a
+two-hour cadence.
