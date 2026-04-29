@@ -103,6 +103,33 @@ def compact_fids(rows: list[dict]) -> dict[str, float]:
             pass
     return out
 
+def recent_budget_history(limit: int = 6) -> list[dict]:
+    paths = sorted((root / "eval").glob(f"{run_tag}_step*_budget/reports/summary.csv"), key=eval_step_from_path)
+    history = []
+    for path in paths[-limit:]:
+        step = eval_step_from_path(path)
+        try:
+            with path.open("r", encoding="utf-8", newline="") as handle:
+                values = {
+                    int(float(row["step_count"])): float(row["fid"])
+                    for row in csv.DictReader(handle)
+                }
+        except Exception:
+            continue
+        if all(key in values for key in (1, 2, 4, 8, 16)):
+            history.append(
+                {
+                    "step": step,
+                    "fid1": round(values[1], 4),
+                    "fid2": round(values[2], 4),
+                    "fid4": round(values[4], 4),
+                    "fid8": round(values[8], 4),
+                    "fid16": round(values[16], 4),
+                    "mean_4_8_16": round((values[4] + values[8] + values[16]) / 3.0, 4),
+                }
+            )
+    return history
+
 def run_cmd(cmd: list[str]) -> str:
     try:
         return subprocess.check_output(cmd, text=True, stderr=subprocess.STDOUT, timeout=15).strip()
@@ -121,6 +148,7 @@ auto_step, auto_rows = latest_eval_summary("")
 identity_step, identity_rows = latest_eval_summary("_identity")
 budget_step, budget_rows = latest_eval_summary("_budget")
 comparison_step, comparison_rows = latest_comparison()
+budget_recent = recent_budget_history()
 
 ckpt_dir = run_root / "checkpoints"
 ckpts = sorted(ckpt_dir.glob("step*.pt"), key=lambda p: int(re.search(r"step(\d+)", p.name).group(1)) if re.search(r"step(\d+)", p.name) else -1)
@@ -150,6 +178,7 @@ summary = {
     "latest_budget_eval_step": budget_step,
     "budget_fid": compact_fids(budget_rows),
     "latest_comparison_step": comparison_step,
+    "budget_recent": budget_recent,
     "timewarp_delta": {
         str(int(float(row["step_count"]))): round(float(row["fid_delta_auto_minus_identity"]), 4)
         for row in comparison_rows
@@ -172,6 +201,12 @@ if summary["latest_auto_eval_step"] and summary["latest_identity_eval_step"] == 
     deltas = [float(v) for v in summary["timewarp_delta"].values()]
     if deltas and min(deltas) >= 0.0:
         warnings.append("auto_warp_not_better_than_identity_yet")
+if len(budget_recent) >= 4:
+    recent_window = budget_recent[-4:]
+    mean_drop = float(recent_window[0]["mean_4_8_16"]) - float(recent_window[-1]["mean_4_8_16"])
+    plateau_min_drop = float(os.environ.get("DG_TWFD_PLATEAU_MIN_DROP_4EVALS", "0.05"))
+    if mean_drop < plateau_min_drop:
+        warnings.append(f"budget_mean_plateau_4evals_drop={mean_drop:.4f}")
 summary["warnings"] = warnings
 
 jsonl.parent.mkdir(parents=True, exist_ok=True)
