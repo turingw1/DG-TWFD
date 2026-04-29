@@ -589,3 +589,24 @@ a budget-conditioned schedule or extra low-step preservation; however, because
 the high-budget curve is still descending and the 2-step regression is not
 exploding, the correct action is to continue the current run and reassess on a
 two-hour cadence.
+
+## 2026-04-29 V14 Four-Hour Supervision
+
+The second two-hour checkpoint strengthens the v14 decision. Training is live
+around step4200, GPU utilization remains near 100%, and completed budget
+evaluations through step4000 show continued improvement without a plateau.
+
+Recent v14 budget-policy FID-2048:
+
+| checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 | mean FID@4/8/16 |
+|---:|---:|---:|---:|---:|---:|---:|
+| v14 step2250 | 54.162 | 32.470 | 25.659 | 21.930 | 23.275 | 23.621 |
+| v14 step2750 | 53.886 | 32.336 | 25.532 | 21.823 | 23.176 | 23.510 |
+| v14 step3500 | 53.871 | 32.238 | 25.512 | 21.735 | 23.063 | 23.436 |
+| v14 step4000 | 53.618 | 32.115 | 25.446 | 21.656 | 22.975 | 23.359 |
+
+Relative to v13 step7750, v14 step4000 improves FID@1 by about `2.95`,
+FID@4 by `0.56`, FID@8 by `1.57`, and FID@16 by `0.95`. The 2-step budget
+metric is now only about `0.065` worse than v13, so the early low-step
+regression is mostly recovering. The current action remains continue; do not
+change the objective mid-run while the curve is still descending.
