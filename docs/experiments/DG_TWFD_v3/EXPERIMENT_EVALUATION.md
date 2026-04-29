@@ -494,3 +494,29 @@ Next iteration guidance:
    inference equally well.
 4. Keep the `u=0.5` preservation branch in the default full-stack recipe until
    a more explicit per-budget schedule module replaces it.
+
+## 2026-04-29 V13 Plateau Check At Step6000
+
+The post-seven-hour continuation has not entered a confirmed plateau. The
+latest evaluated checkpoint is v13 step6000, with budget-policy FID-2048:
+`57.283 / 32.574 / 26.468 / 23.748 / 24.660` for `1/2/4/8/16`. This is a
+large improvement over v13 step4250 and over v12a step10500.
+
+Recent budget mean over 4/8/16:
+
+| checkpoint | mean FID@4/8/16 |
+|---:|---:|
+| step4750 | 25.559 |
+| step5000 | 25.469 |
+| step5250 | 25.470 |
+| step5500 | 25.244 |
+| step5750 | 25.082 |
+| step6000 | 24.959 |
+
+The step5250 pause was a local fluctuation, not a dead zone: step5500,
+step5750, and step6000 resumed clear improvement. The correct action is to
+continue v13 to the configured time limit while the new plateau guard watches
+for insufficient 4-eval progress. If the guard reports less than `0.05` mean
+FID drop across the last four budget evaluations, the next move should be to
+preserve the best v13 checkpoint and branch into budget-conditioned timewarp
+rather than spend more time on scalar reweighting.
