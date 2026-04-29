@@ -40,6 +40,7 @@ def parse_args() -> argparse.Namespace:
         default="/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/ctm_cifar10/ctm-cifar10/conditional/model043000.pt",
     )
     parser.add_argument("--method", default="CTM-official-cond")
+    parser.add_argument("--checkpoint-note", default="official CTM CIFAR-10 checkpoint")
     parser.add_argument("--sample-root", default="runs/ctm_cifar10_5k/samples")
     parser.add_argument("--eval-root", default="eval/ctm_cifar10_5k")
     parser.add_argument("--csv-out", default="results/baselines/baseline_ctm_cifar10.csv")
@@ -324,7 +325,7 @@ def main() -> None:
             "elapsed_sec": time.time() - t0,
             "notes": "; ".join(
                 [
-                    "official CTM CIFAR-10 checkpoint",
+                    args.checkpoint_note,
                     f"class_cond={args.class_cond}",
                     "sampler=exact",
                     f"sampling_steps={step_count}",
