@@ -55,6 +55,7 @@ if [[ ! -s "$list_file" ]]; then
   exit 1
 fi
 
+tar_status=0
 COPYFILE_DISABLE=1 tar \
   --warning=no-file-changed \
   --ignore-failed-read \
@@ -62,7 +63,12 @@ COPYFILE_DISABLE=1 tar \
   --exclude='._*' \
   -C "$codex_home" \
   -czf "$tmp_path" \
-  --files-from "$list_file"
+  --files-from "$list_file" || tar_status=$?
+
+if (( tar_status > 1 )); then
+  echo "[$project_name] codex tar failed with status ${tar_status}" >&2
+  exit "$tar_status"
+fi
 
 tar -tzf "$tmp_path" >/dev/null
 
