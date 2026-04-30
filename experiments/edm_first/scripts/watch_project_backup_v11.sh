@@ -23,6 +23,10 @@ codex_interval="${DG_TWFD_CODEX_BACKUP_INTERVAL_SEC:-3600}"
 keep_step_ckpts="${DG_TWFD_BACKUP_KEEP_STEP_CKPTS:-12}"
 copy_eval_tensors="${DG_TWFD_BACKUP_COPY_EVAL_TENSORS:-0}"
 
+if ! [[ "$keep_step_ckpts" =~ ^[0-9]+$ ]] || (( keep_step_ckpts <= 0 )); then
+  keep_step_ckpts=12
+fi
+
 mkdir -p "${run_root}/logs" "$logs_root" "${backup_run_root}/logs" "${backup_run_root}/checkpoints" "$backup_eval_root"
 
 copy_stable_file() {
@@ -114,7 +118,14 @@ while true; do
   if [[ -d "${run_root}/checkpoints" ]]; then
     while IFS= read -r -d '' ckpt; do
       copy_stable_file "$ckpt" "${backup_run_root}/checkpoints/$(basename "$ckpt")"
-    done < <(find "${run_root}/checkpoints" -maxdepth 1 -type f \( -name 'step*.pt' -o -name 'last.pt' -o -name 'best.pt' \) -print0 2>/dev/null)
+    done < <(find "${run_root}/checkpoints" -maxdepth 1 -type f \( -name 'last.pt' -o -name 'best.pt' \) -print0 2>/dev/null)
+
+    find "${run_root}/checkpoints" -maxdepth 1 -type f -name 'step*.pt' -printf '%T@ %p\n' 2>/dev/null \
+      | sort -nr \
+      | awk -v keep="$keep_step_ckpts" 'NR<=keep {sub(/^[^ ]+ /, ""); print}' \
+      | while IFS= read -r ckpt; do
+          copy_stable_file "$ckpt" "${backup_run_root}/checkpoints/$(basename "$ckpt")"
+        done
     prune_step_checkpoints "${backup_run_root}/checkpoints" "$keep_step_ckpts"
   fi
 
