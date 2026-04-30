@@ -685,3 +685,25 @@ sure the restarted eval watcher catches up from the live checkpoint stream.
 The project backup watcher was also changed to keep checkpoint backups bounded
 and to avoid syncing regenerable eval tensors by default; metrics, reports, and
 fixed-seed preview images remain backed up.
+
+## 2026-04-30 V15 Step10000 Positive Signal
+
+The restarted eval watcher has caught up to a decision-relevant checkpoint.
+V15 step10000 budget-policy FID-2048 is:
+
+| checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 | mean FID@4/8/16 |
+|---:|---:|---:|---:|---:|---:|---:|
+| v14 step10750 | 52.424 | 31.240 | 24.159 | 20.665 | 21.678 | 22.167 |
+| v15 step750 | 51.139 | 30.423 | 22.619 | 20.851 | 21.306 | 21.592 |
+| v15 step10000 | 49.361 | 29.519 | 21.479 | 20.008 | 20.355 | 20.614 |
+
+This is the strongest evidence so far that multi-midpoint preservation is
+solving the low/mid-budget composition bottleneck rather than merely extending
+v14. Relative to the v14 handoff, v15 step10000 improves FID by about
+`3.06 / 1.72 / 2.68 / 0.66 / 1.32` at `1/2/4/8/16`, and improves the
+`4/8/16` mean by about `1.55`.
+
+The timewarp-specific readout still supports the budget policy: learned warp
+improves identity by about `0.83 / 0.17 / 0.12` at `4/8/16`, while auto warp
+is still worse than identity at 2-step by about `1.56`. The correct inference
+path remains identity for 1/2-step and learned timewarp for 4+ steps.
