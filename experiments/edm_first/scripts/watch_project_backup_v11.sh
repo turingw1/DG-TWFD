@@ -20,6 +20,8 @@ log_file="${run_root}/logs/watch_project_backup_v11.log"
 temp_log="${logs_root}/${run_tag}_backup_v11.log"
 last_codex_sync=0
 codex_interval="${DG_TWFD_CODEX_BACKUP_INTERVAL_SEC:-3600}"
+keep_step_ckpts="${DG_TWFD_BACKUP_KEEP_STEP_CKPTS:-12}"
+copy_eval_tensors="${DG_TWFD_BACKUP_COPY_EVAL_TENSORS:-0}"
 
 mkdir -p "${run_root}/logs" "$logs_root" "${backup_run_root}/logs" "${backup_run_root}/checkpoints" "$backup_eval_root"
 
@@ -59,7 +61,11 @@ sync_eval_dir() {
     local step_name
     step_name="$(basename "$step_dir")"
     mkdir -p "${backup_eval_root}/${eval_name}/${step_name}"
-    for file in metrics.json fixed_seed_grid.png sigma_grid.pt u_grid.pt; do
+    local eval_files=(metrics.json fixed_seed_grid.png)
+    if [[ "$copy_eval_tensors" == "1" ]]; then
+      eval_files+=(sigma_grid.pt u_grid.pt)
+    fi
+    for file in "${eval_files[@]}"; do
       [[ -f "${step_dir}/${file}" ]] && cp -af "${step_dir}/${file}" "${backup_eval_root}/${eval_name}/${step_name}/${file}"
     done
   done < <(find "$eval_dir" -maxdepth 1 -type d -name 'steps*' -print0 2>/dev/null)
@@ -68,6 +74,21 @@ sync_eval_dir() {
 log_line() {
   local line="$1"
   printf '%s\n' "$line" | tee -a "$log_file" "$temp_log"
+}
+
+prune_step_checkpoints() {
+  local ckpt_dir="$1"
+  local keep="$2"
+  [[ -d "$ckpt_dir" ]] || return 0
+  [[ "$keep" =~ ^[0-9]+$ ]] || return 0
+  (( keep > 0 )) || return 0
+
+  find "$ckpt_dir" -maxdepth 1 -type f -name 'step*.pt' -printf '%T@ %p\n' 2>/dev/null \
+    | sort -nr \
+    | awk -v keep="$keep" 'NR>keep {print $2}' \
+    | while IFS= read -r old_ckpt; do
+        rm -f -- "$old_ckpt"
+      done
 }
 
 log_line "watch_project_backup_v11 started run_tag=${run_tag} interval=${interval} project_temp=${project_temp}"
@@ -94,6 +115,7 @@ while true; do
     while IFS= read -r -d '' ckpt; do
       copy_stable_file "$ckpt" "${backup_run_root}/checkpoints/$(basename "$ckpt")"
     done < <(find "${run_root}/checkpoints" -maxdepth 1 -type f \( -name 'step*.pt' -o -name 'last.pt' -o -name 'best.pt' \) -print0 2>/dev/null)
+    prune_step_checkpoints "${backup_run_root}/checkpoints" "$keep_step_ckpts"
   fi
 
   if [[ -d "${ROOT_DIR}/eval" ]]; then

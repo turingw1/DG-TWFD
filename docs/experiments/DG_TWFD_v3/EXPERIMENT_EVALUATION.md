@@ -682,3 +682,6 @@ the v14 step10750 handoff at `1/2/4/16` and nearly tying 8-step. The learned
 warp remains beneficial at 4+ steps, while budget policy keeps 2-step on the
 identity clock. The current risk is not wasted training compute; it is making
 sure the restarted eval watcher catches up from the live checkpoint stream.
+The project backup watcher was also changed to keep checkpoint backups bounded
+and to avoid syncing regenerable eval tensors by default; metrics, reports, and
+fixed-seed preview images remain backed up.
