@@ -1,0 +1,2553 @@
+{
+  "timestamp": "2026-05-01T03:30:14",
+  "mode": "apply",
+  "key_nodes": [
+    {
+      "path": "edm_first_cifar10_warp_e501a/checkpoints/best.pt",
+      "reason": "e501a first EDM-map learned-warp viability checkpoint"
+    },
+    {
+      "path": "edm_first_cifar10_warp_e502a/checkpoints/last.pt",
+      "reason": "e502a stopped continuation checkpoint used for early EDM-map diagnosis"
+    },
+    {
+      "path": "edm_first_cifar10_onestep_prior_e503c/checkpoints/step2000.pt",
+      "reason": "e503c prior one-step endpoint reference"
+    },
+    {
+      "path": "edm_first_cifar10_onestep_msdefect_e504a/checkpoints/step250.pt",
+      "reason": "e504a diagnostic threshold reference"
+    },
+    {
+      "path": "edm_first_cifar10_onestep_msdefect_e504a/checkpoints/step1250.pt",
+      "reason": "e504a restored endpoint checkpoint before resume"
+    },
+    {
+      "path": "edm_first_cifar10_onestep_msdefect_e504a_resume_from1250/checkpoints/step1750.pt",
+      "reason": "handoff checkpoint from endpoint-only training to full-stack v11a"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step6750.pt",
+      "reason": "v11a best composition checkpoint and v12a branch point"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step8750.pt",
+      "reason": "v11a endpoint-specialized final evaluated checkpoint"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step10500.pt",
+      "reason": "v12a best endpoint and budget-policy checkpoint; v13 branch point"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step3500.pt",
+      "reason": "v13 first all-budget-improving diagnostic checkpoint"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step4250.pt",
+      "reason": "v13 first strong all-budget-improving checkpoint"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step7500.pt",
+      "reason": "v13 best isolated FID@4 checkpoint"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step7750.pt",
+      "reason": "v13 best all-around checkpoint and v14 branch point"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step10000.pt",
+      "reason": "v14 best FID@1/FID@2 checkpoint"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step10500.pt",
+      "reason": "v14 best FID@4 checkpoint"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step10750.pt",
+      "reason": "v14 best overall multi-step checkpoint and v15 branch point"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step10801.pt",
+      "reason": "v14 final-checkpoint guard artifact"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step10000.pt",
+      "reason": "v15 positive signal checkpoint"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step11500.pt",
+      "reason": "v15 best balanced checkpoint"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step11855.pt",
+      "reason": "v15 best high-budget and final evaluated checkpoint"
+    },
+    {
+      "path": "fm_cifar10_map_branch_v1/checkpoints/best.pt",
+      "reason": "early FM map branch best checkpoint"
+    },
+    {
+      "path": "fm_cifar10_map_branch_timewarp_smoke_tws02/checkpoints/best.pt",
+      "reason": "timewarp smoke checkpoint"
+    },
+    {
+      "path": "fm_cifar10_map_branch_timewarp_smoke_tws03/checkpoints/best.pt",
+      "reason": "timewarp smoke checkpoint"
+    },
+    {
+      "path": "fm_cifar10_map_branch_timewarp_probe_tw001/checkpoints/best.pt",
+      "reason": "timewarp probe checkpoint"
+    },
+    {
+      "path": "fm_cifar10_map_branch_quick_v1/checkpoints/best.pt",
+      "reason": "quick branch best checkpoint"
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/ema_0.999_010000.pt",
+      "reason": "evaluated CTM no-GAN diagnostic EMA checkpoint"
+    }
+  ],
+  "key_nodes_to_copy": [
+    "edm_first_cifar10_warp_e501a/checkpoints/best.pt",
+    "edm_first_cifar10_warp_e502a/checkpoints/last.pt",
+    "edm_first_cifar10_onestep_prior_e503c/checkpoints/step2000.pt",
+    "edm_first_cifar10_onestep_msdefect_e504a/checkpoints/step250.pt",
+    "edm_first_cifar10_onestep_msdefect_e504a/checkpoints/step1250.pt",
+    "edm_first_cifar10_onestep_msdefect_e504a_resume_from1250/checkpoints/step1750.pt",
+    "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step6750.pt",
+    "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step8750.pt",
+    "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step10500.pt",
+    "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step3500.pt",
+    "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step4250.pt",
+    "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step7500.pt",
+    "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step7750.pt",
+    "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step10000.pt",
+    "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step10500.pt",
+    "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step10750.pt",
+    "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step10801.pt",
+    "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step10000.pt",
+    "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step11500.pt",
+    "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step11855.pt",
+    "fm_cifar10_map_branch_v1/checkpoints/best.pt",
+    "fm_cifar10_map_branch_timewarp_smoke_tws02/checkpoints/best.pt",
+    "fm_cifar10_map_branch_timewarp_smoke_tws03/checkpoints/best.pt",
+    "fm_cifar10_map_branch_timewarp_probe_tw001/checkpoints/best.pt",
+    "fm_cifar10_map_branch_quick_v1/checkpoints/best.pt",
+    "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/ema_0.999_010000.pt"
+  ],
+  "missing_key_nodes": [],
+  "delete_summary": {
+    "runtime_runs": {
+      "count": 280,
+      "gib": 155.215
+    },
+    "temp_critical_runs": {
+      "count": 160,
+      "gib": 99.729
+    },
+    "temp_critical_ckpt": {
+      "count": 38,
+      "gib": 10.353
+    },
+    "total": {
+      "count": 478,
+      "gib": 265.297
+    }
+  },
+  "runtime_delete": [
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_debug_script/ema_0.999_000000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16/ema_0.999_001000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16/ema_0.999_002000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16/model001000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16/model002000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16/opt001000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16/opt002000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16/target_model001000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16/target_model002000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/ema_0.999_002000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/ema_0.999_003000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/ema_0.999_004000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/ema_0.999_005000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/ema_0.999_006000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/ema_0.999_007000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/ema_0.999_008000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/model002000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/model003000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/model004000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/model005000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/model006000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/model007000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/model008000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/opt002000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/opt003000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/opt004000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/opt005000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/opt006000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/opt007000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/opt008000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/target_model002000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/target_model003000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/target_model004000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/target_model005000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/target_model006000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/target_model007000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/target_model008000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/ema_0.999_008000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/ema_0.999_009000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/ema_0.999_009999.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/model008000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/model009000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/model010000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/opt008000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/opt009000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/opt010000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/target_model008000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/target_model009000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/target_model010000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_smoke_mb4/ema_0.9999_000001.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_smoke_mb4/ema_0.9999_000002.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_smoke_mb4/ema_0.999_000001.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_smoke_mb4/ema_0.999_000002.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_smoke_mb4/model000001.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_smoke_mb4/model000002.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_smoke_mb4/opt000001.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_smoke_mb4/opt000002.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_smoke_mb4/target_model000001.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_smoke_mb4/target_model000002.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_onestep_msdefect_e504a/checkpoints/best.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_onestep_msdefect_e504a/checkpoints/last.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_onestep_msdefect_e504a/checkpoints/step1000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_onestep_msdefect_e504a/checkpoints/step500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_onestep_msdefect_e504a/checkpoints/step750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_onestep_msdefect_e504a_resume_from1250/checkpoints/best.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_onestep_msdefect_e504a_resume_from1250/checkpoints/last.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_onestep_msdefect_e504a_resume_from1250/checkpoints/step1000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_onestep_msdefect_e504a_resume_from1250/checkpoints/step1250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_onestep_msdefect_e504a_resume_from1250/checkpoints/step1500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_onestep_msdefect_e504a_resume_from1250/checkpoints/step250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_onestep_msdefect_e504a_resume_from1250/checkpoints/step500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_onestep_msdefect_e504a_resume_from1250/checkpoints/step750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_onestep_prior_e503c/checkpoints/best.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_onestep_prior_e503c/checkpoints/last.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_onestep_prior_e503c/checkpoints/step1500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_onestep_prior_e503c/checkpoints/step250_best.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_onestep_prior_e503c/checkpoints/step250_last.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_onestep_prior_e503c/checkpoints/step439_best.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_onestep_prior_e503c/checkpoints/step439_last.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/best.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/last.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step1000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step1250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step1500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step1750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step2000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step2250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step2500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step2750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step3000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step3250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step3500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step3750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step4000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step4250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step4500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step4750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step5000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step5250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step5500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step5750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step6000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step6250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step6500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step7000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step7250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step7500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step7750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step8000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step8250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step8500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/best.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/last.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step1000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step10000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step10250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step1250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step1500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step1750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step2000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step2250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step2500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step2750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step3000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step3250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step3500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step3750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step4000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step4250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step4500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step4750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step5000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step5250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step5500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step5750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step6000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step6250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step6500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step6750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step7000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step7250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step7500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step7750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step8000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step8250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step8500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step8750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step9000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step9250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step9500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step9750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/best.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/last.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step1000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step1250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step1500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step1750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step2000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step2250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step2500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step2750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step3000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step3250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step3750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step4000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step4500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step4750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step5000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step5250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step5500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step5750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step6000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step6250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step6500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step6750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step7000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step7250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/best.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/last.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step1000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step10250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step1250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step1500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step1750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step2000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step2250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step2500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step2750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step3000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step3250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step3500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step3750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step4000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step4250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step4500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step4750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step5000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step5250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step5500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step5750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step6000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step6250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step6500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step6750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step7000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step7250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step7500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step7750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step8000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step8250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step8500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step8750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step9000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step9250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step9500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step9750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/best.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/last.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step1000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step10250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step10500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step10750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step11000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step11250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step11750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step1250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step1500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step1750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step2000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step2250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step2500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step2750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step3000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step3250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step3500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step3750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step4000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step4250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step4500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step4750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step5000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step5250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step5500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step5750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step6000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step6250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step6500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step6750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step7000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step7250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step7500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step7750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step8000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step8250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step8500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step8750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step9000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step9250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step9500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step9750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "fm_cifar10_map_branch_quick_v1/checkpoints/last.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "fm_cifar10_map_branch_timewarp_probe_tw001/checkpoints/last.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "fm_cifar10_map_branch_timewarp_smoke_tws02/checkpoints/last.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "fm_cifar10_map_branch_timewarp_smoke_tws03/checkpoints/last.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "fm_cifar10_map_branch_v1/checkpoints/last.pt",
+      "bytes": 0,
+      "gib": 0.0
+    }
+  ],
+  "temp_critical_runs_delete": [
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/best.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/last.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step1000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step1250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step1500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step1750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step2000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step2250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step2500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step2750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step3000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step3250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step3500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step3750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step4000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step4250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step4500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step4750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step5000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step5250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step5500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step5750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step6000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step6250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step6500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step7000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step7250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step7500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step7750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step8000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step8250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step8500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/best.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/last.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step1000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step10000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step10250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step1250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step1500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step1750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step2000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step2250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step2500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step2750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step3000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step3250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step3500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step3750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step4000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step4250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step4500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step4750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step5000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step5250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step5500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step5750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step6000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step6250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step6500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step6750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step7000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step7250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step7500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step7750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step8000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step8250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step8500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step8750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step9000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step9250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step9500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step9750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/best.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/last.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step1000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step1250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step1500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step1750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step2000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step2250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step2500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step2750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step3000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step3250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step3750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step4000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step4500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step4750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step5000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step5250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step5500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step5750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step6000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step6250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step6500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step6750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step7000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step7250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/best.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/last.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step1000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step10250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step1250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step1500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step1750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step2000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step2250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step2500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step2750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step3000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step3250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step3500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step3750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step4000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step4250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step4500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step4750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step5000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step5250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step5500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step5750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step6000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step6250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step6500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step6750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step7000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step7250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step7500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step7750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step8000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step8250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step8500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step8750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step9000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step9250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step9500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step9750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/best.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/last.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step10250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step10500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step10750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step11000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step11250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step11750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step9250.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step9500.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step9750.pt",
+      "bytes": 0,
+      "gib": 0.0
+    }
+  ],
+  "temp_critical_ckpt_delete": [
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16/ema_0.999_001000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16/ema_0.999_002000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16/model001000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16/model002000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16/opt001000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16/opt002000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16/target_model001000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16/target_model002000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/ema_0.999_003000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/ema_0.999_004000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/ema_0.999_005000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/ema_0.999_006000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/ema_0.999_007000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/ema_0.999_008000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/model003000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/model004000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/model005000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/model006000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/model007000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/model008000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/opt003000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/opt004000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/opt005000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/opt006000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/opt007000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/opt008000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/target_model003000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/target_model004000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/target_model005000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/target_model006000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/target_model007000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from2000/target_model008000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/ema_0.999_008000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/ema_0.999_009000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/ema_0.999_009999.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/model008000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/model009000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/model010000.pt",
+      "bytes": 0,
+      "gib": 0.0
+    }
+  ]
+}

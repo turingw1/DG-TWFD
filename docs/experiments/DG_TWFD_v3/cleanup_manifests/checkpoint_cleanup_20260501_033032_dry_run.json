@@ -1,0 +1,133 @@
+{
+  "timestamp": "2026-05-01T03:30:32",
+  "mode": "dry-run",
+  "key_nodes": [
+    {
+      "path": "edm_first_cifar10_warp_e501a/checkpoints/best.pt",
+      "reason": "e501a first EDM-map learned-warp viability checkpoint"
+    },
+    {
+      "path": "edm_first_cifar10_warp_e502a/checkpoints/last.pt",
+      "reason": "e502a stopped continuation checkpoint used for early EDM-map diagnosis"
+    },
+    {
+      "path": "edm_first_cifar10_onestep_prior_e503c/checkpoints/step2000.pt",
+      "reason": "e503c prior one-step endpoint reference"
+    },
+    {
+      "path": "edm_first_cifar10_onestep_msdefect_e504a/checkpoints/step250.pt",
+      "reason": "e504a diagnostic threshold reference"
+    },
+    {
+      "path": "edm_first_cifar10_onestep_msdefect_e504a/checkpoints/step1250.pt",
+      "reason": "e504a restored endpoint checkpoint before resume"
+    },
+    {
+      "path": "edm_first_cifar10_onestep_msdefect_e504a_resume_from1250/checkpoints/step1750.pt",
+      "reason": "handoff checkpoint from endpoint-only training to full-stack v11a"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step6750.pt",
+      "reason": "v11a best composition checkpoint and v12a branch point"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v11a_from_step1750/checkpoints/step8750.pt",
+      "reason": "v11a endpoint-specialized final evaluated checkpoint"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750/checkpoints/step10500.pt",
+      "reason": "v12a best endpoint and budget-policy checkpoint; v13 branch point"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step3500.pt",
+      "reason": "v13 first all-budget-improving diagnostic checkpoint"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step4250.pt",
+      "reason": "v13 first strong all-budget-improving checkpoint"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step7500.pt",
+      "reason": "v13 best isolated FID@4 checkpoint"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step7750.pt",
+      "reason": "v13 best all-around checkpoint and v14 branch point"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step10000.pt",
+      "reason": "v14 best FID@1/FID@2 checkpoint"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step10500.pt",
+      "reason": "v14 best FID@4 checkpoint"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step10750.pt",
+      "reason": "v14 best overall multi-step checkpoint and v15 branch point"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step10801.pt",
+      "reason": "v14 final-checkpoint guard artifact"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step10000.pt",
+      "reason": "v15 positive signal checkpoint"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step11500.pt",
+      "reason": "v15 best balanced checkpoint"
+    },
+    {
+      "path": "edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step11855.pt",
+      "reason": "v15 best high-budget and final evaluated checkpoint"
+    },
+    {
+      "path": "fm_cifar10_map_branch_v1/checkpoints/best.pt",
+      "reason": "early FM map branch best checkpoint"
+    },
+    {
+      "path": "fm_cifar10_map_branch_timewarp_smoke_tws02/checkpoints/best.pt",
+      "reason": "timewarp smoke checkpoint"
+    },
+    {
+      "path": "fm_cifar10_map_branch_timewarp_smoke_tws03/checkpoints/best.pt",
+      "reason": "timewarp smoke checkpoint"
+    },
+    {
+      "path": "fm_cifar10_map_branch_timewarp_probe_tw001/checkpoints/best.pt",
+      "reason": "timewarp probe checkpoint"
+    },
+    {
+      "path": "fm_cifar10_map_branch_quick_v1/checkpoints/best.pt",
+      "reason": "quick branch best checkpoint"
+    },
+    {
+      "path": "ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/ema_0.999_010000.pt",
+      "reason": "evaluated CTM no-GAN diagnostic EMA checkpoint"
+    }
+  ],
+  "key_nodes_to_copy": [],
+  "missing_key_nodes": [],
+  "delete_summary": {
+    "runtime_runs": {
+      "count": 0,
+      "gib": 0.0
+    },
+    "temp_critical_runs": {
+      "count": 0,
+      "gib": 0.0
+    },
+    "temp_critical_ckpt": {
+      "count": 0,
+      "gib": 0.0
+    },
+    "total": {
+      "count": 0,
+      "gib": 0.0
+    }
+  },
+  "runtime_delete": [],
+  "temp_critical_runs_delete": [],
+  "temp_critical_ckpt_delete": []
+}
