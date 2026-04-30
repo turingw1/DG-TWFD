@@ -11,11 +11,12 @@ from .sample_dgtd import build_mode_a_time_grid, export_dp_schedule_stub, rollou
 from .sigma import SigmaSchedule, build_sigma_schedule
 from .teacher import TeacherAdapter, build_teacher_adapter
 from .train_dgtd import DGTDTrainer
-from .warp import MonotoneDensityWarp
+from .warp import MonotoneDensityWarp, MonotoneRationalQuadraticSplineWarp
 
 __all__ = [
     "DGTDTrainer",
     "MonotoneDensityWarp",
+    "MonotoneRationalQuadraticSplineWarp",
     "TrajectoryCacheDataset",
     "TeacherAdapter",
     "build_cache_dataloaders",

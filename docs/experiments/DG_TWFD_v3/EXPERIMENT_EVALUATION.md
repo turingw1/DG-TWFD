@@ -15,18 +15,51 @@ changes the next full-stack direction. It is not a step-by-step run ledger.
 ## Current Active Track
 
 - Track: EDM-first CIFAR-10 full-stack prior map with learned timewarp.
-- Run tag: `edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750`.
+- Run tag: `edm_first_cifar10_prior_fullstack_timewarp_v16_rqs_from_step11855`.
 - Config:
-  `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_v15_multimid.yaml`.
+  `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_v16_rqs.yaml`.
 - Initialization checkpoint:
-  `runs/edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step10750.pt`.
-- Important detail: v15 branches from v14's best overall budget-policy
-  checkpoint. It adds preservation at `u=0.25/0.5/0.75` to target the remaining
-  low/mid-budget composition gap while reducing LR.
+  `runs/edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step11855.pt`.
+- Important detail: v16 branches from the v15 high-budget endpoint. It keeps
+  the full-stack and multi-midpoint preservation objective, but replaces the
+  old 32-bin piecewise-linear CDF warp with a 96-bin monotone
+  rational-quadratic spline warp. The student weights resume, while the warp
+  is freshly initialized so the new parameterization can learn from v16 defect
+  statistics rather than inheriting the old 32-bin state.
 - Live backup:
-  `/temp/Zhengwei/projects/DG-TWFD/critical/runs/edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750`.
+  `/temp/Zhengwei/projects/DG-TWFD/critical/runs/edm_first_cifar10_prior_fullstack_timewarp_v16_rqs_from_step11855`.
 - Milestone backups:
-  `/temp/Zhengwei/projects/DG-TWFD/critical/eval/edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750_step*`.
+  `/temp/Zhengwei/projects/DG-TWFD/critical/eval/edm_first_cifar10_prior_fullstack_timewarp_v16_rqs_from_step11855_step*`.
+
+## v16 RQS Timewarp Rationale
+
+The v15 bottleneck is no longer basic full-stack stability. Its endpoint and
+high-budget quality are strong, but learned timewarp remains close to identity
+and its auto-vs-identity gains are inconsistent across budgets. The likely
+algorithmic limitation is that the current warp only learns bin masses in a
+piecewise-linear inverse CDF. Increasing bin count helps resolution, but still
+leaves no within-bin curvature and gives weak gradients for continuous EDM time
+regions.
+
+v16 implements `MonotoneRationalQuadraticSplineWarp` in `src/dgtd/warp.py`.
+This is motivated by monotone rational-quadratic splines from Neural Spline
+Flows, which preserve invertibility while adding smooth local shape control, and
+by recent diffusion-sampling work that frames schedule quality as continuous
+time reparameterization. The implementation keeps a positive interval mass for
+compatibility with the existing defect-density target, then adds positive knot
+derivatives so the density can bend inside intervals. The warp loss now matches
+both bin mass and center-point continuous density, with a small log-derivative
+smoothness penalty.
+
+Decision test for v16:
+
+- First gate: train must remain stable from the v15 step11855 student without
+  loading old warp state.
+- Second gate: by early evaluations, auto warp should not regress the
+  high-budget `4/8/16` mean versus identity, and should show larger
+  `timewarp_delta` than the v15 near-identity warp.
+- Third gate: if FID@2 worsens while FID@4/8/16 improves, keep the run alive but
+  evaluate a budget-aware variant that constrains the 2-step schedule separately.
 
 ## Latest Decision Metrics
 

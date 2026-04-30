@@ -10,6 +10,7 @@ from dgfm.evaluators.common import load_timewarp_from_checkpoint, objective_mode
 from dgfm.trainers import build_trainer
 from dgtd import (
     MonotoneDensityWarp,
+    MonotoneRationalQuadraticSplineWarp,
     TrajectoryCacheDataset,
     build_mode_a_time_grid,
     build_sigma_schedule,
@@ -154,6 +155,24 @@ def test_dgtd_warp_roundtrip_and_triplets() -> None:
     r_t, r_s, r_u = warp.sample_triplets(batch_size=128, device=torch.device("cpu"))
     assert torch.all(r_t < r_s)
     assert torch.all(r_s < r_u)
+
+
+def test_dgtd_rqs_warp_roundtrip_and_gradients() -> None:
+    warp = MonotoneRationalQuadraticSplineWarp(num_bins=16, init="uniform")
+    t = torch.linspace(0.0, 1.0, steps=65)
+    r = warp.t_to_r(t)
+    restored = warp.r_to_t(r)
+    assert torch.all(r[1:] >= r[:-1])
+    assert torch.allclose(restored, t, atol=1e-4)
+    assert torch.all(warp.density_at(t) > 0.0)
+
+    q_target = torch.linspace(1.0, 2.0, steps=warp.num_bins)
+    loss = warp.kl_to_target_density(q_target)
+    loss.backward()
+    assert warp.height_raw.grad is not None
+    assert warp.derivative_raw.grad is not None
+    assert torch.isfinite(warp.height_raw.grad).all()
+    assert torch.isfinite(warp.derivative_raw.grad).all()
 
 
 def test_dgtd_timewarp_checkpoint_restore(tmp_path: Path) -> None:

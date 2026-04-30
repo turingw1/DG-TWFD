@@ -30,7 +30,7 @@ def prepare_imports() -> None:
 prepare_imports()
 
 from dgtd.defect import build_target_density, smooth_density, update_ema_bins  # noqa: E402
-from dgtd.warp import MonotoneDensityWarp  # noqa: E402
+from dgtd.warp import MonotoneDensityWarp, MonotoneRationalQuadraticSplineWarp  # noqa: E402
 
 
 _ENV_DEFAULT_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*):-([^}]*)\}")
@@ -119,7 +119,7 @@ def sigma_from_u(u: torch.Tensor, *, sigma_min: float, sigma_max: float, rho: fl
 def build_sigma_grid(
     *,
     step_count: int,
-    warp: MonotoneDensityWarp | None,
+    warp: torch.nn.Module | None,
     device: torch.device,
     sigma_min: float,
     sigma_max: float,
@@ -270,20 +270,34 @@ def build_cifar10_loader(cfg: dict):
     )
 
 
-def init_warp(cfg: dict, *, device: torch.device) -> tuple[MonotoneDensityWarp | None, torch.Tensor | None, torch.Tensor | None]:
+def init_warp(cfg: dict, *, device: torch.device) -> tuple[torch.nn.Module | None, torch.Tensor | None, torch.Tensor | None]:
     warp_cfg = cfg.get("timewarp", {})
     if not bool(warp_cfg.get("enabled", True)):
         return None, None, None
-    warp = MonotoneDensityWarp(
-        num_bins=int(warp_cfg.get("num_bins", 32)),
-        init=str(warp_cfg.get("init", "logit_normal")),
-    ).to(device=device)
+    warp_type = str(warp_cfg.get("type", "density")).lower()
+    if warp_type in {"density", "piecewise_linear", "linear_cdf"}:
+        warp = MonotoneDensityWarp(
+            num_bins=int(warp_cfg.get("num_bins", 32)),
+            init=str(warp_cfg.get("init", "logit_normal")),
+        ).to(device=device)
+    elif warp_type in {"rqs", "rational_quadratic", "rational_quadratic_spline"}:
+        warp = MonotoneRationalQuadraticSplineWarp(
+            num_bins=int(warp_cfg.get("num_bins", 96)),
+            init=str(warp_cfg.get("init", "uniform")),
+            min_bin_mass=float(warp_cfg.get("min_bin_mass", 1.0e-4)),
+            min_derivative=float(warp_cfg.get("min_derivative", 1.0e-3)),
+            inverse_iters=int(warp_cfg.get("inverse_iters", 36)),
+            center_kl_weight=float(warp_cfg.get("center_kl_weight", 0.25)),
+            derivative_smoothness_weight=float(warp_cfg.get("derivative_smoothness_weight", 0.0)),
+        ).to(device=device)
+    else:
+        raise ValueError(f"Unsupported timewarp.type: {warp_type}")
     q_base = warp.density().detach().clone()
     q_target = q_base.clone()
     return warp, q_base, q_target
 
 
-def sample_triplet_u(warp: MonotoneDensityWarp | None, batch_size: int, *, device: torch.device):
+def sample_triplet_u(warp: torch.nn.Module | None, batch_size: int, *, device: torch.device):
     if warp is None:
         r_t, r_s, r_u = MonotoneDensityWarp(num_bins=32).sample_triplets(batch_size, device)
         return r_t, r_s, r_u
@@ -297,7 +311,7 @@ def bin_ids_from_u(u: torch.Tensor, *, num_bins: int) -> torch.Tensor:
 
 def update_warp_from_defect(
     *,
-    warp: MonotoneDensityWarp,
+    warp: torch.nn.Module,
     warp_optimizer: torch.optim.Optimizer,
     q_base: torch.Tensor,
     q_target: torch.Tensor,
@@ -347,7 +361,7 @@ def to_unit(images: torch.Tensor) -> torch.Tensor:
 def sample_with_student(
     *,
     student: torch.nn.Module,
-    warp: MonotoneDensityWarp | None,
+    warp: torch.nn.Module | None,
     cfg: dict,
     step_count: int,
     batch_size: int,

@@ -155,17 +155,36 @@ def main() -> None:
         student.load_state_dict(ckpt["student"])
         resume_optimizer = bool(train_cfg.get("resume_optimizer", True))
         resume_step = bool(train_cfg.get("resume_step", resume_optimizer))
+        resume_warp = bool(train_cfg.get("resume_warp", True))
+        ignore_incompatible_warp = bool(train_cfg.get("ignore_incompatible_warp_resume", False))
         if resume_optimizer:
             optimizer.load_state_dict(ckpt["optimizer"])
-        if warp is not None and ckpt.get("warp") is not None:
-            warp.load_state_dict(ckpt["warp"])
-        if resume_optimizer and warp_optimizer is not None and ckpt.get("warp_optimizer") is not None:
-            warp_optimizer.load_state_dict(ckpt["warp_optimizer"])
-        if q_target is not None and ckpt.get("q_target") is not None:
-            q_target.copy_(ckpt["q_target"].to(device))
-        if warp_stats is not None and ckpt.get("warp_stats") is not None:
+        if resume_warp and warp is not None and ckpt.get("warp") is not None:
+            try:
+                warp.load_state_dict(ckpt["warp"])
+            except RuntimeError:
+                if not ignore_incompatible_warp:
+                    raise
+                print("Skipping incompatible warp checkpoint state; using freshly initialized warp.", flush=True)
+        if resume_warp and resume_optimizer and warp_optimizer is not None and ckpt.get("warp_optimizer") is not None:
+            try:
+                warp_optimizer.load_state_dict(ckpt["warp_optimizer"])
+            except ValueError:
+                if not ignore_incompatible_warp:
+                    raise
+                print("Skipping incompatible warp optimizer state; using freshly initialized optimizer.", flush=True)
+        if resume_warp and q_target is not None and ckpt.get("q_target") is not None:
+            loaded_q_target = ckpt["q_target"].to(device)
+            if loaded_q_target.shape == q_target.shape:
+                q_target.copy_(loaded_q_target)
+            elif not ignore_incompatible_warp:
+                raise RuntimeError(f"q_target shape mismatch: expected {tuple(q_target.shape)}, got {tuple(loaded_q_target.shape)}")
+        if resume_warp and warp_stats is not None and ckpt.get("warp_stats") is not None:
             for key, value in ckpt["warp_stats"].items():
-                warp_stats[key].copy_(value.to(device))
+                if key in warp_stats and value.shape == warp_stats[key].shape:
+                    warp_stats[key].copy_(value.to(device))
+                elif not ignore_incompatible_warp:
+                    raise RuntimeError(f"warp_stats[{key}] shape mismatch")
         if resume_step:
             start_step = int(ckpt.get("step", 0))
             best_loss = float(ckpt.get("best_loss", best_loss))
