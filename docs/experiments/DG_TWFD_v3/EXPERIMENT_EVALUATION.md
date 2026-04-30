@@ -81,6 +81,23 @@ statistics update. v17 also uses a stronger but still bounded warp update:
 to make qphi actually track the already-visible defect target before judging
 whether RQS improves the schedule.
 
+The v17 step250 gate passed the important part of that test. The warp is no
+longer near identity (`qmax` reached `1.053` by step250), and auto warp now
+beats identity at the high-budget checkpoints:
+
+| checkpoint | auto FID@2 | identity FID@2 | auto FID@4 | identity FID@4 | auto FID@8 | identity FID@8 | auto FID@16 | identity FID@16 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| v17 step250 | 28.897 | 28.683 | 22.708 | 22.796 | 20.348 | 20.379 | 20.017 | 20.031 |
+| v17 step500 | 29.134 | 28.607 | 22.571 | 22.731 | 20.300 | 20.367 | 19.962 | 20.003 |
+
+The 2-step budget still prefers identity, so the active policy remains budget
+clocking: identity for `1/2`, learned RQS warp for `4/8/16`. This gives the
+first concrete evidence that a more expressive continuous monotone warp is
+useful. By step500, the learned warp advantage grows to about `0.159 / 0.067 /
+0.040` FID at `4/8/16`, while the 2-step auto warp becomes worse. The next
+bottleneck is therefore budget-specific: the same warp bend that helps
+`4/8/16` currently over-corrects the midpoint used by `2` steps.
+
 ## Latest Decision Metrics
 
 FID uses 2048 generated samples for the active watcher.
