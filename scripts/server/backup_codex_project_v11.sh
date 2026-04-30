@@ -12,6 +12,7 @@ version_path="${out_dir}/codex_${timestamp}_$$.tar.gz"
 tmp_path="$version_path"
 list_file="${TMPDIR:-/tmp}/${project_name}_codex_backup_files.$$"
 backup_complete=0
+keep_versions="${DG_TWFD_CODEX_BACKUP_KEEP_VERSIONS:-12}"
 
 cleanup() {
   if [[ "$backup_complete" != "1" ]]; then
@@ -20,6 +21,18 @@ cleanup() {
   rm -f "$list_file"
 }
 trap cleanup EXIT
+
+prune_versioned_archives() {
+  [[ "$keep_versions" =~ ^[0-9]+$ ]] || return 0
+  (( keep_versions > 0 )) || return 0
+
+  find "$out_dir" -maxdepth 1 -type f -name 'codex_*.tar.gz' -printf '%T@ %p\n' 2>/dev/null \
+    | sort -nr \
+    | awk -v keep="$keep_versions" 'NR>keep {print $2}' \
+    | while IFS= read -r old_archive; do
+        rm -f -- "$old_archive"
+      done
+}
 
 mkdir -p "$out_dir"
 : > "$list_file"
@@ -58,4 +71,5 @@ tar -tzf "$tmp_path" >/dev/null
 cp -pf "$tmp_path" "$out_path"
 tar -tzf "$out_path" >/dev/null
 backup_complete=1
+prune_versioned_archives
 printf '[%s] codex 会话已备份\n' "$project_name"
