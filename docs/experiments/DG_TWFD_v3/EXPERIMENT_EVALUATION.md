@@ -644,3 +644,41 @@ lowers LR, and uses multi-midpoint preservation at `u=0.25/0.5/0.75`, aligning
 training pressure with the 4-step identity grid and the learned 4+ step warp
 grid. The acceptance criterion is to beat v14 step10750's `4/8/16` mean while
 not regressing FID@2 beyond the small-sample noise band.
+
+## 2026-04-30 Documentation Audit And V15 Supervision Repair
+
+The core documentation now covers every decision-relevant stage of the main
+experiment:
+
+1. e504a / resume-from1250 established the endpoint target and showed that a
+   pure one-step objective was insufficient for robust multi-step inference.
+2. v11 full-stack timewarp introduced the first combined endpoint, defect,
+   match, bridge, and timewarp training path.
+3. v12a added budget-aware inference selection and clarified that learned
+   timewarp is beneficial at 4+ steps while identity time remains safer at
+   2-step.
+4. v13 added midpoint preservation and turned the previous fragile curve into
+   a stable but lower-slope continuation.
+5. v14 guarded continuation confirmed that the method was still learning:
+   best budget FID-2048 reached `52.424 / 31.240 / 24.159 / 20.665 / 21.678`
+   at `1/2/4/8/16` from step10750.
+6. v15 branches from v14 step10750 and tests whether multi-midpoint
+   preservation at `u=0.25/0.5/0.75` better matches the low/mid-budget
+   composition bottleneck.
+
+Baseline status remains isolated in `BASELINE_STATUS.md` and
+`BASELINE_REPORT_CN.md`; it is not part of the main training process and should
+not be killed during DG-TWFD supervision.
+
+Operational correction: v15 training continued healthily, but the first
+eval/backup/2h watcher stack exited after the step750 budget evaluation. This
+was corrected by rerunning the v15 launcher, which reused the live training
+session and restarted `v15_fullstack_tw_eval_watch`, `v15_fullstack_tw_backup`,
+and `v15_fullstack_tw_2h`.
+
+Early v15 signal is positive enough to continue. At step750, budget FID-2048 is
+`51.139 / 30.423 / 22.619 / 20.851 / 21.306` at `1/2/4/8/16`, already beating
+the v14 step10750 handoff at `1/2/4/16` and nearly tying 8-step. The learned
+warp remains beneficial at 4+ steps, while budget policy keeps 2-step on the
+identity clock. The current risk is not wasted training compute; it is making
+sure the restarted eval watcher catches up from the live checkpoint stream.
