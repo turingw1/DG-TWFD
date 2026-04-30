@@ -15,21 +15,21 @@ changes the next full-stack direction. It is not a step-by-step run ledger.
 ## Current Active Track
 
 - Track: EDM-first CIFAR-10 full-stack prior map with learned timewarp.
-- Run tag: `edm_first_cifar10_prior_fullstack_timewarp_v16_rqs_from_step11855`.
+- Run tag: `edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855`.
 - Config:
-  `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_v16_rqs.yaml`.
+  `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_v17_rqs_fastwarp.yaml`.
 - Initialization checkpoint:
   `runs/edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step11855.pt`.
-- Important detail: v16 branches from the v15 high-budget endpoint. It keeps
+- Important detail: v17 branches from the v15 high-budget endpoint. It keeps
   the full-stack and multi-midpoint preservation objective, but replaces the
   old 32-bin piecewise-linear CDF warp with a 96-bin monotone
   rational-quadratic spline warp. The student weights resume, while the warp
-  is freshly initialized so the new parameterization can learn from v16 defect
-  statistics rather than inheriting the old 32-bin state.
+  is freshly initialized so the new parameterization can learn from fresh
+  defect statistics rather than inheriting the old 32-bin state.
 - Live backup:
-  `/temp/Zhengwei/projects/DG-TWFD/critical/runs/edm_first_cifar10_prior_fullstack_timewarp_v16_rqs_from_step11855`.
+  `/temp/Zhengwei/projects/DG-TWFD/critical/runs/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855`.
 - Milestone backups:
-  `/temp/Zhengwei/projects/DG-TWFD/critical/eval/edm_first_cifar10_prior_fullstack_timewarp_v16_rqs_from_step11855_step*`.
+  `/temp/Zhengwei/projects/DG-TWFD/critical/eval/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855_step*`.
 
 ## v16 RQS Timewarp Rationale
 
@@ -51,7 +51,7 @@ derivatives so the density can bend inside intervals. The warp loss now matches
 both bin mass and center-point continuous density, with a small log-derivative
 smoothness penalty.
 
-Decision test for v16:
+Decision test for the RQS track:
 
 - First gate: train must remain stable from the v15 step11855 student without
   loading old warp state.
@@ -60,6 +60,26 @@ Decision test for v16:
   `timewarp_delta` than the v15 near-identity warp.
 - Third gate: if FID@2 worsens while FID@4/8/16 improves, keep the run alive but
   evaluate a budget-aware variant that constrains the 2-step schedule separately.
+
+The v16 probe validated the implementation but exposed an optimization lag. At
+step750, the learned target density had a meaningful defect signal
+(`q_target` peak about `1.36x` uniform), but the actual warp density was still
+only about `1.012x` uniform. Auto-vs-identity FID therefore stayed near
+identity and was worse at 2/4 steps:
+
+| checkpoint | auto FID@2 | identity FID@2 | auto FID@4 | identity FID@4 | auto FID@8 | identity FID@8 | auto FID@16 | identity FID@16 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| v16 step250 | 29.670 | 29.645 | 22.761 | 22.765 | 20.208 | 20.208 | 20.273 | 20.275 |
+| v16 step500 | 29.716 | 29.652 | 22.766 | 22.758 | 20.207 | 20.205 | 20.279 | 20.279 |
+| v16 step750 | 29.724 | 29.620 | 22.745 | 22.741 | 20.199 | 20.199 | 20.265 | 20.269 |
+
+The corrective v17 change is not a new student objective. It adds
+`timewarp.inner_steps`, allowing several warp-only optimizer steps per defect
+statistics update. v17 also uses a stronger but still bounded warp update:
+`lr=4e-4`, `inner_steps=6`, `beta=0.70`, `ratio_cap=4.0`,
+`flatten_mix=0.10`, and a small log-derivative smoothness penalty. The goal is
+to make qphi actually track the already-visible defect target before judging
+whether RQS improves the schedule.
 
 ## Latest Decision Metrics
 
