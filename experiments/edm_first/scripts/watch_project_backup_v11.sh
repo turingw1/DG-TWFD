@@ -53,6 +53,7 @@ sync_eval_dir() {
   local eval_name
   eval_name="$(basename "$eval_dir")"
   mkdir -p "${backup_eval_root}/${eval_name}"
+  rm -rf "${backup_eval_root:?}/${eval_name}/runs"
 
   for file in config.yaml eval.stdout_stderr.txt; do
     [[ -f "${eval_dir}/${file}" ]] && cp -af "${eval_dir}/${file}" "${backup_eval_root}/${eval_name}/${file}"
