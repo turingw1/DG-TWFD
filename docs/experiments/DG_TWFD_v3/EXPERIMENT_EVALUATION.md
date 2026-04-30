@@ -15,19 +15,18 @@ changes the next full-stack direction. It is not a step-by-step run ledger.
 ## Current Active Track
 
 - Track: EDM-first CIFAR-10 full-stack prior map with learned timewarp.
-- Run tag: `edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750`.
+- Run tag: `edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750`.
 - Config:
-  `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_v14_guarded_continue.yaml`.
+  `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_v15_multimid.yaml`.
 - Initialization checkpoint:
-  `runs/edm_first_cifar10_prior_fullstack_timewarp_v13_preserve2_from_step10500/checkpoints/step7750.pt`.
-- Important detail: v14 is a guarded continuation from the best fully
-  evaluated v13 checkpoint. It keeps the inference policy fixed, lowers LR, and
-  slightly strengthens bridge/preserve pressure because v13 was still improving
-  but had entered a lower-slope regime.
+  `runs/edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750/checkpoints/step10750.pt`.
+- Important detail: v15 branches from v14's best overall budget-policy
+  checkpoint. It adds preservation at `u=0.25/0.5/0.75` to target the remaining
+  low/mid-budget composition gap while reducing LR.
 - Live backup:
-  `/temp/Zhengwei/projects/DG-TWFD/critical/runs/edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750`.
+  `/temp/Zhengwei/projects/DG-TWFD/critical/runs/edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750`.
 - Milestone backups:
-  `/temp/Zhengwei/projects/DG-TWFD/critical/eval/edm_first_cifar10_prior_fullstack_timewarp_v14_guarded_from_step7750_step*`.
+  `/temp/Zhengwei/projects/DG-TWFD/critical/eval/edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750_step*`.
 
 ## Latest Decision Metrics
 
@@ -610,3 +609,38 @@ FID@4 by `0.56`, FID@8 by `1.57`, and FID@16 by `0.95`. The 2-step budget
 metric is now only about `0.065` worse than v13, so the early low-step
 regression is mostly recovering. The current action remains continue; do not
 change the objective mid-run while the curve is still descending.
+
+## 2026-04-30 V14 Final Readout And V15 Plan
+
+The v14 guarded continuation completed normally at the 12-hour wall-clock
+limit. The final-checkpoint guard worked: training stopped after step10801,
+that non-interval checkpoint was saved, and the eval watcher evaluated it
+before exiting. GPU was idle after completion.
+
+Best v14 budget-policy FID-2048:
+
+| metric | best checkpoint | value |
+|---|---:|---:|
+| FID@1 | step10000 | 52.296 |
+| FID@2 | step10000 | 31.179 |
+| FID@4 | step10500 | 24.158 |
+| FID@8 | step10750 | 20.665 |
+| FID@16 | step10750 | 21.678 |
+| mean FID@4/8/16 | step10750 | 22.167 |
+| mean FID@2/4/8/16 | step10750 | 24.436 |
+
+The selected handoff checkpoint is v14 step10750, because it is the best
+overall multi-step checkpoint and nearly ties the final checkpoint. Compared
+with v13 step7750, it improves budget FID by about `4.14 / 0.81 / 1.85 /
+2.56 / 2.24` at `1/2/4/8/16`. Learned timewarp remains useful at 4+ steps:
+at step10750 it improves identity by about `0.98 / 0.27 / 0.25` FID at
+`4/8/16`, while budget policy correctly keeps identity for 2-step.
+
+The remaining bottleneck is no longer a collapse or dead zone. It is a slower
+low/mid-budget composition limit: late v14 still improves, but the final
+four-eval mean drop is below the plateau guard threshold. The next run should
+not simply continue the same scalar recipe. V15 branches from v14 step10750,
+lowers LR, and uses multi-midpoint preservation at `u=0.25/0.5/0.75`, aligning
+training pressure with the 4-step identity grid and the learned 4+ step warp
+grid. The acceptance criterion is to beat v14 step10750's `4/8/16` mean while
+not regressing FID@2 beyond the small-sample noise band.
