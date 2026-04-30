@@ -707,3 +707,38 @@ The timewarp-specific readout still supports the budget policy: learned warp
 improves identity by about `0.83 / 0.17 / 0.12` at `4/8/16`, while auto warp
 is still worse than identity at 2-step by about `1.56`. The correct inference
 path remains identity for 1/2-step and learned timewarp for 4+ steps.
+
+## 2026-05-01 V15 Final Readout
+
+V15 completed normally at the wall-clock limit. The final checkpoint guard
+saved and evaluated step11855, and the eval watcher completed auto, identity,
+and budget comparisons before exiting.
+
+Budget-policy FID-2048:
+
+| checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 | mean FID@4/8/16 | mean FID@2/4/8/16 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| v14 step10750 | 52.424 | 31.240 | 24.159 | 20.665 | 21.678 | 22.167 | 24.436 |
+| v15 step10000 | 49.361 | 29.519 | 21.479 | 20.008 | 20.355 | 20.614 | 22.840 |
+| v15 step11500 | 49.226 | 29.474 | 21.394 | 19.924 | 20.288 | 20.535 | 22.770 |
+| v15 step11855 | 49.281 | 29.528 | 21.398 | 19.902 | 20.279 | 20.526 | 22.777 |
+
+Best selections:
+
+1. Use step11855 as the best high-budget checkpoint, because it has the best
+   `4/8/16` mean and best FID@8/FID@16.
+2. Keep step11500 as the best balanced checkpoint, because it has the best
+   `2/4/8/16` mean and the best FID@1/FID@2/FID@4.
+
+Interpretation: v15 is a real algorithmic improvement, not just a longer v14
+continuation. Relative to v14 step10750, the final high-budget checkpoint
+improves the `4/8/16` mean by about `1.64` FID and the balanced mean by about
+`1.66`. The late curve is now near a plateau: from step11500 to step11855,
+FID@8 and FID@16 still improve, but FID@1/FID@2/FID@4 regress slightly. The
+next compute should therefore not be another plain lower-LR continuation.
+
+The next reliable step is a stronger validation pass on the two preserved
+checkpoints, followed by a v16 design that explicitly addresses the remaining
+budget split: identity remains best for 2-step, learned timewarp remains best
+for 4+ steps, and the objective should learn this budget dependence rather than
+expecting a single scalar continuation to improve all budgets simultaneously.
