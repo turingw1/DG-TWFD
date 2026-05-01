@@ -189,6 +189,10 @@ step1250 gives:
 | v18 step750 EMA | 48.314 | 28.236 | 22.288 | 19.967 | 20.349 |
 | v18 step1000 EMA | 48.061 | 28.032 | 22.205 | 19.976 | 20.371 |
 | v18 step1250 EMA | 47.752 | 27.801 | 22.101 | 19.967 | 20.400 |
+| v18 step1500 EMA | 47.489 | 27.580 | 21.994 | 19.959 | 20.424 |
+| v18 step1750 EMA | 47.218 | 27.358 | 21.912 | 19.955 | 20.473 |
+| v18 step2000 EMA | 46.928 | 27.120 | 21.821 | 19.965 | 20.531 |
+| v18 step2250 EMA | 46.647 | 26.947 | 21.720 | 19.984 | 20.580 |
 
 Interpretation: this branch is doing the job it was designed for. FID@1 and
 FID@2 improve monotonically in the first online evaluations, FID@4 also moves
@@ -197,6 +201,15 @@ learned budget warp or multi-midpoint preservation. This is not yet a final
 DG-TWFD model, but it is not wasted compute: it is the current best path for
 improving the weak endpoint generator before returning to full-stack/timewarp
 training.
+
+The two-hour follow-up strengthens the same conclusion. From step250 to
+step2250, FID@1 improves by about `2.11`, FID@2 by about `1.55`, and FID@4 by
+about `0.70`; FID@8 is effectively flat and FID@16 regresses by about `0.29`.
+The useful training signal is therefore real but directional. Continue v18
+while FID@1/2/4 keep dropping, but do not spend the whole long run on endpoint
+alone if the 8/16-step regression keeps widening; the next decision checkpoint
+should either reintroduce full-stack/timewarp from the improved endpoint or add
+a stronger composition-preservation term.
 
 ## Latest Decision Metrics
 
