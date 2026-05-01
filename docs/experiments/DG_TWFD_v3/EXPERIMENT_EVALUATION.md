@@ -14,22 +14,23 @@ changes the next full-stack direction. It is not a step-by-step run ledger.
 
 ## Current Active Track
 
-- Track: EDM-first CIFAR-10 full-stack prior map with learned timewarp.
-- Run tag: `edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855`.
+- Track: EDM-first CIFAR-10 endpoint-EMA repair branch for stronger one-step
+  generation.
+- Run tag: `edm_first_cifar10_endpoint_ema_v18_from_v17_last`.
 - Config:
-  `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_v17_rqs_fastwarp.yaml`.
+  `experiments/edm_first/configs/cifar10_edm_map_endpoint_ema_v18.yaml`.
 - Initialization checkpoint:
-  `runs/edm_first_cifar10_prior_fullstack_timewarp_v15_multimid_from_step10750/checkpoints/step11855.pt`.
-- Important detail: v17 branches from the v15 high-budget endpoint. It keeps
-  the full-stack and multi-midpoint preservation objective, but replaces the
-  old 32-bin piecewise-linear CDF warp with a 96-bin monotone
-  rational-quadratic spline warp. The student weights resume, while the warp
-  is freshly initialized so the new parameterization can learn from fresh
-  defect statistics rather than inheriting the old 32-bin state.
+  `runs/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855/checkpoints/last.pt`.
+- Important detail: v18 deliberately disables timewarp and full-stack bridge
+  preservation. It tests whether EMA weights plus a small real-data EDM
+  denoise anchor can repair the weak one-step generator. If this branch
+  materially improves FID@1, the resulting checkpoint should be reintroduced to
+  the full-stack/timewarp objective rather than reported as the final
+  all-budget model.
 - Live backup:
-  `/temp/Zhengwei/projects/DG-TWFD/critical/runs/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855`.
+  `/temp/Zhengwei/projects/DG-TWFD/critical/runs/edm_first_cifar10_endpoint_ema_v18_from_v17_last`.
 - Milestone backups:
-  `/temp/Zhengwei/projects/DG-TWFD/critical/eval/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855_step*`.
+  `/temp/Zhengwei/projects/DG-TWFD/critical/eval/edm_first_cifar10_endpoint_ema_v18_from_v17_last_step*`.
 
 ## v16 RQS Timewarp Rationale
 
@@ -176,6 +177,26 @@ forward and pushed A100 80GB memory over the limit before the first checkpoint.
 The run was therefore corrected to `batch_size=192` and restarted under the
 same run tag. This keeps the algorithmic change intact while making the
 experiment executable.
+
+The early v18 signal is useful enough to continue. EMA evaluation through
+step1250 gives:
+
+| checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 |
+|---|---:|---:|---:|---:|---:|
+| v17 step10000 budget | 48.893 | 24.324 | 21.131 | 19.885 | 19.651 |
+| v18 step250 EMA | 48.759 | 28.496 | 22.417 | 19.952 | 20.288 |
+| v18 step500 EMA | 48.506 | 28.390 | 22.357 | 19.958 | 20.322 |
+| v18 step750 EMA | 48.314 | 28.236 | 22.288 | 19.967 | 20.349 |
+| v18 step1000 EMA | 48.061 | 28.032 | 22.205 | 19.976 | 20.371 |
+| v18 step1250 EMA | 47.752 | 27.801 | 22.101 | 19.967 | 20.400 |
+
+Interpretation: this branch is doing the job it was designed for. FID@1 and
+FID@2 improve monotonically in the first online evaluations, FID@4 also moves
+down, while FID@8 is flat and FID@16 slightly regresses because the run has no
+learned budget warp or multi-midpoint preservation. This is not yet a final
+DG-TWFD model, but it is not wasted compute: it is the current best path for
+improving the weak endpoint generator before returning to full-stack/timewarp
+training.
 
 ## Latest Decision Metrics
 
