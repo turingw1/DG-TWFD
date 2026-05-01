@@ -62,6 +62,8 @@ CIFAR10_CLASS_NAMES = [
     "truck",
 ]
 
+EDM_REFERENCE_STEPS = {1: 32, 2: 48, 4: 64, 8: 128}
+
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -306,58 +308,38 @@ def main() -> None:
             }
             for idx, (class_id, seed) in enumerate(zip(class_ids, seeds))
         ],
+        "step_mapping": {
+            "edm_reference_replaces_dg_twfd_best": {str(key): value for key, value in EDM_REFERENCE_STEPS.items()},
+            "dg_twfd_identity_same_checkpoint": {str(key): key for key in steps},
+            "ctm_rows": {str(key): key for key in steps},
+        },
         "rows": [],
         "environment_notes": [],
     }
 
-    cfg, teacher, student, warp, ckpt = _load_dg_models(args, device)
-    dg_rows = [
-        ("dg_twfd_best_auto_warp", warp, "DG-TWFD best checkpoint with learned warp"),
-        ("dg_twfd_identity_same_checkpoint", None, "Same DG-TWFD checkpoint with identity time grid"),
-    ]
-    for row_name, row_warp, description in dg_rows:
-        for step_count in steps:
-            samples, u_grid, sigma_grid = _sample_edm_student(
-                student=student,
-                warp=row_warp,
-                cfg=cfg,
-                step_count=step_count,
-                class_ids=class_ids,
-                seeds=seeds,
-                device=device,
-            )
-            sample_dir = output_root / row_name / f"steps{step_count}"
-            written = _save_tensor_images(samples, sample_dir, seeds)
-            manifest["rows"].append(
-                {
-                    "row": row_name,
-                    "description": description,
-                    "step_count": int(step_count),
-                    "checkpoint": str(_resolve(args.dg_checkpoint)),
-                    "checkpoint_step": int(ckpt.get("step", -1)),
-                    "u_grid": [float(item) for item in u_grid.detach().cpu().tolist()],
-                    "sigma_grid": [float(item) for item in sigma_grid.detach().cpu().tolist()],
-                    "sample_dir": str(sample_dir.relative_to(ROOT)),
-                    "files": written,
-                }
-            )
+    cfg, teacher, student, _warp, ckpt = _load_dg_models(args, device)
 
-    for step_count in steps:
+    for display_step in steps:
+        actual_step = int(EDM_REFERENCE_STEPS[display_step])
         samples, u_grid, sigma_grid = _sample_edm_teacher(
             teacher=teacher,
             cfg=cfg,
-            step_count=step_count,
+            step_count=actual_step,
             class_ids=class_ids,
             seeds=seeds,
             device=device,
         )
-        sample_dir = output_root / "edm_teacher_cond_vp" / f"steps{step_count}"
+        sample_dir = output_root / "edm_cifar10_cond_vp_32_48_64_128" / f"steps{display_step}"
         written = _save_tensor_images(samples, sample_dir, seeds)
         manifest["rows"].append(
             {
-                "row": "edm_teacher_cond_vp",
-                "description": "Official EDM CIFAR-10 class-conditional teacher, same Karras grid.",
-                "step_count": int(step_count),
+                "row": "edm_cifar10_cond_vp_32_48_64_128",
+                "description": (
+                    "Official EDM CIFAR-10 class-conditional teacher. This row replaces "
+                    "the previous DG-TWFD best row for qualitative reference quality."
+                ),
+                "display_step": int(display_step),
+                "actual_edm_steps": actual_step,
                 "network": str(cfg["paths"]["network"]),
                 "u_grid": [float(item) for item in u_grid.detach().cpu().tolist()],
                 "sigma_grid": [float(item) for item in sigma_grid.detach().cpu().tolist()],
@@ -366,7 +348,33 @@ def main() -> None:
             }
         )
 
-    del teacher, student, warp
+    for step_count in steps:
+        samples, u_grid, sigma_grid = _sample_edm_student(
+            student=student,
+            warp=None,
+            cfg=cfg,
+            step_count=step_count,
+            class_ids=class_ids,
+            seeds=seeds,
+            device=device,
+        )
+        sample_dir = output_root / "dg_twfd_identity_same_checkpoint" / f"steps{step_count}"
+        written = _save_tensor_images(samples, sample_dir, seeds)
+        manifest["rows"].append(
+            {
+                "row": "dg_twfd_identity_same_checkpoint",
+                "description": "Same DG-TWFD checkpoint with identity time grid.",
+                "step_count": int(step_count),
+                "checkpoint": str(_resolve(args.dg_checkpoint)),
+                "checkpoint_step": int(ckpt.get("step", -1)),
+                "u_grid": [float(item) for item in u_grid.detach().cpu().tolist()],
+                "sigma_grid": [float(item) for item in sigma_grid.detach().cpu().tolist()],
+                "sample_dir": str(sample_dir.relative_to(ROOT)),
+                "files": written,
+            }
+        )
+
+    del teacher, student, _warp
     if device.type == "cuda":
         torch.cuda.empty_cache()
 

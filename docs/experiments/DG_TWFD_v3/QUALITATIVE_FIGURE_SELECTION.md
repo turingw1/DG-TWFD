@@ -21,8 +21,8 @@ Last updated: 2026-05-01 Asia/Shanghai
 
 | Dataset | Output PDF | Output PNG | Rows | Columns |
 |---|---|---|---|---|
-| CIFAR-10 | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only.pdf` | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only.png` | DG-TWFD best, DG-TWFD identity, EDM teacher, CTM official, CTM no-GAN | NFE 1/2/4/8, each cell has 8 class-locked samples |
-| ImageNet64 | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only.pdf` | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only.png` | EDM, CD-LPIPS, CD-L2, CT | NFE 1/2/4/8, each cell has 8 class-locked samples |
+| CIFAR-10 | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only.pdf` | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only.png` | EDM 32/48/64/128, DG-TWFD identity, CTM official, CTM no-GAN | display columns 1/2/4/8; EDM row uses actual steps 32/48/64/128; each cell has 8 class-locked samples |
+| ImageNet64 | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only.pdf` | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only.png` | EDM 32/48/64/128, EDM identity proxy 16/24/30/36, CD-LPIPS, CD-L2, CT, CTM official | display columns 1/2/4/8; EDM rows use actual steps recorded in manifest; each cell has 8 class-locked samples |
 
 Sidecar metadata:
 
@@ -51,17 +51,17 @@ CIFAR-10 columns use class ids `0..7` (`airplane, automobile, bird, cat, deer, d
 
 | Sample set | Model | NFE 1 | NFE 2 | NFE 4 | NFE 8 | Keep? | Notes |
 |---|---|---|---|---|---|---|---|
-| sample A | DG-TWFD best | `[image: A / ours-best / 1]` | `[image: A / ours-best / 2]` | `[image: A / ours-best / 4]` | `[image: A / ours-best / 8]` | yes | 当前用 v17 step7750 auto warp。 |
+| sample A | EDM 32/48/64/128 | `[image: A / edm-32 / display-1]` | `[image: A / edm-48 / display-2]` | `[image: A / edm-64 / display-4]` | `[image: A / edm-128 / display-8]` | yes | 替换原 DG-TWFD best 行；使用官方 EDM CIFAR-10 cond-VP checkpoint。 |
 | sample A | DG-TWFD identity | `[image: A / ours-identity / 1]` | `[image: A / ours-identity / 2]` | `[image: A / ours-identity / 4]` | `[image: A / ours-identity / 8]` | yes | 同 checkpoint，identity eval。 |
+| sample A | CTM official | `[image: A / ctm-official / 1]` | `[image: A / ctm-official / 2]` | `[image: A / ctm-official / 4]` | `[image: A / ctm-official / 8]` | yes | CIFAR-10 official conditional CTM。 |
 | sample A | CTM no-GAN | `[image: A / ctm-nogan / 1]` | `[image: A / ctm-nogan / 2]` | `[image: A / ctm-nogan / 4]` | `[image: A / ctm-nogan / 8]` | yes | CIFAR-10 no-GAN DSM 10k, 50k FID eval。 |
-| sample A | EDM | `[image: A / edm / 1]` | `[image: A / edm / 2]` | `[image: A / edm / 4]` | `[image: A / edm / 8]` | yes | EDM teacher / sampler baseline；CIFAR 现有行需要标注 smoke 或重新生成。 |
 | sample A | CD-LPIPS | `[image: A / cm-cd-lpips / 1]` | `[image: A / cm-cd-lpips / 2]` | `[image: A / cm-cd-lpips / 4]` | `[image: A / cm-cd-lpips / 8]` | yes-pending | OpenAI CIFAR-10 JAX checkpoint exists; samples need to be generated. |
 | sample A | CD-L2 | `[image: A / cm-cd-l2 / 1]` | `[image: A / cm-cd-l2 / 2]` | `[image: A / cm-cd-l2 / 4]` | `[image: A / cm-cd-l2 / 8]` | yes-pending | OpenAI CIFAR-10 JAX checkpoint exists; samples need to be generated. |
 | sample A | CT-LPIPS | `[image: A / cm-ct-lpips / 1]` | `[image: A / cm-ct-lpips / 2]` | `[image: A / cm-ct-lpips / 4]` | `[image: A / cm-ct-lpips / 8]` | yes-pending | OpenAI CIFAR-10 JAX checkpoint exists; samples need to be generated. |
-| sample B | DG-TWFD best | `[image: B / ours-best / 1]` | `[image: B / ours-best / 2]` | `[image: B / ours-best / 4]` | `[image: B / ours-best / 8]` | optional | 第二组样本，可删。 |
+| sample B | EDM 32/48/64/128 | `[image: B / edm-32 / display-1]` | `[image: B / edm-48 / display-2]` | `[image: B / edm-64 / display-4]` | `[image: B / edm-128 / display-8]` | optional | 第二组样本，可删；当前最新 PDF 只使用 sample A 的 8 类 class-locked strip。 |
 | sample B | DG-TWFD identity | `[image: B / ours-identity / 1]` | `[image: B / ours-identity / 2]` | `[image: B / ours-identity / 4]` | `[image: B / ours-identity / 8]` | optional | 第二组样本，可删。 |
+| sample B | CTM official | `[image: B / ctm-official / 1]` | `[image: B / ctm-official / 2]` | `[image: B / ctm-official / 4]` | `[image: B / ctm-official / 8]` | optional | 第二组样本，可删。 |
 | sample B | CTM no-GAN | `[image: B / ctm-nogan / 1]` | `[image: B / ctm-nogan / 2]` | `[image: B / ctm-nogan / 4]` | `[image: B / ctm-nogan / 8]` | optional | 第二组样本，可删。 |
-| sample B | EDM | `[image: B / edm / 1]` | `[image: B / edm / 2]` | `[image: B / edm / 4]` | `[image: B / edm / 8]` | optional | 第二组样本，可删。 |
 | sample B | CD-LPIPS | `[image: B / cm-cd-lpips / 1]` | `[image: B / cm-cd-lpips / 2]` | `[image: B / cm-cd-lpips / 4]` | `[image: B / cm-cd-lpips / 8]` | optional-pending | 第二组样本，可删；需要先生成。 |
 | sample B | CD-L2 | `[image: B / cm-cd-l2 / 1]` | `[image: B / cm-cd-l2 / 2]` | `[image: B / cm-cd-l2 / 4]` | `[image: B / cm-cd-l2 / 8]` | optional-pending | 第二组样本，可删；需要先生成。 |
 | sample B | CT-LPIPS | `[image: B / cm-ct-lpips / 1]` | `[image: B / cm-ct-lpips / 2]` | `[image: B / cm-ct-lpips / 4]` | `[image: B / cm-ct-lpips / 8]` | optional-pending | 第二组样本，可删；需要先生成。 |
@@ -70,42 +70,49 @@ CIFAR-10 columns use class ids `0..7` (`airplane, automobile, bird, cat, deer, d
 
 | Sample set | Model | NFE 1 | NFE 2 | NFE 4 | NFE 8 | Keep? | Notes |
 |---|---|---|---|---|---|---|---|
-| sample A | EDM | `[image: A / edm / 1]` | `[image: A / edm / 2]` | `[image: A / edm / 4]` | `[image: A / edm / 8]` | yes | ImageNet64 teacher / sampler baseline。 |
+| sample A | EDM 32/48/64/128 | `[image: A / edm-32 / display-1]` | `[image: A / edm-48 / display-2]` | `[image: A / edm-64 / display-4]` | `[image: A / edm-128 / display-8]` | yes | 替换原 DG-TWFD best 行；使用官方 EDM ImageNet64 cond-ADM checkpoint。 |
+| sample A | EDM identity proxy 16/24/30/36 | `[image: A / edm-16 / display-1]` | `[image: A / edm-24 / display-2]` | `[image: A / edm-30 / display-4]` | `[image: A / edm-36 / display-8]` | yes | 按要求作为 ImageNet DG-TWFD identity proxy；当前无 ImageNet DG-TWFD checkpoint。 |
 | sample A | CD-LPIPS | `[image: A / cd-lpips / 1]` | `[image: A / cd-lpips / 2]` | `[image: A / cd-lpips / 4]` | `[image: A / cd-lpips / 8]` | yes | Consistency distillation, LPIPS loss。 |
 | sample A | CD-L2 | `[image: A / cd-l2 / 1]` | `[image: A / cd-l2 / 2]` | `[image: A / cd-l2 / 4]` | `[image: A / cd-l2 / 8]` | yes | Consistency distillation, L2 loss。 |
 | sample A | CT | `[image: A / ct / 1]` | `[image: A / ct / 2]` | `[image: A / ct / 4]` | `[image: A / ct / 8]` | yes | Consistency training baseline。 |
-| sample B | EDM | `[image: B / edm / 1]` | `[image: B / edm / 2]` | `[image: B / edm / 4]` | `[image: B / edm / 8]` | optional | 第二组样本，可删。 |
+| sample A | CTM official | `[image: A / ctm / 1]` | `[image: A / ctm / 2]` | `[image: A / ctm / 4]` | `[image: A / ctm / 8]` | yes | 已使用 CTM ImageNet64 official checkpoint 和 exact Karras grid 生成，纳入最新 PDF。 |
+| sample B | EDM 32/48/64/128 | `[image: B / edm-32 / display-1]` | `[image: B / edm-48 / display-2]` | `[image: B / edm-64 / display-4]` | `[image: B / edm-128 / display-8]` | optional | 第二组样本，可删；当前最新 PDF 只使用 sample A 的 8 类 class-locked strip。 |
+| sample B | EDM identity proxy 16/24/30/36 | `[image: B / edm-16 / display-1]` | `[image: B / edm-24 / display-2]` | `[image: B / edm-30 / display-4]` | `[image: B / edm-36 / display-8]` | optional | 第二组样本，可删。 |
 | sample B | CD-LPIPS | `[image: B / cd-lpips / 1]` | `[image: B / cd-lpips / 2]` | `[image: B / cd-lpips / 4]` | `[image: B / cd-lpips / 8]` | optional | 第二组样本，可删。 |
 | sample B | CD-L2 | `[image: B / cd-l2 / 1]` | `[image: B / cd-l2 / 2]` | `[image: B / cd-l2 / 4]` | `[image: B / cd-l2 / 8]` | optional | 第二组样本，可删。 |
 | sample B | CT | `[image: B / ct / 1]` | `[image: B / ct / 2]` | `[image: B / ct / 4]` | `[image: B / ct / 8]` | optional | 第二组样本，可删。 |
+| sample B | CTM official | `[image: B / ctm / 1]` | `[image: B / ctm / 2]` | `[image: B / ctm / 4]` | `[image: B / ctm / 8]` | optional | 第二组样本，可删。 |
 
 ### Compact Alternative: One Row Per Model
 
-如果你觉得按 `sample A / sample B` 分组太长，可以用下面这个压缩版。最终每个 cell 内部放 4 个固定 seed，而不是把 sample 分组写成多段。
+如果你觉得按 `sample A / sample B` 分组太长，可以用下面这个压缩版。当前最新 PDF 每个 cell 内部放 8 个 class-locked samples，而不是把 sample 分组写成多段。
 
 | Dataset | Model | NFE 1 | NFE 2 | NFE 4 | NFE 8 | Keep? |
 |---|---|---|---|---|---|---|
-| CIFAR-10 | DG-TWFD best | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | yes |
-| CIFAR-10 | DG-TWFD identity | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | yes |
-| CIFAR-10 | CTM no-GAN | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | yes |
-| CIFAR-10 | EDM | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | yes |
-| CIFAR-10 | CD-LPIPS | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | yes-pending |
-| CIFAR-10 | CD-L2 | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | yes-pending |
-| CIFAR-10 | CT-LPIPS | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | yes-pending |
-| ImageNet64 | EDM | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | yes |
-| ImageNet64 | CD-LPIPS | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | yes |
-| ImageNet64 | CD-L2 | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | yes |
-| ImageNet64 | CT | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | `[4 seeds]` | yes |
+| CIFAR-10 | EDM 32/48/64/128 | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
+| CIFAR-10 | DG-TWFD identity | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
+| CIFAR-10 | CTM official | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
+| CIFAR-10 | CTM no-GAN | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
+| CIFAR-10 | CD-LPIPS | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | pending |
+| CIFAR-10 | CD-L2 | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | pending |
+| CIFAR-10 | CT-LPIPS | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | pending |
+| ImageNet64 | EDM 32/48/64/128 | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
+| ImageNet64 | EDM identity proxy 16/24/30/36 | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
+| ImageNet64 | CD-LPIPS | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
+| ImageNet64 | CD-L2 | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
+| ImageNet64 | CT | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
+| ImageNet64 | CTM official | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
 
 ## CIFAR-10 Figure Matrix
 
 | Include | Figure split | Block | Display label | Method / run id | Step 1 | Step 2 | Step 4 | Step 8 | Metric budget | Sample source | Metric source | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| yes | main | Ours | DG-TWFD v17 auto warp | `edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855_step7750` | yes | yes | yes | yes | FID-2048 | `eval/...step7750/steps{1,2,4,8}/fixed_seed_grid.png` | `eval/...step7750/reports/summary.csv` | Current learned-warp eval; step16 exists but excluded by default. |
+| yes | main | Teacher reference | EDM CIFAR-10 cond-VP 32/48/64/128 | `class_locked_samples/cifar10_20260501/edm_cifar10_cond_vp_32_48_64_128` | display 1 -> actual 32 | display 2 -> actual 48 | display 4 -> actual 64 | display 8 -> actual 128 | qualitative only | `docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_cifar10_cond_vp_32_48_64_128/steps*` | `qualitative_images_only_manifest.json` | Latest panel row replacing former DG-TWFD best row. |
+| no | archived | Ours | DG-TWFD v17 auto warp | `edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855_step7750` | no | no | no | no | FID-2048 | `eval/...step7750/steps{1,2,4,8}/fixed_seed_grid.png` | `eval/...step7750/reports/summary.csv` | Superseded in the current qualitative image-only panel by EDM 32/48/64/128, per latest figure request. |
 | yes | main | Ours-control | DG-TWFD v17 identity | `edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855_step7750_identity` | yes | yes | yes | yes | FID-2048 | `eval/...step7750_identity/steps{1,2,4,8}/fixed_seed_grid.png` | `eval/...step7750_identity/reports/summary.csv` | Same checkpoint, warp disabled/effective identity. |
 | yes | main | Ours-control | DG-TWFD v17 budget warp | `edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855_step7750_budget` | yes | yes | yes | yes | FID-2048 | `eval/...step7750_budget/steps{1,2,4,8}/fixed_seed_grid.png` | `eval/...step7750_budget/reports/summary.csv` | Budget rule: step 1 identity, step 2 fixed, >=4 auto. |
 | optional | appendix | Ours-legacy | DGTD v3 probe | `dgtd_cifar10_v3_probe_anchor1_long_e407a` | yes | yes | yes | yes | mixed | `eval/dgtd_cifar10_v3_probe_anchor1_long_e407a/steps*/fixed_seed_grid.png` | `eval/dgtd_cifar10_v3_probe_anchor1_long_e407a/reports/summary.csv` | Older diagnostic/probe run; include only if needed. |
-| optional | appendix | Teacher | EDM official | `edm_cifar10_public_eval_e501ref` | yes | yes | yes | yes | smoke / check source | `eval/edm_cifar10_public_eval_e501ref/steps*/metrics.json` | `eval/edm_cifar10_public_eval_e501ref/reports/summary.csv` | CIFAR EDM row is not a final full 5k result in current report. |
+| no | archived | Teacher | EDM old low-step/smoke | `edm_cifar10_public_eval_e501ref` | no | no | no | no | smoke / check source | `eval/edm_cifar10_public_eval_e501ref/steps*/metrics.json` | `eval/edm_cifar10_public_eval_e501ref/reports/summary.csv` | Replaced in latest qualitative panel by official EDM 32/48/64/128 samples. |
 | yes | main | Official baseline | CTM official cond | `ctm_cifar10_50k` | yes | yes | yes | yes | FID-50k | `runs/baselines_revalidated_20260428/ctm_cifar10_50k/samples/steps*/images` | `eval/baselines_revalidated_20260428/ctm_cifar10_50k/reports/summary.csv` | Main CTM CIFAR baseline. |
 | yes | appendix | Diagnostic baseline | CTM no-GAN DSM 10k | `ctm_nogan_20260429/cifar10_ema010000_50k` | yes | yes | yes | yes | FID-50k | `runs/ctm_nogan_20260429/cifar10_ema010000_50k/samples/steps*/images` | `eval/ctm_nogan_20260429/cifar10_ema010000_50k/reports/summary.csv` | Diagnostic no-GAN retrain, not fully converged official baseline. |
 | yes-pending | main | Official consistency baseline | OpenAI CM CIFAR CD-LPIPS | `refs/consistency_models_cifar10: cd-lpips checkpoint_80` | yes | yes | yes | yes | pending | pending generation from `https://openaipublic.blob.core.windows.net/consistency/jcm_checkpoints/cd-lpips/checkpoints/checkpoint_80` | pending | Public JAX checkpoint exists; sample via `python -m jcm.main ... --mode eval`. |
@@ -128,7 +135,8 @@ CIFAR-10 columns use class ids `0..7` (`airplane, automobile, bird, cat, deer, d
 
 | Include | Figure split | Block | Display label | Method / run id | Step 1 | Step 2 | Step 4 | Step 8 | Metric budget | Sample source | Metric source | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| yes | main | Teacher | EDM official | `edm_imagenet64_public_eval_full` | yes | yes | yes | yes | FID-5k | `runs/edm_imagenet64_public_eval_full/samples/steps*/images` | `eval/edm_imagenet64_public_eval_full/reports/summary.csv` | Teacher/sampler anchor. |
+| yes | main | Teacher reference | EDM ImageNet64 cond-ADM 32/48/64/128 | `class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm_32_48_64_128` | display 1 -> actual 32 | display 2 -> actual 48 | display 4 -> actual 64 | display 8 -> actual 128 | qualitative only | `docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm_32_48_64_128/steps*` | `qualitative_images_only_manifest.json` | Latest panel row replacing former DG-TWFD best slot. |
+| yes | main | Identity proxy | EDM ImageNet64 16/24/30/36 | `class_locked_samples/imagenet64_20260501/edm_imagenet64_identity_16_24_30_36` | display 1 -> actual 16 | display 2 -> actual 24 | display 4 -> actual 30 | display 8 -> actual 36 | qualitative only | `docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_identity_16_24_30_36/steps*` | `qualitative_images_only_manifest.json` | Requested ImageNet identity/proxy row; no ImageNet DG-TWFD checkpoint is currently available. |
 | yes | main | Official baseline | CD-LPIPS official | `cd_imagenet64_lpips_5k` | yes | yes | yes | yes | FID-5k | `runs/cd_imagenet64_lpips_5k/samples/steps*/images` | `eval/cd_imagenet64_lpips_5k/reports/summary.csv` | OpenAI consistency distillation baseline. |
 | yes | main | Official baseline | CD-L2 official | `cd_imagenet64_l2_5k` | yes | yes | yes | yes | FID-5k | `runs/cd_imagenet64_l2_5k/samples/steps*/images` | `eval/cd_imagenet64_l2_5k/reports/summary.csv` | OpenAI consistency distillation baseline. |
 | yes | main | Official baseline | CT official | `ct_imagenet64_5k` | yes | yes | yes | yes | FID-5k | `runs/ct_imagenet64_5k/samples/steps*/images` | `eval/ct_imagenet64_5k/reports/summary.csv` | OpenAI consistency training baseline. |

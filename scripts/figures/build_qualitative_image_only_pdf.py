@@ -133,22 +133,16 @@ def _compose_panel(rows: list[dict], output_stem: str) -> dict:
 def main() -> None:
     cifar_rows = [
         {
-            "label": "DG-TWFD best / class-locked auto warp",
+            "label": "EDM CIFAR-10 cond-VP 32/48/64/128 / class-locked",
             "source_type": "flat_pngdir",
             "sample_ids": [1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007],
-            "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps{step}",
+            "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_cifar10_cond_vp_32_48_64_128/steps{step}",
         },
         {
             "label": "DG-TWFD identity / class-locked same checkpoint",
             "source_type": "flat_pngdir",
             "sample_ids": [1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007],
             "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps{step}",
-        },
-        {
-            "label": "EDM CIFAR-10 cond-VP teacher / class-locked",
-            "source_type": "flat_pngdir",
-            "sample_ids": [1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007],
-            "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps{step}",
         },
         {
             "label": "CTM official CIFAR-10 conditional / class-locked",
@@ -165,10 +159,16 @@ def main() -> None:
     ]
     imagenet_rows = [
         {
-            "label": "EDM ImageNet64 cond-ADM / class-locked",
+            "label": "EDM ImageNet64 cond-ADM 32/48/64/128 / class-locked",
             "source_type": "flat_pngdir",
             "sample_ids": list(range(8)),
-            "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps{step}",
+            "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm_32_48_64_128/steps{step}",
+        },
+        {
+            "label": "EDM ImageNet64 identity proxy 16/24/30/36 / class-locked",
+            "source_type": "flat_pngdir",
+            "sample_ids": list(range(8)),
+            "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_identity_16_24_30_36/steps{step}",
         },
         {
             "label": "CD-LPIPS ImageNet64 / class-locked",
@@ -187,6 +187,12 @@ def main() -> None:
             "source_type": "flat_pngdir",
             "sample_ids": list(range(8)),
             "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps{step}",
+        },
+        {
+            "label": "CTM ImageNet64 official / class-locked",
+            "source_type": "flat_pngdir",
+            "sample_ids": list(range(8)),
+            "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ctm_imagenet64_official/steps{step}",
         },
     ]
 
@@ -217,6 +223,10 @@ def main() -> None:
         "class_locking": {
             "cifar10": cifar_manifest["columns"],
             "imagenet64": imagenet_manifest["columns"],
+        },
+        "step_mapping": {
+            "cifar10": cifar_manifest.get("step_mapping", {}),
+            "imagenet64": imagenet_manifest.get("step_mapping", {}),
         },
         "panels": [
             _compose_panel(cifar_rows, "qualitative_cifar10_class_locked_images_only"),

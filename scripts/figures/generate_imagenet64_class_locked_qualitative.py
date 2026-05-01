@@ -24,8 +24,9 @@ ROOT = Path(__file__).resolve().parents[2]
 EDM_FIRST_SRC = ROOT / "experiments" / "edm_first"
 EDM_REF = ROOT / "refs" / "edm"
 CM_ROOT = ROOT / "refs" / "consistency_models"
+CTM_RUNNER = ROOT / "scripts" / "baselines"
 
-for path in [str(EDM_FIRST_SRC), str(EDM_REF), str(CM_ROOT)]:
+for path in [str(EDM_FIRST_SRC), str(EDM_REF), str(CM_ROOT), str(CTM_RUNNER)]:
     if path not in sys.path:
         sys.path.insert(0, path)
 
@@ -56,6 +57,11 @@ from src.edm_map_lib import build_sigma_grid, load_edm_network, make_labels, tea
 from cm.karras_diffusion import karras_sample  # noqa: E402
 from cm.random_util import get_generator  # noqa: E402
 from cm.script_util import create_model_and_diffusion, model_and_diffusion_defaults  # noqa: E402
+from run_ctm_schedule_warp_eval import DATASET_DEFAULTS, _ctm_transition, _karras_nodes, _load_ctm  # noqa: E402
+
+
+EDM_REFERENCE_STEPS = {1: 32, 2: 48, 4: 64, 8: 128}
+EDM_IDENTITY_STEPS = {1: 16, 2: 24, 4: 30, 8: 36}
 
 
 def _parse_args() -> argparse.Namespace:
@@ -75,6 +81,10 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--ct-checkpoint",
         default="/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/consistency_models/ct_imagenet64.pt",
+    )
+    parser.add_argument(
+        "--ctm-checkpoint",
+        default="/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/ctm/ctm_imagenet64_ema_0.999.pt",
     )
     parser.add_argument("--output-root", default="docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501")
     parser.add_argument("--steps", nargs="+", type=int, default=[1, 2, 4, 8])
@@ -112,6 +122,27 @@ def _save_tensor_images(samples: torch.Tensor, sample_dir: Path) -> list[str]:
         Image.fromarray(arr, mode="RGB").save(path)
         written.append(str(path.relative_to(ROOT)))
     return written
+
+
+def _clear_cm_modules() -> None:
+    for name in list(sys.modules):
+        if name == "cm" or name.startswith("cm."):
+            del sys.modules[name]
+
+
+def _deterministic_individual_latents(
+    *,
+    count: int,
+    seed: int,
+    channels: int,
+    image_size: int,
+    device: torch.device,
+) -> torch.Tensor:
+    values = []
+    for index in range(int(count)):
+        generator = torch.Generator(device=device).manual_seed(index + int(count) * int(seed))
+        values.append(torch.randn((channels, image_size, image_size), generator=generator, device=device))
+    return torch.stack(values, dim=0)
 
 
 def _ts_for_step_count(step_count: int, *, cm_steps_total: int) -> tuple[int, ...] | None:
@@ -218,6 +249,55 @@ def _sample_edm(
     return to_unit(x).detach(), sigma_grid.detach()
 
 
+@torch.no_grad()
+def _sample_ctm_imagenet64(
+    *,
+    checkpoint: str | Path,
+    steps: list[int],
+    class_ids: list[int],
+    seed: int,
+    output_root: Path,
+    device: torch.device,
+    use_fp16: bool,
+) -> list[dict[str, Any]]:
+    _clear_cm_modules()
+    defaults = dict(DATASET_DEFAULTS["imagenet64"])
+    defaults["checkpoint"] = Path(_resolve(checkpoint))
+    model, diffusion, model_args = _load_ctm("imagenet64", defaults, device=device, use_fp16=use_fp16)
+    sigma_min = max(0.002, float(getattr(model_args, "sigma_min", 0.002)))
+    sigma_max = min(80.0, float(getattr(model_args, "sigma_max", 80.0)))
+    latents = _deterministic_individual_latents(
+        count=len(class_ids),
+        seed=seed,
+        channels=3,
+        image_size=64,
+        device=device,
+    ) * sigma_max
+    model_kwargs = {"y": torch.as_tensor(class_ids, dtype=torch.long, device=device)}
+    rows: list[dict[str, Any]] = []
+    for step_count in steps:
+        sigmas = _karras_nodes(step_count, sigma_min=sigma_min, sigma_max=sigma_max, rho=7.0, device=device)
+        x = latents.to(torch.float32)
+        for sigma_from, sigma_to in zip(sigmas[:-1], sigmas[1:]):
+            x = _ctm_transition(diffusion, model, x, float(sigma_from.item()), float(sigma_to.item()), model_kwargs)
+        sample_dir = output_root / "ctm_imagenet64_official" / f"steps{step_count}"
+        rows.append(
+            {
+                "row": "ctm_imagenet64_official",
+                "step_count": int(step_count),
+                "checkpoint": str(_resolve(checkpoint)),
+                "solver": "ctm_exact_karras_grid",
+                "sigma_grid": [float(item) for item in sigmas.detach().cpu().tolist()],
+                "sample_dir": str(sample_dir.relative_to(ROOT)),
+                "files": _save_tensor_images((x.clamp(-1, 1) + 1.0) / 2.0, sample_dir),
+            }
+        )
+    del model
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
+    return rows
+
+
 def main() -> None:
     args = _parse_args()
     for class_id in args.class_ids:
@@ -238,17 +318,44 @@ def main() -> None:
         "note": "Each column fixes the same ImageNet class id and deterministic latent/noise seed across class-conditional rows.",
         "steps": steps,
         "columns": [{"index": idx, "class_id": class_id, "seed": int(args.seed)} for idx, class_id in enumerate(class_ids)],
+        "step_mapping": {
+            "edm_reference_replaces_dg_twfd_best": {str(key): value for key, value in EDM_REFERENCE_STEPS.items()},
+            "edm_identity_proxy": {str(key): value for key, value in EDM_IDENTITY_STEPS.items()},
+            "ctm_imagenet64_official": {str(key): key for key in steps},
+        },
         "rows": [],
     }
 
     edm = load_edm_network(args.edm_network, device=device, use_fp16=bool(args.use_fp16 and device.type == "cuda"))
-    for step_count in steps:
-        samples, sigma_grid = _sample_edm(net=edm, step_count=step_count, class_ids=class_ids, seed=args.seed, device=device)
-        sample_dir = output_root / "edm_imagenet64_cond_adm" / f"steps{step_count}"
+    for display_step in steps:
+        actual_step = int(EDM_REFERENCE_STEPS[display_step])
+        samples, sigma_grid = _sample_edm(net=edm, step_count=actual_step, class_ids=class_ids, seed=args.seed, device=device)
+        sample_dir = output_root / "edm_imagenet64_cond_adm_32_48_64_128" / f"steps{display_step}"
         manifest["rows"].append(
             {
-                "row": "edm_imagenet64_cond_adm",
-                "step_count": int(step_count),
+                "row": "edm_imagenet64_cond_adm_32_48_64_128",
+                "description": (
+                    "Official EDM ImageNet64 class-conditional teacher. This row replaces "
+                    "the previous DG-TWFD best row for qualitative reference quality."
+                ),
+                "display_step": int(display_step),
+                "actual_edm_steps": actual_step,
+                "network": args.edm_network,
+                "sigma_grid": [float(item) for item in sigma_grid.detach().cpu().tolist()],
+                "sample_dir": str(sample_dir.relative_to(ROOT)),
+                "files": _save_tensor_images(samples, sample_dir),
+            }
+        )
+    for display_step in steps:
+        actual_step = int(EDM_IDENTITY_STEPS[display_step])
+        samples, sigma_grid = _sample_edm(net=edm, step_count=actual_step, class_ids=class_ids, seed=args.seed, device=device)
+        sample_dir = output_root / "edm_imagenet64_identity_16_24_30_36" / f"steps{display_step}"
+        manifest["rows"].append(
+            {
+                "row": "edm_imagenet64_identity_16_24_30_36",
+                "description": "EDM ImageNet64 medium-step identity/proxy row requested for DG-TWFD identity comparison.",
+                "display_step": int(display_step),
+                "actual_edm_steps": actual_step,
                 "network": args.edm_network,
                 "sigma_grid": [float(item) for item in sigma_grid.detach().cpu().tolist()],
                 "sample_dir": str(sample_dir.relative_to(ROOT)),
@@ -297,6 +404,18 @@ def main() -> None:
         del model
         if device.type == "cuda":
             torch.cuda.empty_cache()
+
+    manifest["rows"].extend(
+        _sample_ctm_imagenet64(
+            checkpoint=args.ctm_checkpoint,
+            steps=steps,
+            class_ids=class_ids,
+            seed=int(args.seed),
+            output_root=output_root,
+            device=device,
+            use_fp16=bool(args.use_fp16),
+        )
+    )
 
     manifest_path = output_root / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")

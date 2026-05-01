@@ -97,18 +97,59 @@
       }
     ]
   },
+  "step_mapping": {
+    "cifar10": {
+      "edm_reference_replaces_dg_twfd_best": {
+        "1": 32,
+        "2": 48,
+        "4": 64,
+        "8": 128
+      },
+      "dg_twfd_identity_same_checkpoint": {
+        "1": 1,
+        "2": 2,
+        "4": 4,
+        "8": 8
+      },
+      "ctm_rows": {
+        "1": 1,
+        "2": 2,
+        "4": 4,
+        "8": 8
+      }
+    },
+    "imagenet64": {
+      "edm_reference_replaces_dg_twfd_best": {
+        "1": 32,
+        "2": 48,
+        "4": 64,
+        "8": 128
+      },
+      "edm_identity_proxy": {
+        "1": 16,
+        "2": 24,
+        "4": 30,
+        "8": 36
+      },
+      "ctm_imagenet64_official": {
+        "1": 1,
+        "2": 2,
+        "4": 4,
+        "8": 8
+      }
+    }
+  },
   "panels": [
     {
       "output_png": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only.png",
       "output_pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only.pdf",
       "pixel_size": [
         1104,
-        192
+        152
       ],
       "rows": [
-        "DG-TWFD best / class-locked auto warp",
+        "EDM CIFAR-10 cond-VP 32/48/64/128 / class-locked",
         "DG-TWFD identity / class-locked same checkpoint",
-        "EDM CIFAR-10 cond-VP teacher / class-locked",
         "CTM official CIFAR-10 conditional / class-locked",
         "CTM no-GAN DSM 10k / class-locked"
       ],
@@ -119,7 +160,7 @@
         "NFE 8"
       ],
       "sample_ids_by_row": {
-        "DG-TWFD best / class-locked auto warp": [
+        "EDM CIFAR-10 cond-VP 32/48/64/128 / class-locked": [
           1000,
           1001,
           1002,
@@ -130,16 +171,6 @@
           1007
         ],
         "DG-TWFD identity / class-locked same checkpoint": [
-          1000,
-          1001,
-          1002,
-          1003,
-          1004,
-          1005,
-          1006,
-          1007
-        ],
-        "EDM CIFAR-10 cond-VP teacher / class-locked": [
           1000,
           1001,
           1002,
@@ -176,13 +207,15 @@
       "output_pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only.pdf",
       "pixel_size": [
         2128,
-        280
+        424
       ],
       "rows": [
-        "EDM ImageNet64 cond-ADM / class-locked",
+        "EDM ImageNet64 cond-ADM 32/48/64/128 / class-locked",
+        "EDM ImageNet64 identity proxy 16/24/30/36 / class-locked",
         "CD-LPIPS ImageNet64 / class-locked",
         "CD-L2 ImageNet64 / class-locked",
-        "CT ImageNet64 / class-locked"
+        "CT ImageNet64 / class-locked",
+        "CTM ImageNet64 official / class-locked"
       ],
       "columns": [
         "NFE 1",
@@ -191,7 +224,17 @@
         "NFE 8"
       ],
       "sample_ids_by_row": {
-        "EDM ImageNet64 cond-ADM / class-locked": [
+        "EDM ImageNet64 cond-ADM 32/48/64/128 / class-locked": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "EDM ImageNet64 identity proxy 16/24/30/36 / class-locked": [
           0,
           1,
           2,
@@ -222,6 +265,16 @@
           7
         ],
         "CT ImageNet64 / class-locked": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "CTM ImageNet64 official / class-locked": [
           0,
           1,
           2,
