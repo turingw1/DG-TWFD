@@ -2,7 +2,7 @@
 
 Last updated: 2026-05-01 Asia/Shanghai
 
-本文档是定性展示图的可编辑配置草案。默认展示步数为 `1 / 2 / 4 / 8`，默认样本选择策略为固定 seed，优先复用已有 `fixed_seed_grid.png`、`preview_first64.png` 或已生成 PNG 样本目录。你可以直接修改 `Include`、`Figure split`、`Step 1/2/4/8`、`Display label` 和 `Notes` 列。
+本文档是定性展示图的可编辑配置草案。默认展示步数为 `1 / 2 / 4 / 8`。新版主图采用 class-locked 协议：同一列在所有条件模型中固定同一个类别条件和 latent/noise seed，避免“同 seed 但语义不一致”的定性误差。你可以直接修改 `Include`、`Figure split`、`Step 1/2/4/8`、`Display label` 和 `Notes` 列。
 
 ## Display Policy
 
@@ -10,17 +10,36 @@ Last updated: 2026-05-01 Asia/Shanghai
 |---|---|
 | Main datasets | CIFAR-10, ImageNet64 |
 | Main steps | 1, 2, 4, 8 |
-| Per-cell visual | fixed-seed sample strip or 4x4 grid crop |
+| Per-cell visual | class-locked sample strip; currently 8 images per cell |
 | Metric label | FID-5k or FID-50k, exactly matching the source report |
 | Missing result policy | mark as `N/A`; do not regenerate silently |
 | Invalid/smoke result policy | appendix only unless manually promoted |
+
+## Generated Class-Locked Panels
+
+当前已经生成一版无文字 PDF/PNG，图中只包含图片，行列标签留给后续 LaTeX/矢量编辑阶段添加。
+
+| Dataset | Output PDF | Output PNG | Rows | Columns |
+|---|---|---|---|---|
+| CIFAR-10 | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only.pdf` | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only.png` | DG-TWFD best, DG-TWFD identity, EDM teacher, CTM official, CTM no-GAN | NFE 1/2/4/8, each cell has 8 class-locked samples |
+| ImageNet64 | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only.pdf` | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only.png` | EDM, CD-LPIPS, CD-L2, CT | NFE 1/2/4/8, each cell has 8 class-locked samples |
+
+Sidecar metadata:
+
+```text
+docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_images_only_manifest.json
+docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/manifest.json
+docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/manifest.json
+```
+
+CIFAR-10 columns use class ids `0..7` (`airplane, automobile, bird, cat, deer, dog, frog, horse`) with latent seeds `1000..1007`. ImageNet64 columns use class ids `[8, 22, 207, 281, 404, 555, 751, 817]` with deterministic seed `31`.
 
 ## New Repository Audit
 
 | Repo | Dataset coverage | Public pretrained sampleable model? | Decision |
 |---|---|---|---|
 | `openai/consistency_models` | ImageNet64, LSUN | yes: EDM, CD-L2, CD-LPIPS, CT `.pt` checkpoints | already included for ImageNet64. |
-| `openai/consistency_models_cifar10` | CIFAR-10 | yes: EDM, CD-L1, CD-L2, CD-LPIPS, CT-LPIPS, continuous CD/CT JAX checkpoints | add CIFAR-10 CD-L2, CD-LPIPS, CT-LPIPS to qualitative candidate set. |
+| `openai/consistency_models_cifar10` | CIFAR-10 | yes: EDM, CD-L1, CD-L2, CD-LPIPS, CT-LPIPS, continuous CD/CT JAX checkpoints | candidate only for a separate seed-only panel; active env lacks JAX/Flax and these released CIFAR checkpoints are not class-label conditional like our class-locked panel. |
 | `pkulwj1994/diff_instruct` | CIFAR-10, ImageNet64 training recipes | no directly released distilled student checkpoint found; README points to EDM teacher checkpoints and training command | exclude until a trained DI checkpoint is available. |
 | `neuraloperator/DSNO` | CIFAR-10, ImageNet64 training/eval code | no final DSNO `solver-model_*.pt` checkpoint release found; README provides trajectory data and training recipe | exclude until a trained DSNO checkpoint is available. |
 

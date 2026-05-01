@@ -1,0 +1,432 @@
+{
+  "note": "Each column fixes the same ImageNet class id and deterministic latent/noise seed across class-conditional rows.",
+  "steps": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "columns": [
+    {
+      "index": 0,
+      "class_id": 8,
+      "seed": 31
+    },
+    {
+      "index": 1,
+      "class_id": 22,
+      "seed": 31
+    },
+    {
+      "index": 2,
+      "class_id": 207,
+      "seed": 31
+    },
+    {
+      "index": 3,
+      "class_id": 281,
+      "seed": 31
+    },
+    {
+      "index": 4,
+      "class_id": 404,
+      "seed": 31
+    },
+    {
+      "index": 5,
+      "class_id": 555,
+      "seed": 31
+    },
+    {
+      "index": 6,
+      "class_id": 751,
+      "seed": 31
+    },
+    {
+      "index": 7,
+      "class_id": 817,
+      "seed": 31
+    }
+  ],
+  "rows": [
+    {
+      "row": "edm_imagenet64_cond_adm",
+      "step_count": 1,
+      "network": "https://nvlabs-fi-cdn.nvidia.com/edm/pretrained/edm-imagenet-64x64-cond-adm.pkl",
+      "sigma_grid": [
+        79.99998474121094,
+        0.0
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps1",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps1/000000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps1/000001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps1/000002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps1/000003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps1/000004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps1/000005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps1/000006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps1/000007.png"
+      ]
+    },
+    {
+      "row": "edm_imagenet64_cond_adm",
+      "step_count": 2,
+      "network": "https://nvlabs-fi-cdn.nvidia.com/edm/pretrained/edm-imagenet-64x64-cond-adm.pkl",
+      "sigma_grid": [
+        79.99998474121094,
+        2.515219211578369,
+        0.0
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps2",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps2/000000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps2/000001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps2/000002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps2/000003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps2/000004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps2/000005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps2/000006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps2/000007.png"
+      ]
+    },
+    {
+      "row": "edm_imagenet64_cond_adm",
+      "step_count": 4,
+      "network": "https://nvlabs-fi-cdn.nvidia.com/edm/pretrained/edm-imagenet-64x64-cond-adm.pkl",
+      "sigma_grid": [
+        79.99998474121094,
+        17.527830123901367,
+        2.515219211578369,
+        0.16975267231464386,
+        0.0
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps4",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps4/000000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps4/000001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps4/000002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps4/000003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps4/000004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps4/000005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps4/000006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps4/000007.png"
+      ]
+    },
+    {
+      "row": "edm_imagenet64_cond_adm",
+      "step_count": 8,
+      "network": "https://nvlabs-fi-cdn.nvidia.com/edm/pretrained/edm-imagenet-64x64-cond-adm.pkl",
+      "sigma_grid": [
+        79.99998474121094,
+        39.01667022705078,
+        17.527830123901367,
+        7.100507736206055,
+        2.515219211578369,
+        0.7433790564537048,
+        0.16975267231464386,
+        0.02605500817298889,
+        0.0
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps8",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps8/000000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps8/000001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps8/000002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps8/000003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps8/000004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps8/000005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps8/000006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps8/000007.png"
+      ]
+    },
+    {
+      "row": "cd_lpips_imagenet64",
+      "step_count": 1,
+      "checkpoint": "/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/consistency_models/cd_imagenet64_lpips.pt",
+      "training_mode": "consistency_distillation",
+      "cm_steps_total": 40,
+      "ts": null,
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps1",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps1/000000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps1/000001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps1/000002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps1/000003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps1/000004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps1/000005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps1/000006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps1/000007.png"
+      ]
+    },
+    {
+      "row": "cd_lpips_imagenet64",
+      "step_count": 2,
+      "checkpoint": "/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/consistency_models/cd_imagenet64_lpips.pt",
+      "training_mode": "consistency_distillation",
+      "cm_steps_total": 40,
+      "ts": [
+        0,
+        22,
+        39
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps2",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps2/000000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps2/000001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps2/000002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps2/000003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps2/000004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps2/000005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps2/000006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps2/000007.png"
+      ]
+    },
+    {
+      "row": "cd_lpips_imagenet64",
+      "step_count": 4,
+      "checkpoint": "/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/consistency_models/cd_imagenet64_lpips.pt",
+      "training_mode": "consistency_distillation",
+      "cm_steps_total": 40,
+      "ts": [
+        0,
+        10,
+        20,
+        29,
+        39
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps4",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps4/000000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps4/000001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps4/000002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps4/000003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps4/000004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps4/000005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps4/000006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps4/000007.png"
+      ]
+    },
+    {
+      "row": "cd_lpips_imagenet64",
+      "step_count": 8,
+      "checkpoint": "/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/consistency_models/cd_imagenet64_lpips.pt",
+      "training_mode": "consistency_distillation",
+      "cm_steps_total": 40,
+      "ts": [
+        0,
+        5,
+        10,
+        15,
+        20,
+        24,
+        29,
+        34,
+        39
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps8",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps8/000000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps8/000001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps8/000002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps8/000003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps8/000004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps8/000005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps8/000006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps8/000007.png"
+      ]
+    },
+    {
+      "row": "cd_l2_imagenet64",
+      "step_count": 1,
+      "checkpoint": "/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/consistency_models/cd_imagenet64_l2.pt",
+      "training_mode": "consistency_distillation",
+      "cm_steps_total": 40,
+      "ts": null,
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps1",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps1/000000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps1/000001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps1/000002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps1/000003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps1/000004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps1/000005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps1/000006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps1/000007.png"
+      ]
+    },
+    {
+      "row": "cd_l2_imagenet64",
+      "step_count": 2,
+      "checkpoint": "/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/consistency_models/cd_imagenet64_l2.pt",
+      "training_mode": "consistency_distillation",
+      "cm_steps_total": 40,
+      "ts": [
+        0,
+        22,
+        39
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps2",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps2/000000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps2/000001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps2/000002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps2/000003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps2/000004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps2/000005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps2/000006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps2/000007.png"
+      ]
+    },
+    {
+      "row": "cd_l2_imagenet64",
+      "step_count": 4,
+      "checkpoint": "/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/consistency_models/cd_imagenet64_l2.pt",
+      "training_mode": "consistency_distillation",
+      "cm_steps_total": 40,
+      "ts": [
+        0,
+        10,
+        20,
+        29,
+        39
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps4",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps4/000000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps4/000001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps4/000002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps4/000003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps4/000004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps4/000005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps4/000006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps4/000007.png"
+      ]
+    },
+    {
+      "row": "cd_l2_imagenet64",
+      "step_count": 8,
+      "checkpoint": "/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/consistency_models/cd_imagenet64_l2.pt",
+      "training_mode": "consistency_distillation",
+      "cm_steps_total": 40,
+      "ts": [
+        0,
+        5,
+        10,
+        15,
+        20,
+        24,
+        29,
+        34,
+        39
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps8",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps8/000000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps8/000001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps8/000002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps8/000003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps8/000004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps8/000005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps8/000006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps8/000007.png"
+      ]
+    },
+    {
+      "row": "ct_imagenet64",
+      "step_count": 1,
+      "checkpoint": "/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/consistency_models/ct_imagenet64.pt",
+      "training_mode": "consistency_training",
+      "cm_steps_total": 201,
+      "ts": null,
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps1",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps1/000000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps1/000001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps1/000002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps1/000003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps1/000004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps1/000005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps1/000006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps1/000007.png"
+      ]
+    },
+    {
+      "row": "ct_imagenet64",
+      "step_count": 2,
+      "checkpoint": "/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/consistency_models/ct_imagenet64.pt",
+      "training_mode": "consistency_training",
+      "cm_steps_total": 201,
+      "ts": [
+        0,
+        106,
+        200
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps2",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps2/000000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps2/000001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps2/000002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps2/000003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps2/000004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps2/000005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps2/000006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps2/000007.png"
+      ]
+    },
+    {
+      "row": "ct_imagenet64",
+      "step_count": 4,
+      "checkpoint": "/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/consistency_models/ct_imagenet64.pt",
+      "training_mode": "consistency_training",
+      "cm_steps_total": 201,
+      "ts": [
+        0,
+        50,
+        100,
+        150,
+        200
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps4",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps4/000000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps4/000001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps4/000002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps4/000003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps4/000004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps4/000005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps4/000006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps4/000007.png"
+      ]
+    },
+    {
+      "row": "ct_imagenet64",
+      "step_count": 8,
+      "checkpoint": "/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/consistency_models/ct_imagenet64.pt",
+      "training_mode": "consistency_training",
+      "cm_steps_total": 201,
+      "ts": [
+        0,
+        25,
+        50,
+        75,
+        100,
+        125,
+        150,
+        175,
+        200
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps8",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps8/000000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps8/000001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps8/000002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps8/000003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps8/000004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps8/000005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps8/000006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps8/000007.png"
+      ]
+    }
+  ]
+}

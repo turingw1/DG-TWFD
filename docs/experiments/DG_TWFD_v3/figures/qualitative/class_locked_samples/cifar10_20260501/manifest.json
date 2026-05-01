@@ -1,0 +1,624 @@
+{
+  "note": "Each column is class-locked and latent-seed-locked across conditional CIFAR-10 rows.",
+  "steps": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "columns": [
+    {
+      "index": 0,
+      "class_id": 0,
+      "class_name": "airplane",
+      "latent_seed": 1000
+    },
+    {
+      "index": 1,
+      "class_id": 1,
+      "class_name": "automobile",
+      "latent_seed": 1001
+    },
+    {
+      "index": 2,
+      "class_id": 2,
+      "class_name": "bird",
+      "latent_seed": 1002
+    },
+    {
+      "index": 3,
+      "class_id": 3,
+      "class_name": "cat",
+      "latent_seed": 1003
+    },
+    {
+      "index": 4,
+      "class_id": 4,
+      "class_name": "deer",
+      "latent_seed": 1004
+    },
+    {
+      "index": 5,
+      "class_id": 5,
+      "class_name": "dog",
+      "latent_seed": 1005
+    },
+    {
+      "index": 6,
+      "class_id": 6,
+      "class_name": "frog",
+      "latent_seed": 1006
+    },
+    {
+      "index": 7,
+      "class_id": 7,
+      "class_name": "horse",
+      "latent_seed": 1007
+    }
+  ],
+  "rows": [
+    {
+      "row": "dg_twfd_best_auto_warp",
+      "description": "DG-TWFD best checkpoint with learned warp",
+      "step_count": 1,
+      "checkpoint": "/home/ma-user/workspace/Zhengwei/DG-TWFD/runs/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855/checkpoints/best.pt",
+      "checkpoint_step": 10500,
+      "u_grid": [
+        0.0,
+        1.0
+      ],
+      "sigma_grid": [
+        79.99998474121094,
+        0.0
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps1",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps1/001000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps1/001001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps1/001002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps1/001003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps1/001004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps1/001005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps1/001006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps1/001007.png"
+      ]
+    },
+    {
+      "row": "dg_twfd_best_auto_warp",
+      "description": "DG-TWFD best checkpoint with learned warp",
+      "step_count": 2,
+      "checkpoint": "/home/ma-user/workspace/Zhengwei/DG-TWFD/runs/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855/checkpoints/best.pt",
+      "checkpoint_step": 10500,
+      "u_grid": [
+        0.0,
+        0.4704374670982361,
+        1.0
+      ],
+      "sigma_grid": [
+        79.99998474121094,
+        3.2610578536987305,
+        0.0
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps2",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps2/001000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps2/001001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps2/001002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps2/001003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps2/001004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps2/001005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps2/001006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps2/001007.png"
+      ]
+    },
+    {
+      "row": "dg_twfd_best_auto_warp",
+      "description": "DG-TWFD best checkpoint with learned warp",
+      "step_count": 4,
+      "checkpoint": "/home/ma-user/workspace/Zhengwei/DG-TWFD/runs/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855/checkpoints/best.pt",
+      "checkpoint_step": 10500,
+      "u_grid": [
+        0.0,
+        0.2778102159500122,
+        0.4704374670982361,
+        0.691388726234436,
+        1.0
+      ],
+      "sigma_grid": [
+        79.99998474121094,
+        14.477530479431152,
+        3.2610578536987305,
+        0.3527378439903259,
+        0.0
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps4",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps4/001000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps4/001001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps4/001002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps4/001003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps4/001004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps4/001005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps4/001006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps4/001007.png"
+      ]
+    },
+    {
+      "row": "dg_twfd_best_auto_warp",
+      "description": "DG-TWFD best checkpoint with learned warp",
+      "step_count": 8,
+      "checkpoint": "/home/ma-user/workspace/Zhengwei/DG-TWFD/runs/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855/checkpoints/best.pt",
+      "checkpoint_step": 10500,
+      "u_grid": [
+        0.0,
+        0.17264285683631897,
+        0.2778102159500122,
+        0.3744206428527832,
+        0.4704374670982361,
+        0.5757099390029907,
+        0.691388726234436,
+        0.8191219568252563,
+        1.0
+      ],
+      "sigma_grid": [
+        79.99998474121094,
+        29.069351196289062,
+        14.477530479431152,
+        7.132313251495361,
+        3.2610578536987305,
+        1.2333322763442993,
+        0.3527378439903259,
+        0.0640980526804924,
+        0.0
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps8",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps8/001000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps8/001001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps8/001002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps8/001003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps8/001004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps8/001005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps8/001006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps8/001007.png"
+      ]
+    },
+    {
+      "row": "dg_twfd_identity_same_checkpoint",
+      "description": "Same DG-TWFD checkpoint with identity time grid",
+      "step_count": 1,
+      "checkpoint": "/home/ma-user/workspace/Zhengwei/DG-TWFD/runs/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855/checkpoints/best.pt",
+      "checkpoint_step": 10500,
+      "u_grid": [
+        0.0,
+        1.0
+      ],
+      "sigma_grid": [
+        79.99998474121094,
+        0.0
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps1",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps1/001000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps1/001001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps1/001002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps1/001003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps1/001004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps1/001005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps1/001006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps1/001007.png"
+      ]
+    },
+    {
+      "row": "dg_twfd_identity_same_checkpoint",
+      "description": "Same DG-TWFD checkpoint with identity time grid",
+      "step_count": 2,
+      "checkpoint": "/home/ma-user/workspace/Zhengwei/DG-TWFD/runs/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855/checkpoints/best.pt",
+      "checkpoint_step": 10500,
+      "u_grid": [
+        0.0,
+        0.5,
+        1.0
+      ],
+      "sigma_grid": [
+        79.99998474121094,
+        2.5152194499969482,
+        0.0
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps2",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps2/001000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps2/001001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps2/001002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps2/001003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps2/001004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps2/001005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps2/001006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps2/001007.png"
+      ]
+    },
+    {
+      "row": "dg_twfd_identity_same_checkpoint",
+      "description": "Same DG-TWFD checkpoint with identity time grid",
+      "step_count": 4,
+      "checkpoint": "/home/ma-user/workspace/Zhengwei/DG-TWFD/runs/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855/checkpoints/best.pt",
+      "checkpoint_step": 10500,
+      "u_grid": [
+        0.0,
+        0.25,
+        0.5,
+        0.75,
+        1.0
+      ],
+      "sigma_grid": [
+        79.99998474121094,
+        17.527830123901367,
+        2.5152194499969482,
+        0.16975267231464386,
+        0.0
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps4",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps4/001000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps4/001001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps4/001002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps4/001003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps4/001004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps4/001005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps4/001006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps4/001007.png"
+      ]
+    },
+    {
+      "row": "dg_twfd_identity_same_checkpoint",
+      "description": "Same DG-TWFD checkpoint with identity time grid",
+      "step_count": 8,
+      "checkpoint": "/home/ma-user/workspace/Zhengwei/DG-TWFD/runs/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855/checkpoints/best.pt",
+      "checkpoint_step": 10500,
+      "u_grid": [
+        0.0,
+        0.125,
+        0.25,
+        0.375,
+        0.5,
+        0.625,
+        0.75,
+        0.875,
+        1.0
+      ],
+      "sigma_grid": [
+        79.99998474121094,
+        39.01667022705078,
+        17.527830123901367,
+        7.100507736206055,
+        2.5152194499969482,
+        0.7433790564537048,
+        0.16975267231464386,
+        0.026055006310343742,
+        0.0
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps8",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps8/001000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps8/001001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps8/001002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps8/001003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps8/001004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps8/001005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps8/001006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps8/001007.png"
+      ]
+    },
+    {
+      "row": "edm_teacher_cond_vp",
+      "description": "Official EDM CIFAR-10 class-conditional teacher, same Karras grid.",
+      "step_count": 1,
+      "network": "https://nvlabs-fi-cdn.nvidia.com/edm/pretrained/edm-cifar10-32x32-cond-vp.pkl",
+      "u_grid": [
+        0.0,
+        1.0
+      ],
+      "sigma_grid": [
+        79.99998474121094,
+        0.0
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps1",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps1/001000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps1/001001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps1/001002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps1/001003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps1/001004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps1/001005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps1/001006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps1/001007.png"
+      ]
+    },
+    {
+      "row": "edm_teacher_cond_vp",
+      "description": "Official EDM CIFAR-10 class-conditional teacher, same Karras grid.",
+      "step_count": 2,
+      "network": "https://nvlabs-fi-cdn.nvidia.com/edm/pretrained/edm-cifar10-32x32-cond-vp.pkl",
+      "u_grid": [
+        0.0,
+        0.5,
+        1.0
+      ],
+      "sigma_grid": [
+        79.99998474121094,
+        2.5152194499969482,
+        0.0
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps2",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps2/001000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps2/001001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps2/001002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps2/001003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps2/001004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps2/001005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps2/001006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps2/001007.png"
+      ]
+    },
+    {
+      "row": "edm_teacher_cond_vp",
+      "description": "Official EDM CIFAR-10 class-conditional teacher, same Karras grid.",
+      "step_count": 4,
+      "network": "https://nvlabs-fi-cdn.nvidia.com/edm/pretrained/edm-cifar10-32x32-cond-vp.pkl",
+      "u_grid": [
+        0.0,
+        0.25,
+        0.5,
+        0.75,
+        1.0
+      ],
+      "sigma_grid": [
+        79.99998474121094,
+        17.527830123901367,
+        2.5152194499969482,
+        0.16975267231464386,
+        0.0
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps4",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps4/001000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps4/001001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps4/001002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps4/001003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps4/001004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps4/001005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps4/001006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps4/001007.png"
+      ]
+    },
+    {
+      "row": "edm_teacher_cond_vp",
+      "description": "Official EDM CIFAR-10 class-conditional teacher, same Karras grid.",
+      "step_count": 8,
+      "network": "https://nvlabs-fi-cdn.nvidia.com/edm/pretrained/edm-cifar10-32x32-cond-vp.pkl",
+      "u_grid": [
+        0.0,
+        0.125,
+        0.25,
+        0.375,
+        0.5,
+        0.625,
+        0.75,
+        0.875,
+        1.0
+      ],
+      "sigma_grid": [
+        79.99998474121094,
+        39.01667022705078,
+        17.527830123901367,
+        7.100507736206055,
+        2.5152194499969482,
+        0.7433790564537048,
+        0.16975267231464386,
+        0.026055006310343742,
+        0.0
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps8",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps8/001000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps8/001001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps8/001002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps8/001003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps8/001004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps8/001005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps8/001006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps8/001007.png"
+      ]
+    },
+    {
+      "row": "ctm_official_cond",
+      "step_count": 1,
+      "checkpoint": "/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/ctm_cifar10/ctm-cifar10/conditional/model043000.pt",
+      "sigma_grid": [
+        80.0,
+        0.002
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps1",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps1/001000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps1/001001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps1/001002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps1/001003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps1/001004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps1/001005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps1/001006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps1/001007.png"
+      ]
+    },
+    {
+      "row": "ctm_official_cond",
+      "step_count": 2,
+      "checkpoint": "/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/ctm_cifar10/ctm-cifar10/conditional/model043000.pt",
+      "sigma_grid": [
+        80.0,
+        2.515218976147159,
+        0.002
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps2",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps2/001000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps2/001001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps2/001002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps2/001003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps2/001004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps2/001005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps2/001006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps2/001007.png"
+      ]
+    },
+    {
+      "row": "ctm_official_cond",
+      "step_count": 4,
+      "checkpoint": "/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/ctm_cifar10/ctm-cifar10/conditional/model043000.pt",
+      "sigma_grid": [
+        80.0,
+        17.52783196464411,
+        2.515218976147159,
+        0.16975275626876413,
+        0.002
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps4",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps4/001000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps4/001001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps4/001002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps4/001003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps4/001004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps4/001005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps4/001006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps4/001007.png"
+      ]
+    },
+    {
+      "row": "ctm_official_cond",
+      "step_count": 8,
+      "checkpoint": "/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/ctm_cifar10/ctm-cifar10/conditional/model043000.pt",
+      "sigma_grid": [
+        80.0,
+        39.01668479354711,
+        17.52783196464411,
+        7.100509833769679,
+        2.515218976147159,
+        0.7433791336654563,
+        0.16975275626876413,
+        0.0260549988896429,
+        0.002
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps8",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps8/001000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps8/001001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps8/001002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps8/001003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps8/001004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps8/001005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps8/001006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps8/001007.png"
+      ]
+    },
+    {
+      "row": "ctm_nogan_dsm_10k",
+      "step_count": 1,
+      "checkpoint": "/cache/Zhengwei/DG-TWFD-runtime/runs/ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/ema_0.999_010000.pt",
+      "sigma_grid": [
+        80.0,
+        0.002
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps1",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps1/001000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps1/001001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps1/001002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps1/001003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps1/001004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps1/001005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps1/001006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps1/001007.png"
+      ]
+    },
+    {
+      "row": "ctm_nogan_dsm_10k",
+      "step_count": 2,
+      "checkpoint": "/cache/Zhengwei/DG-TWFD-runtime/runs/ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/ema_0.999_010000.pt",
+      "sigma_grid": [
+        80.0,
+        2.515218976147159,
+        0.002
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps2",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps2/001000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps2/001001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps2/001002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps2/001003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps2/001004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps2/001005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps2/001006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps2/001007.png"
+      ]
+    },
+    {
+      "row": "ctm_nogan_dsm_10k",
+      "step_count": 4,
+      "checkpoint": "/cache/Zhengwei/DG-TWFD-runtime/runs/ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/ema_0.999_010000.pt",
+      "sigma_grid": [
+        80.0,
+        17.52783196464411,
+        2.515218976147159,
+        0.16975275626876413,
+        0.002
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps4",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps4/001000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps4/001001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps4/001002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps4/001003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps4/001004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps4/001005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps4/001006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps4/001007.png"
+      ]
+    },
+    {
+      "row": "ctm_nogan_dsm_10k",
+      "step_count": 8,
+      "checkpoint": "/cache/Zhengwei/DG-TWFD-runtime/runs/ctm_nogan_20260429/cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000/ema_0.999_010000.pt",
+      "sigma_grid": [
+        80.0,
+        39.01668479354711,
+        17.52783196464411,
+        7.100509833769679,
+        2.515218976147159,
+        0.7433791336654563,
+        0.16975275626876413,
+        0.0260549988896429,
+        0.002
+      ],
+      "sample_dir": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps8",
+      "files": [
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps8/001000.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps8/001001.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps8/001002.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps8/001003.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps8/001004.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps8/001005.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps8/001006.png",
+        "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps8/001007.png"
+      ]
+    }
+  ],
+  "environment_notes": [],
+  "omitted": [
+    {
+      "model": "OpenAI CIFAR-10 JAX consistency models",
+      "reason": "Current active environment has Python 3.13 and lacks jax/flax/ml_collections/tensorflow; these models are unconditional for class labels, so they belong in a separate seed-only panel after a compatible JAX env is available."
+    }
+  ]
+}

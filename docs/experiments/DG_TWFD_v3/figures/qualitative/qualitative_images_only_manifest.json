@@ -1,21 +1,116 @@
 {
-  "note": "PDF panels contain images only; labels are intentionally absent.",
+  "note": "PDF panels contain images only; labels are intentionally absent. Rows, NFE columns, class ids, and sample ids are documented here.",
   "omitted": [
-    "OpenAI CIFAR-10 CM CD/CT rows are pending local sample generation from JAX checkpoints.",
-    "CIFAR-10 EDM official row is pending image generation under the target qualitative protocol."
+    "OpenAI CIFAR-10 JAX consistency checkpoints are not mixed into the class-locked CIFAR panel: the active environment lacks a compatible JAX/Flax stack, and the released CIFAR models are not class-label conditional in the same sense."
   ],
+  "class_locking": {
+    "cifar10": [
+      {
+        "index": 0,
+        "class_id": 0,
+        "class_name": "airplane",
+        "latent_seed": 1000
+      },
+      {
+        "index": 1,
+        "class_id": 1,
+        "class_name": "automobile",
+        "latent_seed": 1001
+      },
+      {
+        "index": 2,
+        "class_id": 2,
+        "class_name": "bird",
+        "latent_seed": 1002
+      },
+      {
+        "index": 3,
+        "class_id": 3,
+        "class_name": "cat",
+        "latent_seed": 1003
+      },
+      {
+        "index": 4,
+        "class_id": 4,
+        "class_name": "deer",
+        "latent_seed": 1004
+      },
+      {
+        "index": 5,
+        "class_id": 5,
+        "class_name": "dog",
+        "latent_seed": 1005
+      },
+      {
+        "index": 6,
+        "class_id": 6,
+        "class_name": "frog",
+        "latent_seed": 1006
+      },
+      {
+        "index": 7,
+        "class_id": 7,
+        "class_name": "horse",
+        "latent_seed": 1007
+      }
+    ],
+    "imagenet64": [
+      {
+        "index": 0,
+        "class_id": 8,
+        "seed": 31
+      },
+      {
+        "index": 1,
+        "class_id": 22,
+        "seed": 31
+      },
+      {
+        "index": 2,
+        "class_id": 207,
+        "seed": 31
+      },
+      {
+        "index": 3,
+        "class_id": 281,
+        "seed": 31
+      },
+      {
+        "index": 4,
+        "class_id": 404,
+        "seed": 31
+      },
+      {
+        "index": 5,
+        "class_id": 555,
+        "seed": 31
+      },
+      {
+        "index": 6,
+        "class_id": 751,
+        "seed": 31
+      },
+      {
+        "index": 7,
+        "class_id": 817,
+        "seed": 31
+      }
+    ]
+  },
   "panels": [
     {
-      "output_png": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_images_only.png",
-      "output_pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_images_only.pdf",
+      "output_png": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only.png",
+      "output_pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only.pdf",
       "pixel_size": [
-        560,
-        112
+        1104,
+        192
       ],
       "rows": [
-        "DG-TWFD best / v17 auto warp step7750",
-        "DG-TWFD identity / v17 step7750 identity",
-        "CTM no-GAN DSM 10k EMA0.999"
+        "DG-TWFD best / class-locked auto warp",
+        "DG-TWFD identity / class-locked same checkpoint",
+        "EDM CIFAR-10 cond-VP teacher / class-locked",
+        "CTM official CIFAR-10 conditional / class-locked",
+        "CTM no-GAN DSM 10k / class-locked"
       ],
       "columns": [
         "NFE 1",
@@ -23,25 +118,71 @@
         "NFE 4",
         "NFE 8"
       ],
-      "seeds": [
-        0,
-        1,
-        2,
-        3
-      ]
+      "sample_ids_by_row": {
+        "DG-TWFD best / class-locked auto warp": [
+          1000,
+          1001,
+          1002,
+          1003,
+          1004,
+          1005,
+          1006,
+          1007
+        ],
+        "DG-TWFD identity / class-locked same checkpoint": [
+          1000,
+          1001,
+          1002,
+          1003,
+          1004,
+          1005,
+          1006,
+          1007
+        ],
+        "EDM CIFAR-10 cond-VP teacher / class-locked": [
+          1000,
+          1001,
+          1002,
+          1003,
+          1004,
+          1005,
+          1006,
+          1007
+        ],
+        "CTM official CIFAR-10 conditional / class-locked": [
+          1000,
+          1001,
+          1002,
+          1003,
+          1004,
+          1005,
+          1006,
+          1007
+        ],
+        "CTM no-GAN DSM 10k / class-locked": [
+          1000,
+          1001,
+          1002,
+          1003,
+          1004,
+          1005,
+          1006,
+          1007
+        ]
+      }
     },
     {
-      "output_png": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_images_only.png",
-      "output_pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_images_only.pdf",
+      "output_png": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only.png",
+      "output_pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only.pdf",
       "pixel_size": [
-        1072,
+        2128,
         280
       ],
       "rows": [
-        "EDM official ImageNet64",
-        "CD-LPIPS official ImageNet64",
-        "CD-L2 official ImageNet64",
-        "CT official ImageNet64"
+        "EDM ImageNet64 cond-ADM / class-locked",
+        "CD-LPIPS ImageNet64 / class-locked",
+        "CD-L2 ImageNet64 / class-locked",
+        "CT ImageNet64 / class-locked"
       ],
       "columns": [
         "NFE 1",
@@ -49,12 +190,48 @@
         "NFE 4",
         "NFE 8"
       ],
-      "seeds": [
-        0,
-        1,
-        2,
-        3
-      ]
+      "sample_ids_by_row": {
+        "EDM ImageNet64 cond-ADM / class-locked": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "CD-LPIPS ImageNet64 / class-locked": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "CD-L2 ImageNet64 / class-locked": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "CT ImageNet64 / class-locked": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      }
     }
   ]
 }

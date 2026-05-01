@@ -17,7 +17,6 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[2]
 OUTDIR = ROOT / "docs" / "experiments" / "DG_TWFD_v3" / "figures" / "qualitative"
 STEPS = [1, 2, 4, 8]
-SEEDS = [0, 1, 2, 3]
 SAMPLE_GAP = 2
 CELL_GAP = 8
 ROW_GAP = 8
@@ -43,7 +42,8 @@ def _tensor_to_image(x: torch.Tensor) -> Image.Image:
 def _load_tensor_samples(pattern: str, step: int) -> list[Image.Image]:
     path = ROOT / pattern.format(step=step)
     tensor = torch.load(path, map_location="cpu")
-    return [_tensor_to_image(tensor[i]) for i in SEEDS]
+    sample_ids = list(range(min(4, int(tensor.shape[0]))))
+    return [_tensor_to_image(tensor[i]) for i in sample_ids]
 
 
 def _sample_path(image_root: Path, seed: int) -> Path:
@@ -58,7 +58,18 @@ def _sample_path(image_root: Path, seed: int) -> Path:
 
 def _load_png_samples(pattern: str, step: int) -> list[Image.Image]:
     image_root = ROOT / pattern.format(step=step)
-    return [Image.open(_sample_path(image_root, seed)).convert("RGB") for seed in SEEDS]
+    return [Image.open(_sample_path(image_root, seed)).convert("RGB") for seed in [0, 1, 2, 3]]
+
+
+def _load_flat_png_samples(pattern: str, step: int, sample_ids: list[int]) -> list[Image.Image]:
+    image_root = ROOT / pattern.format(step=step)
+    images = []
+    for sample_id in sample_ids:
+        path = image_root / f"{int(sample_id):06d}.png"
+        if not path.exists():
+            raise FileNotFoundError(path)
+        images.append(Image.open(path).convert("RGB"))
+    return images
 
 
 def _make_cell(images: list[Image.Image]) -> Image.Image:
@@ -83,6 +94,8 @@ def _compose_panel(rows: list[dict], output_stem: str) -> dict:
                 samples = _load_tensor_samples(row["pattern"], step)
             elif row["source_type"] == "pngdir":
                 samples = _load_png_samples(row["pattern"], step)
+            elif row["source_type"] == "flat_pngdir":
+                samples = _load_flat_png_samples(row["pattern"], step, row["sample_ids"])
             else:
                 raise ValueError(f"unknown source_type: {row['source_type']}")
             row_cells.append(_make_cell(samples))
@@ -113,60 +126,101 @@ def _compose_panel(rows: list[dict], output_stem: str) -> dict:
         "pixel_size": [width, height],
         "rows": [row["label"] for row in rows],
         "columns": [f"NFE {step}" for step in STEPS],
-        "seeds": SEEDS,
+        "sample_ids_by_row": {row["label"]: row.get("sample_ids") for row in rows},
     }
 
 
 def main() -> None:
     cifar_rows = [
         {
-            "label": "DG-TWFD best / v17 auto warp step7750",
-            "source_type": "tensor",
-            "pattern": "eval/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855_step7750/steps{step}/fixed_seed_samples.pt",
+            "label": "DG-TWFD best / class-locked auto warp",
+            "source_type": "flat_pngdir",
+            "sample_ids": [1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007],
+            "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_best_auto_warp/steps{step}",
         },
         {
-            "label": "DG-TWFD identity / v17 step7750 identity",
-            "source_type": "tensor",
-            "pattern": "eval/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855_step7750_identity/steps{step}/fixed_seed_samples.pt",
+            "label": "DG-TWFD identity / class-locked same checkpoint",
+            "source_type": "flat_pngdir",
+            "sample_ids": [1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007],
+            "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps{step}",
         },
         {
-            "label": "CTM no-GAN DSM 10k EMA0.999",
-            "source_type": "pngdir",
-            "pattern": "runs/ctm_nogan_20260429/cifar10_ema010000_50k/samples/steps{step}/images",
+            "label": "EDM CIFAR-10 cond-VP teacher / class-locked",
+            "source_type": "flat_pngdir",
+            "sample_ids": [1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007],
+            "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_teacher_cond_vp/steps{step}",
+        },
+        {
+            "label": "CTM official CIFAR-10 conditional / class-locked",
+            "source_type": "flat_pngdir",
+            "sample_ids": [1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007],
+            "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps{step}",
+        },
+        {
+            "label": "CTM no-GAN DSM 10k / class-locked",
+            "source_type": "flat_pngdir",
+            "sample_ids": [1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007],
+            "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps{step}",
         },
     ]
     imagenet_rows = [
         {
-            "label": "EDM official ImageNet64",
-            "source_type": "pngdir",
-            "pattern": "runs/edm_imagenet64_public_eval_full/samples/steps{step}/images",
+            "label": "EDM ImageNet64 cond-ADM / class-locked",
+            "source_type": "flat_pngdir",
+            "sample_ids": list(range(8)),
+            "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm/steps{step}",
         },
         {
-            "label": "CD-LPIPS official ImageNet64",
-            "source_type": "pngdir",
-            "pattern": "runs/cd_imagenet64_lpips_5k/samples/steps{step}/images",
+            "label": "CD-LPIPS ImageNet64 / class-locked",
+            "source_type": "flat_pngdir",
+            "sample_ids": list(range(8)),
+            "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps{step}",
         },
         {
-            "label": "CD-L2 official ImageNet64",
-            "source_type": "pngdir",
-            "pattern": "runs/cd_imagenet64_l2_5k/samples/steps{step}/images",
+            "label": "CD-L2 ImageNet64 / class-locked",
+            "source_type": "flat_pngdir",
+            "sample_ids": list(range(8)),
+            "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps{step}",
         },
         {
-            "label": "CT official ImageNet64",
-            "source_type": "pngdir",
-            "pattern": "runs/ct_imagenet64_5k/samples/steps{step}/images",
+            "label": "CT ImageNet64 / class-locked",
+            "source_type": "flat_pngdir",
+            "sample_ids": list(range(8)),
+            "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps{step}",
         },
     ]
 
+    cifar_manifest = json.loads(
+        (
+            OUTDIR
+            / "class_locked_samples"
+            / "cifar10_20260501"
+            / "manifest.json"
+        ).read_text(encoding="utf-8")
+    )
+    imagenet_manifest = json.loads(
+        (
+            OUTDIR
+            / "class_locked_samples"
+            / "imagenet64_20260501"
+            / "manifest.json"
+        ).read_text(encoding="utf-8")
+    )
     manifest = {
-        "note": "PDF panels contain images only; labels are intentionally absent.",
+        "note": (
+            "PDF panels contain images only; labels are intentionally absent. "
+            "Rows, NFE columns, class ids, and sample ids are documented here."
+        ),
         "omitted": [
-            "OpenAI CIFAR-10 CM CD/CT rows are pending local sample generation from JAX checkpoints.",
-            "CIFAR-10 EDM official row is pending image generation under the target qualitative protocol.",
+            "OpenAI CIFAR-10 JAX consistency checkpoints are not mixed into the class-locked CIFAR panel: the active environment lacks a compatible JAX/Flax stack, and the released CIFAR models are not class-label conditional in the same sense.",
         ],
+        "class_locking": {
+            "cifar10": cifar_manifest["columns"],
+            "imagenet64": imagenet_manifest["columns"],
+        },
         "panels": [
-            _compose_panel(cifar_rows, "qualitative_cifar10_images_only"),
-            _compose_panel(imagenet_rows, "qualitative_imagenet64_images_only"),
+            _compose_panel(cifar_rows, "qualitative_cifar10_class_locked_images_only"),
+            _compose_panel(imagenet_rows, "qualitative_imagenet64_class_locked_images_only"),
         ],
     }
     manifest_path = OUTDIR / "qualitative_images_only_manifest.json"
