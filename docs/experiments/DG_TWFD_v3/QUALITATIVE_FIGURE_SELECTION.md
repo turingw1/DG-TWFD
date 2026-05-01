@@ -17,12 +17,12 @@ Last updated: 2026-05-01 Asia/Shanghai
 
 ## Generated Class-Locked Panels
 
-当前已经生成一版无文字 PDF/PNG，图中只包含图片，行列标签留给后续 LaTeX/矢量编辑阶段添加。
+当前已经生成无文字 PDF/PNG，图中只包含图片，行列标签留给后续 LaTeX/矢量编辑阶段添加。下载或论文排版时优先使用 `*_x4.pdf`：该版本用 4x 整数放大，并以 lossless `FlateDecode` 嵌入 RGB 图像，避免 PIL 默认 PDF/JPEG 压缩造成画质下降。非 `x4` 版本保留 native pixel 尺寸，主要用于审计和像素级对照。
 
-| Dataset | Output PDF | Output PNG | Rows | Columns |
-|---|---|---|---|---|
-| CIFAR-10 | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only.pdf` | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only.png` | EDM 32/48/64/128, DG-TWFD identity, CTM official, CTM no-GAN, CD-LPIPS JAX, CD-L2 JAX, CT-LPIPS JAX | display columns 1/2/4/8; EDM row uses actual steps 32/48/64/128; conditional rows are class-locked; CIFAR JAX CD/CT rows are seed-locked only |
-| ImageNet64 | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only.pdf` | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only.png` | EDM 32/48/64/128, EDM identity proxy 16/24/30/36, CD-LPIPS, CD-L2, CT, CTM official | display columns 1/2/4/8; EDM rows use actual steps recorded in manifest; each cell has 8 class-locked samples |
+| Dataset | Recommended PDF | Native PDF | Recommended PNG | Rows | Columns |
+|---|---|---|---|---|---|
+| CIFAR-10 | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only_x4.pdf` | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only.pdf` | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only_x4.png` | EDM 32/48/64/128, DG-TWFD identity, CTM official, CTM no-GAN, CD-LPIPS JAX, CD-L2 JAX, CT-LPIPS JAX | display columns 1/2/4/8; EDM row uses actual steps 32/48/64/128; conditional rows are class-locked; CIFAR JAX CD/CT rows are seed-locked only |
+| ImageNet64 | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only_x4.pdf` | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only.pdf` | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only_x4.png` | EDM 32/48/64/128, EDM identity proxy 16/24/30/36, CD-LPIPS, CD-L2, CT, CTM official | display columns 1/2/4/8; EDM rows use actual steps recorded in manifest; each cell has 8 class-locked samples |
 
 Sidecar metadata:
 

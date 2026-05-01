@@ -8,6 +8,7 @@ sidecar manifest so the PDF can be labeled later in a vector editor.
 from __future__ import annotations
 
 import json
+import zlib
 from pathlib import Path
 
 import torch
@@ -21,6 +22,7 @@ SAMPLE_GAP = 2
 CELL_GAP = 8
 ROW_GAP = 8
 BACKGROUND = (255, 255, 255)
+DISPLAY_SCALE = 4
 
 
 def _tensor_to_image(x: torch.Tensor) -> Image.Image:
@@ -85,6 +87,59 @@ def _make_cell(images: list[Image.Image]) -> Image.Image:
     return cell
 
 
+def _save_lossless_pdf(image: Image.Image, path: Path) -> None:
+    """Save a single RGB image as a lossless PDF image XObject.
+
+    PIL's PDF writer stores RGB images with DCTDecode/JPEG by default, which
+    visibly damages tiny 32x32/64x64 samples after download or document import.
+    This minimal writer embeds raw RGB pixels through FlateDecode instead.
+    """
+
+    image = image.convert("RGB")
+    width, height = image.size
+    compressed = zlib.compress(image.tobytes(), level=9)
+    content = f"q\n{width} 0 0 {height} 0 0 cm\n/Im0 Do\nQ\n".encode("ascii")
+
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        (
+            f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {width} {height}] "
+            f"/Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>"
+        ).encode("ascii"),
+        (
+            f"<< /Type /XObject /Subtype /Image /Width {width} /Height {height} "
+            f"/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode "
+            f"/Length {len(compressed)} >>\nstream\n"
+        ).encode("ascii")
+        + compressed
+        + b"\nendstream",
+        f"<< /Length {len(content)} >>\nstream\n".encode("ascii")
+        + content
+        + b"endstream",
+    ]
+
+    data = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+    offsets = [0]
+    for index, obj in enumerate(objects, start=1):
+        offsets.append(len(data))
+        data.extend(f"{index} 0 obj\n".encode("ascii"))
+        data.extend(obj)
+        data.extend(b"\nendobj\n")
+    xref_offset = len(data)
+    data.extend(f"xref\n0 {len(objects) + 1}\n".encode("ascii"))
+    data.extend(b"0000000000 65535 f \n")
+    for offset in offsets[1:]:
+        data.extend(f"{offset:010d} 00000 n \n".encode("ascii"))
+    data.extend(
+        (
+            f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n"
+            f"startxref\n{xref_offset}\n%%EOF\n"
+        ).encode("ascii")
+    )
+    path.write_bytes(bytes(data))
+
+
 def _compose_panel(rows: list[dict], output_stem: str) -> dict:
     cells_by_row: list[list[Image.Image]] = []
     for row in rows:
@@ -118,12 +173,25 @@ def _compose_panel(rows: list[dict], output_stem: str) -> dict:
     OUTDIR.mkdir(parents=True, exist_ok=True)
     png_path = OUTDIR / f"{output_stem}.png"
     pdf_path = OUTDIR / f"{output_stem}.pdf"
-    panel.save(png_path)
-    panel.save(pdf_path, "PDF", resolution=72.0)
+    display_png_path = OUTDIR / f"{output_stem}_x{DISPLAY_SCALE}.png"
+    display_pdf_path = OUTDIR / f"{output_stem}_x{DISPLAY_SCALE}.pdf"
+    panel.save(png_path, compress_level=6)
+    _save_lossless_pdf(panel, pdf_path)
+    display_panel = panel.resize(
+        (width * DISPLAY_SCALE, height * DISPLAY_SCALE),
+        Image.Resampling.NEAREST,
+    )
+    display_panel.save(display_png_path, compress_level=6)
+    _save_lossless_pdf(display_panel, display_pdf_path)
     return {
         "output_png": str(png_path.relative_to(ROOT)),
         "output_pdf": str(pdf_path.relative_to(ROOT)),
+        "output_png_x4": str(display_png_path.relative_to(ROOT)),
+        "output_pdf_x4": str(display_pdf_path.relative_to(ROOT)),
         "pixel_size": [width, height],
+        "pixel_size_x4": [width * DISPLAY_SCALE, height * DISPLAY_SCALE],
+        "pdf_encoding": "lossless FlateDecode RGB image XObject",
+        "display_scale": DISPLAY_SCALE,
         "row_count": len(rows),
         "rows": [row["label"] for row in rows],
         "row_log": [row["row_log"] for row in rows],

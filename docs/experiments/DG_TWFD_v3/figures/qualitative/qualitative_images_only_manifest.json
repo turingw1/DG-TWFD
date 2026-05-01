@@ -153,10 +153,18 @@
     {
       "output_png": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only.png",
       "output_pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only.pdf",
+      "output_png_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only_x4.png",
+      "output_pdf_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only_x4.pdf",
       "pixel_size": [
         1104,
         272
       ],
+      "pixel_size_x4": [
+        4416,
+        1088
+      ],
+      "pdf_encoding": "lossless FlateDecode RGB image XObject",
+      "display_scale": 4,
       "row_count": 7,
       "rows": [
         "EDM CIFAR-10 cond-VP 32/48/64/128 / class-locked",
@@ -258,10 +266,18 @@
     {
       "output_png": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only.png",
       "output_pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only.pdf",
+      "output_png_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only_x4.png",
+      "output_pdf_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only_x4.pdf",
       "pixel_size": [
         2128,
         424
       ],
+      "pixel_size_x4": [
+        8512,
+        1696
+      ],
+      "pdf_encoding": "lossless FlateDecode RGB image XObject",
+      "display_scale": 4,
       "row_count": 6,
       "rows": [
         "EDM ImageNet64 cond-ADM 32/48/64/128 / class-locked",
