@@ -220,6 +220,17 @@ The practical rule is to keep the run alive while FID@1/2/4 improve at this
 rate, then branch a v19 full-stack/timewarp recovery from the best v18 endpoint
 checkpoint before the 8/16-step degradation becomes the dominant effect.
 
+V18 completed at the wall-clock limit with final EMA FID-2048
+`44.325 / 25.580 / 21.097 / 20.325 / 21.273` at `1/2/4/8/16`. The final result
+is decisive: endpoint-only EMA training bought about `4.5` FID at one step
+relative to the v17 budget run, and also slightly improved 4-step, but it
+damaged 8/16-step composition. V19 therefore starts from the v18 final
+`student_ema` weights, not the raw online student, and reintroduces the
+full-stack objective, RQS timewarp, calibrated 2-step budget policy,
+multi-midpoint preservation, and a smaller real-data denoise anchor. The v19
+goal is to keep the new `44.x` endpoint while recovering the lost high-budget
+quality.
+
 ## Latest Decision Metrics
 
 FID uses 2048 generated samples for the active watcher.

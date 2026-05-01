@@ -190,7 +190,10 @@ def main() -> None:
     best_loss = float("inf")
     if args.resume:
         ckpt = torch.load(args.resume, map_location=device)
-        student.load_state_dict(ckpt["student"])
+        resume_student_key = str(train_cfg.get("resume_student_key", "student"))
+        if resume_student_key not in ckpt or ckpt.get(resume_student_key) is None:
+            raise KeyError(f"resume_student_key={resume_student_key!r} not found in checkpoint")
+        student.load_state_dict(ckpt[resume_student_key])
         if student_ema is not None:
             ema_state = ckpt.get("student_ema") if bool(train_cfg.get("resume_ema", True)) else None
             if ema_state is not None:
