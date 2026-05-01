@@ -55,13 +55,34 @@ if "mpi4py" not in sys.modules:
 
 from src.edm_map_lib import build_sigma_grid, load_edm_network, make_labels, teacher_transition, to_unit  # noqa: E402
 from cm.karras_diffusion import karras_sample  # noqa: E402
-from cm.random_util import get_generator  # noqa: E402
 from cm.script_util import create_model_and_diffusion, model_and_diffusion_defaults  # noqa: E402
 from run_ctm_schedule_warp_eval import DATASET_DEFAULTS, _ctm_transition, _karras_nodes, _load_ctm  # noqa: E402
 
 
 EDM_REFERENCE_STEPS = {1: 32, 2: 48, 4: 64, 8: 128}
-EDM_IDENTITY_STEPS = {1: 16, 2: 24, 4: 30, 8: 36}
+EDM_IDENTITY_STEPS = {1: 8, 2: 16, 4: 24, 8: 30}
+EDM_IDENTITY_ROW = "edm_imagenet64_identity_8_16_24_30"
+DEFAULT_CLASS_IDS = [
+    8,
+    22,
+    207,
+    281,
+    404,
+    555,
+    751,
+    817,
+    130,
+    145,
+    292,
+    340,
+    407,
+    444,
+    569,
+    701,
+    779,
+    980,
+]
+DEFAULT_SAMPLE_SEEDS = list(range(31, 49))
 
 
 def _parse_args() -> argparse.Namespace:
@@ -86,16 +107,26 @@ def _parse_args() -> argparse.Namespace:
         "--ctm-checkpoint",
         default="/cache/Zhengwei/DG-TWFD-runtime/checkpoints/baselines/ctm/ctm_imagenet64_ema_0.999.pt",
     )
-    parser.add_argument("--output-root", default="docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501")
+    parser.add_argument(
+        "--output-root",
+        default="docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260502_paper",
+    )
     parser.add_argument("--steps", nargs="+", type=int, default=[1, 2, 4, 8])
     parser.add_argument(
         "--class-ids",
         nargs="+",
         type=int,
-        default=[8, 22, 207, 281, 404, 555, 751, 817],
+        default=DEFAULT_CLASS_IDS,
         help="One ImageNet class id per visual column; names are intentionally kept out of the image-only PDF.",
     )
-    parser.add_argument("--seed", type=int, default=31, help="Deterministic latent/noise seed shared across rows.")
+    parser.add_argument("--seed", type=int, default=31, help="Fallback deterministic latent/noise seed.")
+    parser.add_argument(
+        "--sample-seeds",
+        nargs="+",
+        type=int,
+        default=DEFAULT_SAMPLE_SEEDS,
+        help="One deterministic latent/noise seed per visual column.",
+    )
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--use-fp16", action=argparse.BooleanOptionalAction, default=False)
     return parser.parse_args()
@@ -130,19 +161,55 @@ def _clear_cm_modules() -> None:
             del sys.modules[name]
 
 
-def _deterministic_individual_latents(
-    *,
-    count: int,
-    seed: int,
-    channels: int,
-    image_size: int,
-    device: torch.device,
-) -> torch.Tensor:
-    values = []
-    for index in range(int(count)):
-        generator = torch.Generator(device=device).manual_seed(index + int(count) * int(seed))
-        values.append(torch.randn((channels, image_size, image_size), generator=generator, device=device))
-    return torch.stack(values, dim=0)
+class _PerSampleSeedGenerator:
+    """OpenAI CM-compatible generator with one explicit seed per sample."""
+
+    def __init__(self, seeds: list[int]):
+        self.seeds = [int(seed) for seed in seeds]
+        self.num_samples = len(self.seeds)
+        self.done_samples = 0
+        self.rng_cpu = [torch.Generator().manual_seed(seed) for seed in self.seeds]
+        self.rng_cuda = None
+        if torch.cuda.is_available():
+            self.rng_cuda = [torch.Generator("cuda").manual_seed(seed) for seed in self.seeds]
+
+    def _indices(self, size) -> tuple[tuple[int, ...], torch.Tensor]:
+        indices = torch.arange(self.done_samples, self.done_samples + int(size[0]))
+        indices = torch.clamp(indices, 0, self.num_samples - 1)
+        return (1, *size[1:]), indices
+
+    def _generators(self, device):
+        if torch.device(device).type == "cuda" and self.rng_cuda is not None:
+            return self.rng_cuda
+        return self.rng_cpu
+
+    def randn(self, *size, dtype=torch.float, device="cpu"):
+        one_size, indices = self._indices(size)
+        generators = self._generators(device)
+        return torch.cat(
+            [
+                torch.randn(*one_size, generator=generators[int(index)], dtype=dtype, device=device)
+                for index in indices
+            ],
+            dim=0,
+        )
+
+    def randint(self, low, high, size, dtype=torch.long, device="cpu"):
+        one_size, indices = self._indices(size)
+        generators = self._generators(device)
+        return torch.cat(
+            [
+                torch.randint(low, high, size=one_size, generator=generators[int(index)], dtype=dtype, device=device)
+                for index in indices
+            ],
+            dim=0,
+        )
+
+    def randn_like(self, tensor):
+        return self.randn(*tensor.size(), dtype=tensor.dtype, device=tensor.device)
+
+    def set_done_samples(self, done_samples):
+        self.done_samples = int(done_samples)
 
 
 def _ts_for_step_count(step_count: int, *, cm_steps_total: int) -> tuple[int, ...] | None:
@@ -199,12 +266,12 @@ def _sample_cm(
     diffusion,
     step_count: int,
     class_ids: list[int],
-    seed: int,
+    seeds: list[int],
     device: torch.device,
     cm_steps_total: int,
 ) -> torch.Tensor:
     labels = torch.as_tensor(class_ids, dtype=torch.long, device=device)
-    generator = get_generator("determ-indiv", num_samples=len(class_ids), seed=int(seed))
+    generator = _PerSampleSeedGenerator(seeds)
     sampler = "onestep" if step_count <= 1 else "multistep"
     return karras_sample(
         diffusion,
@@ -228,11 +295,16 @@ def _sample_edm(
     net: torch.nn.Module,
     step_count: int,
     class_ids: list[int],
-    seed: int,
+    seeds: list[int],
     device: torch.device,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    generator = get_generator("determ-indiv", num_samples=len(class_ids), seed=int(seed))
-    latents = generator.randn(len(class_ids), 3, 64, 64, device=device)
+    latents = torch.stack(
+        [
+            torch.randn((3, 64, 64), generator=torch.Generator(device=device).manual_seed(int(seed)), device=device)
+            for seed in seeds
+        ],
+        dim=0,
+    )
     labels = make_labels(torch.as_tensor(class_ids, dtype=torch.long, device=device), label_dim=int(net.label_dim), device=device)
     _u_grid, sigma_grid = build_sigma_grid(
         step_count=step_count,
@@ -255,7 +327,7 @@ def _sample_ctm_imagenet64(
     checkpoint: str | Path,
     steps: list[int],
     class_ids: list[int],
-    seed: int,
+    seeds: list[int],
     output_root: Path,
     device: torch.device,
     use_fp16: bool,
@@ -266,12 +338,12 @@ def _sample_ctm_imagenet64(
     model, diffusion, model_args = _load_ctm("imagenet64", defaults, device=device, use_fp16=use_fp16)
     sigma_min = max(0.002, float(getattr(model_args, "sigma_min", 0.002)))
     sigma_max = min(80.0, float(getattr(model_args, "sigma_max", 80.0)))
-    latents = _deterministic_individual_latents(
-        count=len(class_ids),
-        seed=seed,
-        channels=3,
-        image_size=64,
-        device=device,
+    latents = torch.stack(
+        [
+            torch.randn((3, 64, 64), generator=torch.Generator(device=device).manual_seed(int(seed)), device=device)
+            for seed in seeds
+        ],
+        dim=0,
     ) * sigma_max
     model_kwargs = {"y": torch.as_tensor(class_ids, dtype=torch.long, device=device)}
     rows: list[dict[str, Any]] = []
@@ -303,6 +375,8 @@ def main() -> None:
     for class_id in args.class_ids:
         if class_id < 0 or class_id >= 1000:
             raise ValueError(f"invalid ImageNet class id: {class_id}")
+    if len(args.sample_seeds) != len(args.class_ids):
+        raise ValueError("--sample-seeds and --class-ids must have the same length")
     os.environ.setdefault("DNNLIB_CACHE_DIR", "/cache/Zhengwei/DG-TWFD-runtime/.torch/dnnlib")
     device = torch.device(args.device if args.device == "cpu" or torch.cuda.is_available() else "cpu")
     if device.type == "cuda":
@@ -314,10 +388,14 @@ def main() -> None:
     output_root.mkdir(parents=True, exist_ok=True)
     steps = [int(item) for item in args.steps]
     class_ids = [int(item) for item in args.class_ids]
+    sample_seeds = [int(item) for item in args.sample_seeds]
     manifest: dict[str, Any] = {
         "note": "Each column fixes the same ImageNet class id and deterministic latent/noise seed across class-conditional rows.",
         "steps": steps,
-        "columns": [{"index": idx, "class_id": class_id, "seed": int(args.seed)} for idx, class_id in enumerate(class_ids)],
+        "columns": [
+            {"index": idx, "class_id": class_id, "seed": seed}
+            for idx, (class_id, seed) in enumerate(zip(class_ids, sample_seeds))
+        ],
         "step_mapping": {
             "edm_reference_replaces_dg_twfd_best": {str(key): value for key, value in EDM_REFERENCE_STEPS.items()},
             "edm_identity_proxy": {str(key): value for key, value in EDM_IDENTITY_STEPS.items()},
@@ -329,7 +407,7 @@ def main() -> None:
     edm = load_edm_network(args.edm_network, device=device, use_fp16=bool(args.use_fp16 and device.type == "cuda"))
     for display_step in steps:
         actual_step = int(EDM_REFERENCE_STEPS[display_step])
-        samples, sigma_grid = _sample_edm(net=edm, step_count=actual_step, class_ids=class_ids, seed=args.seed, device=device)
+        samples, sigma_grid = _sample_edm(net=edm, step_count=actual_step, class_ids=class_ids, seeds=sample_seeds, device=device)
         sample_dir = output_root / "edm_imagenet64_cond_adm_32_48_64_128" / f"steps{display_step}"
         manifest["rows"].append(
             {
@@ -348,11 +426,11 @@ def main() -> None:
         )
     for display_step in steps:
         actual_step = int(EDM_IDENTITY_STEPS[display_step])
-        samples, sigma_grid = _sample_edm(net=edm, step_count=actual_step, class_ids=class_ids, seed=args.seed, device=device)
-        sample_dir = output_root / "edm_imagenet64_identity_16_24_30_36" / f"steps{display_step}"
+        samples, sigma_grid = _sample_edm(net=edm, step_count=actual_step, class_ids=class_ids, seeds=sample_seeds, device=device)
+        sample_dir = output_root / EDM_IDENTITY_ROW / f"steps{display_step}"
         manifest["rows"].append(
             {
-                "row": "edm_imagenet64_identity_16_24_30_36",
+                "row": EDM_IDENTITY_ROW,
                 "description": "EDM ImageNet64 medium-step identity/proxy row requested for DG-TWFD identity comparison.",
                 "display_step": int(display_step),
                 "actual_edm_steps": actual_step,
@@ -384,7 +462,7 @@ def main() -> None:
                 diffusion=diffusion,
                 step_count=step_count,
                 class_ids=class_ids,
-                seed=args.seed,
+                seeds=sample_seeds,
                 device=device,
                 cm_steps_total=int(cm_steps_total),
             )
@@ -410,7 +488,7 @@ def main() -> None:
             checkpoint=args.ctm_checkpoint,
             steps=steps,
             class_ids=class_ids,
-            seed=int(args.seed),
+            seeds=sample_seeds,
             output_root=output_root,
             device=device,
             use_fp16=bool(args.use_fp16),

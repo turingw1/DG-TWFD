@@ -1,6 +1,6 @@
 # DG-TWFD v3 Qualitative Figure Selection Draft
 
-Last updated: 2026-05-01 Asia/Shanghai
+Last updated: 2026-05-02 Asia/Shanghai
 
 本文档是定性展示图的可编辑配置草案。默认展示步数为 `1 / 2 / 4 / 8`。新版主图对条件模型采用 class-locked 协议：同一列在所有条件模型中固定同一个类别条件和 latent/noise seed，避免“同 seed 但语义不一致”的定性误差。OpenAI CIFAR-10 JAX consistency checkpoints 不支持类别标签条件，因此 CIFAR CD/CT 行只能 seed-locked，不能写成 class-locked。你可以直接修改 `Include`、`Figure split`、`Step 1/2/4/8`、`Display label` 和 `Notes` 列。
 
@@ -10,59 +10,55 @@ Last updated: 2026-05-01 Asia/Shanghai
 |---|---|
 | Main datasets | CIFAR-10, ImageNet64 |
 | Main steps | 1, 2, 4, 8 |
-| Per-cell visual | 8-image strip per cell; class-locked for conditional rows, seed-locked only for unconditional CIFAR JAX CD/CT rows |
+| Per-cell visual | Paper-ready per-sample panels; each file is one seed/class, model rows x `1/2/4/8` step columns |
 | Metric label | FID-5k or FID-50k, exactly matching the source report |
 | Missing result policy | mark as `N/A`; do not regenerate silently |
 | Invalid/smoke result policy | appendix only unless manually promoted |
 
-## Generated Class-Locked Panels
+## Recommended Paper Panels
 
-当前已经生成无文字 PDF/PNG，图中只包含图片，行列标签留给后续 LaTeX/矢量编辑阶段添加。下载或论文排版时优先使用 `*_x4.pdf`：该版本用 4x 整数放大，并以 lossless `FlateDecode` 嵌入 RGB 图像，避免 PIL 默认 PDF/JPEG 压缩造成画质下降。非 `x4` 版本保留 native pixel 尺寸，主要用于审计和像素级对照。
+当前推荐使用按 seed/class 拆分的 paper-ready 面板，而不是旧的长条总图。每个文件只包含一个 seed/class；面板内部行是模型，列是 `1 / 2 / 4 / 8` display steps。Python 只生成纯图像 grid，不内嵌文字；行名、列名、FID/NFE 等文字应在 LaTeX 或矢量编辑器中排版。
 
-| Dataset | Recommended PDF | Native PDF | Recommended PNG | Rows | Columns |
-|---|---|---|---|---|---|
-| CIFAR-10 | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only_x4.pdf` | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only.pdf` | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only_x4.png` | EDM 32/48/64/128, DG-TWFD identity, CTM official, CTM no-GAN, CD-LPIPS JAX, CD-L2 JAX, CT-LPIPS JAX | display columns 1/2/4/8; EDM row uses actual steps 32/48/64/128; conditional rows are class-locked; CIFAR JAX CD/CT rows are seed-locked only |
-| ImageNet64 | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only_x4.pdf` | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only.pdf` | `docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_class_locked_images_only_x4.png` | EDM 32/48/64/128, EDM identity proxy 16/24/30/36, CD-LPIPS, CD-L2, CT, CTM official | display columns 1/2/4/8; EDM rows use actual steps recorded in manifest; each cell has 8 class-locked samples |
+导出规则：
 
-Sidecar metadata:
+| Rule | Value |
+|---|---|
+| Sample upscaling | nearest-neighbor to `256 x 256` before tiling |
+| Internal gap / border | `0 px` |
+| PDF image encoding | lossless `FlateDecode`, no JPEG/DCT |
+| Panel width | `1024 px` |
+| Recommended max printed width | `3.413 in` for `>=300 dpi` |
+| Text labels | not embedded; add in LaTeX |
 
-```text
-docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_images_only_manifest.json
-docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/manifest.json
-docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/consistency_cifar10_jax_manifest.json
-docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/manifest.json
-```
-
-CIFAR-10 conditional rows use class ids `0..7` (`airplane, automobile, bird, cat, deer, dog, frog, horse`) with latent seeds `1000..1007`. CIFAR-10 JAX CD/CT rows reuse sample seeds `1000..1007` but have no class labels. ImageNet64 columns use class ids `[8, 22, 207, 281, 404, 555, 751, 817]` with deterministic seed `31`.
-
-## Per-Sample Panels
-
-为了避免一张长图过宽，另生成了按 seed/class 拆分的小面板。每个文件只包含一个 seed/class；面板内部行是模型，列是 `1 / 2 / 4 / 8` display steps。文件仍然是 image-only，不内嵌文字标签；行列解释记录在 `manifest.json`，方便后续在 LaTeX 或矢量编辑器里加标签。
-
-推荐使用 `pdf_x4/` 目录中的 lossless PDF：
+推荐文件夹：
 
 ```text
-docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/
+docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/
 ├── README.md
 ├── manifest.json
 ├── cifar10/
 │   ├── pdf/
-│   ├── pdf_x4/
-│   ├── png/
-│   └── png_x4/
+│   └── png/
 └── imagenet64/
     ├── pdf/
-    ├── pdf_x4/
-    ├── png/
-    └── png_x4/
+    └── png/
 ```
 
-当前文件数量：
-
-| Dataset | Panels | Native panel size | x4 panel size | Rows x Columns |
+| Dataset | Panels | Panel size | Rows x Columns | Notes |
 |---|---:|---|---|---|
-| CIFAR-10 | 8 | `152 x 272` | `608 x 1088` | 7 models x 4 steps |
-| ImageNet64 | 8 | `280 x 424` | `1120 x 1696` | 6 models x 4 steps |
+| CIFAR-10 | 18 | `1024 x 1792` | 7 models x 4 steps | 18 class/seed pairs; conditional rows are class-locked; JAX CD/CT rows are seed-locked only |
+| ImageNet64 | 18 | `1024 x 1536` | 6 models x 4 steps | 18 class/seed pairs; all rows are class-conditional |
+
+Sidecar metadata:
+
+```text
+docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/manifest.json
+docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260502_paper/manifest.json
+docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260502_paper/consistency_cifar10_jax_manifest.json
+docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260502_paper/manifest.json
+```
+
+CIFAR-10 conditional rows use 18 class/seed pairs: seeds `1000..1017`, with class ids `[0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7]`. CIFAR-10 JAX CD/CT rows reuse sample seeds `1000..1017` but have no class labels. ImageNet64 uses 18 class/seed pairs with class ids `[8,22,207,281,404,555,751,817,130,145,292,340,407,444,569,701,779,980]` and seeds `31..48`.
 
 ## Current Figure Row Log
 
@@ -85,7 +81,7 @@ docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/
 | Row | Display row | Actual generator and parameters |
 |---:|---|---|
 | 1 | DG-TWFD best replacement / EDM reference | 使用官方 EDM ImageNet64 class-conditional cond-ADM checkpoint `edm-imagenet-64x64-cond-adm.pkl`；显示列 `1/2/4/8` 实际对应 EDM `32/48/64/128` steps；这一行不使用 DG-TWFD ImageNet checkpoint。 |
-| 2 | ImageNet DG-TWFD identity proxy / EDM proxy | 使用官方 EDM ImageNet64 class-conditional cond-ADM checkpoint `edm-imagenet-64x64-cond-adm.pkl`；显示列 `1/2/4/8` 实际对应 EDM `16/24/30/36` steps；由于当前没有 DG-TWFD ImageNet identity checkpoint，这一行是 EDM proxy。 |
+| 2 | ImageNet DG-TWFD identity proxy / EDM proxy | 使用官方 EDM ImageNet64 class-conditional cond-ADM checkpoint `edm-imagenet-64x64-cond-adm.pkl`；显示列 `1/2/4/8` 实际对应 EDM `8/16/24/30` steps；由于当前没有 DG-TWFD ImageNet identity checkpoint，这一行是 EDM proxy。 |
 | 3 | CD-LPIPS ImageNet64 | 使用 OpenAI consistency distillation ImageNet64 LPIPS checkpoint `cd_imagenet64_lpips.pt`；`karras_sample` onestep/multistep；OpenAI CM ts schedule；显示列 `1/2/4/8` 实际对应 CM `1/2/4/8` steps。 |
 | 4 | CD-L2 ImageNet64 | 使用 OpenAI consistency distillation ImageNet64 L2 checkpoint `cd_imagenet64_l2.pt`；`karras_sample` onestep/multistep；OpenAI CM ts schedule；显示列 `1/2/4/8` 实际对应 CM `1/2/4/8` steps。 |
 | 5 | CT ImageNet64 | 使用 OpenAI consistency training ImageNet64 checkpoint `ct_imagenet64.pt`；`karras_sample` onestep/multistep；OpenAI CM ts schedule；显示列 `1/2/4/8` 实际对应 CM `1/2/4/8` steps。 |

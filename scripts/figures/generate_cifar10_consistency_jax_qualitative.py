@@ -63,16 +63,17 @@ ROWS = {
         "checkpoint_step": 74,
     },
 }
+DEFAULT_SAMPLE_SEEDS = list(range(1000, 1018))
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output-root",
-        default="docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501",
+        default="docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260502_paper",
     )
     parser.add_argument("--steps", nargs="+", type=int, default=[1, 2, 4, 8])
-    parser.add_argument("--sample-seeds", nargs="+", type=int, default=[1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007])
+    parser.add_argument("--sample-seeds", nargs="+", type=int, default=DEFAULT_SAMPLE_SEEDS)
     parser.add_argument("--rows", nargs="+", default=list(ROWS))
     return parser.parse_args()
 

@@ -2,8 +2,10 @@
 """Build per-sample qualitative panels.
 
 Each output panel corresponds to one seed/class. Rows are model variants and
-columns are the 1/2/4/8 display steps. The PDFs intentionally contain images
-only and use lossless FlateDecode embedding.
+columns are the 1/2/4/8 display steps. Samples are nearest-neighbor upscaled
+before grid composition so the embedded raster has enough pixels for paper
+layout. The PDFs intentionally contain images only and use lossless
+FlateDecode embedding.
 """
 
 from __future__ import annotations
@@ -17,24 +19,15 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[2]
 QUAL_DIR = ROOT / "docs" / "experiments" / "DG_TWFD_v3" / "figures" / "qualitative"
-OUTDIR = QUAL_DIR / "per_sample_panels_20260502"
+OUTDIR = QUAL_DIR / "paper_panels_20260502"
 STEPS = [1, 2, 4, 8]
-CELL_GAP = 8
-ROW_GAP = 8
+CELL_GAP = 0
+ROW_GAP = 0
 BACKGROUND = (255, 255, 255)
-DISPLAY_SCALE = 4
-
-
-CIFAR_CLASSES = [
-    "airplane",
-    "automobile",
-    "bird",
-    "cat",
-    "deer",
-    "dog",
-    "frog",
-    "horse",
-]
+SAMPLE_PIXEL_SIZE = 256
+TARGET_DPI = 300
+CIFAR_SAMPLE_ROOT = QUAL_DIR / "class_locked_samples" / "cifar10_20260502_paper"
+IMAGENET_SAMPLE_ROOT = QUAL_DIR / "class_locked_samples" / "imagenet64_20260502_paper"
 
 
 def _save_lossless_pdf(image: Image.Image, path: Path) -> None:
@@ -86,7 +79,8 @@ def _load_sample(pattern: str, step: int, sample_id: int) -> Image.Image:
     path = ROOT / pattern.format(step=step) / f"{sample_id:06d}.png"
     if not path.exists():
         raise FileNotFoundError(path)
-    return Image.open(path).convert("RGB")
+    image = Image.open(path).convert("RGB")
+    return image.resize((SAMPLE_PIXEL_SIZE, SAMPLE_PIXEL_SIZE), Image.Resampling.NEAREST)
 
 
 def _compose_grid(rows: list[dict], sample_id: int) -> Image.Image:
@@ -115,8 +109,6 @@ def _write_panel(panel: Image.Image, dataset: str, stem: str) -> dict:
     paths = {
         "png": dataset_dir / "png" / f"{stem}.png",
         "pdf": dataset_dir / "pdf" / f"{stem}.pdf",
-        "png_x4": dataset_dir / "png_x4" / f"{stem}_x4.png",
-        "pdf_x4": dataset_dir / "pdf_x4" / f"{stem}_x4.pdf",
     }
     for path in paths.values():
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -124,24 +116,17 @@ def _write_panel(panel: Image.Image, dataset: str, stem: str) -> dict:
     panel.save(paths["png"], compress_level=6)
     _save_lossless_pdf(panel, paths["pdf"])
 
-    scaled = panel.resize(
-        (panel.width * DISPLAY_SCALE, panel.height * DISPLAY_SCALE),
-        Image.Resampling.NEAREST,
-    )
-    scaled.save(paths["png_x4"], compress_level=6)
-    _save_lossless_pdf(scaled, paths["pdf_x4"])
-
     return {
         name: str(path.relative_to(ROOT))
         for name, path in paths.items()
     } | {
         "pixel_size": [panel.width, panel.height],
-        "pixel_size_x4": [scaled.width, scaled.height],
+        "recommended_max_width_in_at_300dpi": round(panel.width / TARGET_DPI, 3),
     }
 
 
 def _cifar_rows() -> list[dict]:
-    base = "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501"
+    base = "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260502_paper"
     return [
         {
             "label": "EDM CIFAR-10 cond-VP 32/48/64/128",
@@ -178,15 +163,15 @@ def _cifar_rows() -> list[dict]:
 
 
 def _imagenet_rows() -> list[dict]:
-    base = "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501"
+    base = "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260502_paper"
     return [
         {
             "label": "EDM ImageNet64 cond-ADM 32/48/64/128",
             "pattern": f"{base}/edm_imagenet64_cond_adm_32_48_64_128/steps{{step}}",
         },
         {
-            "label": "EDM ImageNet64 identity proxy 16/24/30/36",
-            "pattern": f"{base}/edm_imagenet64_identity_16_24_30_36/steps{{step}}",
+            "label": "EDM ImageNet64 identity proxy 8/16/24/30",
+            "pattern": f"{base}/edm_imagenet64_identity_8_16_24_30/steps{{step}}",
         },
         {
             "label": "CD-LPIPS ImageNet64",
@@ -210,14 +195,14 @@ def _imagenet_rows() -> list[dict]:
 def main() -> None:
     cifar_rows = _cifar_rows()
     imagenet_rows = _imagenet_rows()
-    imagenet_classes = json.loads(
-        (QUAL_DIR / "class_locked_samples" / "imagenet64_20260501" / "manifest.json")
-        .read_text(encoding="utf-8")
-    )["columns"]
+    cifar_columns = json.loads((CIFAR_SAMPLE_ROOT / "manifest.json").read_text(encoding="utf-8"))["columns"]
+    imagenet_columns = json.loads((IMAGENET_SAMPLE_ROOT / "manifest.json").read_text(encoding="utf-8"))["columns"]
 
     panels: dict[str, list[dict]] = {"cifar10": [], "imagenet64": []}
-    for class_id, class_name in enumerate(CIFAR_CLASSES):
-        sample_id = 1000 + class_id
+    for item in cifar_columns:
+        sample_id = int(item["latent_seed"])
+        class_id = int(item["class_id"])
+        class_name = str(item["class_name"])
         panel = _compose_grid(cifar_rows, sample_id)
         stem = f"cifar10_seed{sample_id:04d}_class{class_id:02d}_{class_name}"
         panels["cifar10"].append(
@@ -230,7 +215,7 @@ def main() -> None:
             }
         )
 
-    for item in imagenet_classes:
+    for item in imagenet_columns:
         sample_id = int(item["index"])
         class_id = int(item["class_id"])
         panel = _compose_grid(imagenet_rows, sample_id)
@@ -249,10 +234,14 @@ def main() -> None:
         "note": (
             "Per-sample image-only panels. Each file is one seed/class. "
             "Rows are models and columns are display steps 1/2/4/8. "
-            "Use pdf_x4 for download and paper composition."
+            "Samples are nearest-neighbor upscaled to 256x256 before tiling. "
+            "No internal whitespace or gaps are inserted."
         ),
         "columns": [f"NFE {step}" for step in STEPS],
-        "display_scale": DISPLAY_SCALE,
+        "sample_pixel_size": SAMPLE_PIXEL_SIZE,
+        "cell_gap": CELL_GAP,
+        "row_gap": ROW_GAP,
+        "target_dpi": TARGET_DPI,
         "pdf_encoding": "lossless FlateDecode RGB image XObject",
         "datasets": {
             "cifar10": {
@@ -279,12 +268,13 @@ def main() -> None:
         encoding="utf-8",
     )
     readme = (
-        "# Per-Sample Qualitative Panels\n\n"
+        "# Paper-Ready Per-Sample Qualitative Panels\n\n"
         "Each file contains one seed/class. Rows are model variants and columns are "
         "`1 / 2 / 4 / 8` display steps. The panels are image-only; row/column labels "
         "are recorded in `manifest.json` for LaTeX or vector-editor labeling.\n\n"
-        "Use `pdf_x4/` for paper layout or download. These PDFs use lossless "
-        "`FlateDecode` and 4x nearest-neighbor scaling.\n"
+        "Samples are nearest-neighbor upscaled to 256 x 256 before tiling. No gaps "
+        "or borders are inserted. The PDFs use lossless `FlateDecode`; text labels "
+        "should be added in LaTeX.\n"
     )
     (OUTDIR / "README.md").write_text(readme, encoding="utf-8")
     print(json.dumps(manifest, indent=2))
