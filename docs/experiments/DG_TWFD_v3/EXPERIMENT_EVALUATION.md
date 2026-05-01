@@ -126,6 +126,26 @@ multi-step budget. The expert conclusion is that a single global monotone warp
 is the wrong abstraction for all budgets: RQS is useful, but low-step sampling
 needs its own calibrated node or a genuinely budget-conditioned warp head.
 
+The step7750 readout confirms that this is a stable adaptation, not a one-off
+probe artifact. Training is still healthy (`qmax≈1.35`, warp loss decreasing to
+about `0.0044-0.0046`), and the learned RQS warp consistently helps the
+high-budget clocks while the calibrated 2-step midpoint remains the best
+low-budget choice:
+
+| policy / checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 |
+|---|---:|---:|---:|---:|---:|
+| step7750 auto warp | 49.148 | 29.910 | 21.240 | 19.964 | 19.718 |
+| step7750 identity | 49.148 | 28.492 | 22.441 | 20.166 | 19.786 |
+| step7750 calibrated budget | 49.148 | 24.427 | 21.240 | 19.964 | 19.718 |
+
+The current algorithm is therefore adapting well to the new experiment under a
+budget-conditioned inference policy. Pure auto warp should not be reported as
+the final all-budget method because it remains misaligned at 2-step
+(`u≈0.473`, too early), but the combined policy is now clearly stronger than
+identity at every multi-step budget. The next algorithmic improvement should
+make this budget conditioning learnable or periodically recalibrated instead of
+hard-coding the 2-step midpoint at `u=0.60`.
+
 ## Latest Decision Metrics
 
 FID uses 2048 generated samples for the active watcher.
