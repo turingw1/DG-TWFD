@@ -22,7 +22,7 @@ train:
   resume_ema: false
   max_steps: 100000
   max_seconds: 28800
-  batch_size: 384
+  batch_size: 192
   num_workers: 0
   lr: 8.0e-7
   weight_decay: 0.0

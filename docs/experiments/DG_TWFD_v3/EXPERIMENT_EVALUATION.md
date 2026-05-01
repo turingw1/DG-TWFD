@@ -170,6 +170,13 @@ training with EMA can resume from the best live v17 checkpoint and materially
 move FID@1, while preserving enough low/mid-noise denoising structure for later
 full-stack/timewarp training to reuse.
 
+Runtime correction: the first v18 launch used the old endpoint batch size
+`384`, but the added real-data denoise anchor introduces another student
+forward and pushed A100 80GB memory over the limit before the first checkpoint.
+The run was therefore corrected to `batch_size=192` and restarted under the
+same run tag. This keeps the algorithmic change intact while making the
+experiment executable.
+
 ## Latest Decision Metrics
 
 FID uses 2048 generated samples for the active watcher.
