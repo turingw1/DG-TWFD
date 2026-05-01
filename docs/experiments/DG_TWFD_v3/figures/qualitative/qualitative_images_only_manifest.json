@@ -1,0 +1,60 @@
+{
+  "note": "PDF panels contain images only; labels are intentionally absent.",
+  "omitted": [
+    "OpenAI CIFAR-10 CM CD/CT rows are pending local sample generation from JAX checkpoints.",
+    "CIFAR-10 EDM official row is pending image generation under the target qualitative protocol."
+  ],
+  "panels": [
+    {
+      "output_png": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_images_only.png",
+      "output_pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_images_only.pdf",
+      "pixel_size": [
+        560,
+        112
+      ],
+      "rows": [
+        "DG-TWFD best / v17 auto warp step7750",
+        "DG-TWFD identity / v17 step7750 identity",
+        "CTM no-GAN DSM 10k EMA0.999"
+      ],
+      "columns": [
+        "NFE 1",
+        "NFE 2",
+        "NFE 4",
+        "NFE 8"
+      ],
+      "seeds": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "output_png": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_images_only.png",
+      "output_pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_imagenet64_images_only.pdf",
+      "pixel_size": [
+        1072,
+        280
+      ],
+      "rows": [
+        "EDM official ImageNet64",
+        "CD-LPIPS official ImageNet64",
+        "CD-L2 official ImageNet64",
+        "CT official ImageNet64"
+      ],
+      "columns": [
+        "NFE 1",
+        "NFE 2",
+        "NFE 4",
+        "NFE 8"
+      ],
+      "seeds": [
+        0,
+        1,
+        2,
+        3
+      ]
+    }
+  ]
+}
