@@ -255,6 +255,16 @@ final, and 16-step remains far behind the v17/v15 high-budget path. Continue
 v19 and watch whether the RQS warp/preservation terms recover 8/16 without
 erasing the new endpoint.
 
+After the first two-hour supervision window, v19 step2500 budget FID-2048 is
+`46.020 / 23.528 / 20.814 / 20.316 / 20.900`. The recovery trend is real:
+4-step and 8-step are now better than v18 final, and 16-step has recovered
+about `0.37` FID from v18 final. The cost is also real: FID@1 has drifted from
+`44.325` at the v18 source to `46.020`, and 2-step is slowly worsening from
+the early calibrated minimum around `23.31`. Continue v19 because high-budget
+recovery is still active and endpoint remains better than v17, but the next
+decision gate should stop or branch if FID@1 approaches the old v17 level
+before 16-step reaches the v17/v15 high-budget region.
+
 ## Latest Decision Metrics
 
 FID uses 2048 generated samples for the active watcher.
