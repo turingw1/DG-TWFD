@@ -98,6 +98,34 @@ useful. By step500, the learned warp advantage grows to about `0.159 / 0.067 /
 bottleneck is therefore budget-specific: the same warp bend that helps
 `4/8/16` currently over-corrects the midpoint used by `2` steps.
 
+The step4000/4500 exploration resolved the 2-step side of that bottleneck. A
+dedicated midpoint probe showed the current auto warp midpoint (`u≈0.473`) moves
+in the wrong direction for 2-step sampling. On the step4000 checkpoint, a
+2048-sample probe found:
+
+| fixed 2-step midpoint | FID@2 |
+|---:|---:|
+| 0.50 identity | 29.424 |
+| 0.58 | 25.438 |
+| 0.60 | 25.304 |
+| 0.62 | 25.643 |
+
+The active v17 config now uses a budget-conditioned policy:
+`eval.budget_fixed_u_grids[2] = [0, 0.60, 1]`, while keeping learned RQS warp
+for `4/8/16`. The first online validation at step4500 confirms this is the
+right direction:
+
+| policy / checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 |
+|---|---:|---:|---:|---:|---:|
+| step4500 auto warp | 49.300 | 29.979 | 21.497 | 20.049 | 19.804 |
+| step4500 identity | 49.300 | 28.567 | 22.577 | 20.252 | 19.866 |
+| step4500 calibrated budget | 49.300 | 24.511 | 21.497 | 20.049 | 19.804 |
+
+This is the first current-track policy that beats identity at every evaluated
+multi-step budget. The expert conclusion is that a single global monotone warp
+is the wrong abstraction for all budgets: RQS is useful, but low-step sampling
+needs its own calibrated node or a genuinely budget-conditioned warp head.
+
 ## Latest Decision Metrics
 
 FID uses 2048 generated samples for the active watcher.

@@ -21,6 +21,39 @@ from src.edm_map_lib import (
 )
 
 
+class FixedGridWarp(torch.nn.Module):
+    def __init__(self, u_grid: list[float], *, device: torch.device) -> None:
+        super().__init__()
+        if len(u_grid) < 2:
+            raise ValueError("fixed u_grid must contain at least two nodes")
+        if abs(float(u_grid[0])) > 1.0e-6 or abs(float(u_grid[-1]) - 1.0) > 1.0e-6:
+            raise ValueError(f"fixed u_grid must start at 0 and end at 1, got {u_grid}")
+        if any(float(b) <= float(a) for a, b in zip(u_grid, u_grid[1:])):
+            raise ValueError(f"fixed u_grid must be strictly increasing, got {u_grid}")
+        self.register_buffer("u_nodes", torch.tensor([float(item) for item in u_grid], device=device, dtype=torch.float32))
+
+    @torch.no_grad()
+    def r_to_t(self, r: torch.Tensor) -> torch.Tensor:
+        flat = r.reshape(-1).clamp(0.0, 1.0)
+        interval_count = int(self.u_nodes.numel() - 1)
+        scaled = flat * float(interval_count)
+        indices = torch.clamp(scaled.floor().long(), max=interval_count - 1)
+        alpha = scaled - indices.to(dtype=flat.dtype)
+        u_nodes = self.u_nodes.to(device=r.device, dtype=r.dtype)
+        restored = u_nodes[indices] + alpha * (u_nodes[indices + 1] - u_nodes[indices])
+        return restored.reshape_as(r)
+
+
+def _fixed_budget_grid(eval_cfg: dict, *, step_count: int) -> list[float] | None:
+    raw = eval_cfg.get("budget_fixed_u_grids", {})
+    if not isinstance(raw, dict):
+        return None
+    value = raw.get(step_count, raw.get(str(step_count)))
+    if value is None:
+        return None
+    return [float(item) for item in value]
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Evaluate an isolated EDM-first continuous map checkpoint.")
     parser.add_argument("--config", required=True)
@@ -126,7 +159,15 @@ def main() -> None:
         effective_warp = warp
         effective_warp_mode = args.warp_mode
         if args.warp_mode == "budget":
-            if step_count < budget_warp_min_steps or not warp_loaded:
+            fixed_u_grid = _fixed_budget_grid(eval_cfg, step_count=step_count)
+            if fixed_u_grid is not None:
+                if len(fixed_u_grid) != step_count + 1:
+                    raise ValueError(
+                        f"eval.budget_fixed_u_grids[{step_count}] must have {step_count + 1} nodes, got {len(fixed_u_grid)}"
+                    )
+                effective_warp = FixedGridWarp(fixed_u_grid, device=device).eval()
+                effective_warp_mode = "fixed"
+            elif step_count < budget_warp_min_steps or not warp_loaded:
                 effective_warp = None
                 effective_warp_mode = "identity"
             else:

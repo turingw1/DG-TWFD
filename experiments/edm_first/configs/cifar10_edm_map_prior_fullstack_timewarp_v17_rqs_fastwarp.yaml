@@ -81,3 +81,5 @@ eval:
   fixed_grid_size: 64
   fixed_seed: 49
   budget_warp_min_steps: 4
+  budget_fixed_u_grids:
+    2: [0.0, 0.60, 1.0]
