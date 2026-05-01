@@ -124,7 +124,9 @@ def _compose_panel(rows: list[dict], output_stem: str) -> dict:
         "output_png": str(png_path.relative_to(ROOT)),
         "output_pdf": str(pdf_path.relative_to(ROOT)),
         "pixel_size": [width, height],
+        "row_count": len(rows),
         "rows": [row["label"] for row in rows],
+        "row_log": [row["row_log"] for row in rows],
         "columns": [f"NFE {step}" for step in STEPS],
         "sample_ids_by_row": {row["label"]: row.get("sample_ids") for row in rows},
     }
@@ -134,24 +136,46 @@ def main() -> None:
     cifar_rows = [
         {
             "label": "EDM CIFAR-10 cond-VP 32/48/64/128 / class-locked",
+            "row_log": (
+                "Row 1: DG-TWFD best replacement "
+                "(actual: official EDM CIFAR-10 cond-VP teacher from the DG-TWFD v17 config network; "
+                "display columns 1/2/4/8 use actual EDM steps 32/48/64/128; no DG-TWFD student is used in this row)."
+            ),
             "source_type": "flat_pngdir",
             "sample_ids": [1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007],
             "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_cifar10_cond_vp_32_48_64_128/steps{step}",
         },
         {
             "label": "DG-TWFD identity / class-locked same checkpoint",
+            "row_log": (
+                "Row 2: DG-TWFD identity "
+                "(actual: DG-TWFD v17 student checkpoint "
+                "runs/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855/checkpoints/best.pt; "
+                "warp disabled/effective identity; display columns 1/2/4/8 use actual student steps 1/2/4/8)."
+            ),
             "source_type": "flat_pngdir",
             "sample_ids": [1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007],
             "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/dg_twfd_identity_same_checkpoint/steps{step}",
         },
         {
             "label": "CTM official CIFAR-10 conditional / class-locked",
+            "row_log": (
+                "Row 3: CTM official CIFAR-10 conditional "
+                "(actual: CTM CIFAR-10 conditional checkpoint model043000.pt; "
+                "CTM exact transition with Karras sigma grid; display columns 1/2/4/8 use actual CTM steps 1/2/4/8)."
+            ),
             "source_type": "flat_pngdir",
             "sample_ids": [1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007],
             "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_official_cond/steps{step}",
         },
         {
             "label": "CTM no-GAN DSM 10k / class-locked",
+            "row_log": (
+                "Row 4: CTM no-GAN DSM 10k "
+                "(actual: local no-GAN CTM DSM checkpoint ema_0.999_010000.pt from "
+                "cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000; CTM exact transition with Karras sigma grid; "
+                "display columns 1/2/4/8 use actual CTM steps 1/2/4/8)."
+            ),
             "source_type": "flat_pngdir",
             "sample_ids": [1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007],
             "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps{step}",
@@ -160,36 +184,68 @@ def main() -> None:
     imagenet_rows = [
         {
             "label": "EDM ImageNet64 cond-ADM 32/48/64/128 / class-locked",
+            "row_log": (
+                "Row 1: DG-TWFD best replacement "
+                "(actual: official EDM ImageNet64 class-conditional cond-ADM checkpoint "
+                "edm-imagenet-64x64-cond-adm.pkl; display columns 1/2/4/8 use actual EDM steps 32/48/64/128; "
+                "no DG-TWFD ImageNet checkpoint is used)."
+            ),
             "source_type": "flat_pngdir",
             "sample_ids": list(range(8)),
             "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm_32_48_64_128/steps{step}",
         },
         {
             "label": "EDM ImageNet64 identity proxy 16/24/30/36 / class-locked",
+            "row_log": (
+                "Row 2: ImageNet DG-TWFD identity proxy "
+                "(actual: official EDM ImageNet64 class-conditional cond-ADM checkpoint "
+                "edm-imagenet-64x64-cond-adm.pkl; display columns 1/2/4/8 use actual EDM steps 16/24/30/36; "
+                "this is an EDM proxy because no DG-TWFD ImageNet identity checkpoint is available)."
+            ),
             "source_type": "flat_pngdir",
             "sample_ids": list(range(8)),
             "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_identity_16_24_30_36/steps{step}",
         },
         {
             "label": "CD-LPIPS ImageNet64 / class-locked",
+            "row_log": (
+                "Row 3: CD-LPIPS ImageNet64 "
+                "(actual: OpenAI consistency distillation ImageNet64 LPIPS checkpoint cd_imagenet64_lpips.pt; "
+                "karras_sample onestep/multistep with OpenAI CM ts schedule; display columns 1/2/4/8 use CM step counts 1/2/4/8)."
+            ),
             "source_type": "flat_pngdir",
             "sample_ids": list(range(8)),
             "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_lpips_imagenet64/steps{step}",
         },
         {
             "label": "CD-L2 ImageNet64 / class-locked",
+            "row_log": (
+                "Row 4: CD-L2 ImageNet64 "
+                "(actual: OpenAI consistency distillation ImageNet64 L2 checkpoint cd_imagenet64_l2.pt; "
+                "karras_sample onestep/multistep with OpenAI CM ts schedule; display columns 1/2/4/8 use CM step counts 1/2/4/8)."
+            ),
             "source_type": "flat_pngdir",
             "sample_ids": list(range(8)),
             "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/cd_l2_imagenet64/steps{step}",
         },
         {
             "label": "CT ImageNet64 / class-locked",
+            "row_log": (
+                "Row 5: CT ImageNet64 "
+                "(actual: OpenAI consistency training ImageNet64 checkpoint ct_imagenet64.pt; "
+                "karras_sample onestep/multistep with OpenAI CM ts schedule; display columns 1/2/4/8 use CM step counts 1/2/4/8)."
+            ),
             "source_type": "flat_pngdir",
             "sample_ids": list(range(8)),
             "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ct_imagenet64/steps{step}",
         },
         {
             "label": "CTM ImageNet64 official / class-locked",
+            "row_log": (
+                "Row 6: CTM ImageNet64 official "
+                "(actual: CTM ImageNet64 checkpoint ctm_imagenet64_ema_0.999.pt; "
+                "CTM exact transition with Karras sigma grid; display columns 1/2/4/8 use actual CTM steps 1/2/4/8)."
+            ),
             "source_type": "flat_pngdir",
             "sample_ids": list(range(8)),
             "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/ctm_imagenet64_official/steps{step}",

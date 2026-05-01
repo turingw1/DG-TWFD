@@ -34,6 +34,30 @@ docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_
 
 CIFAR-10 columns use class ids `0..7` (`airplane, automobile, bird, cat, deer, dog, frog, horse`) with latent seeds `1000..1007`. ImageNet64 columns use class ids `[8, 22, 207, 281, 404, 555, 751, 817]` with deterministic seed `31`.
 
+## Current Figure Row Log
+
+这部分是当前 PDF 的严格行解释，不是候选模型列表。CIFAR-10 当前只有 4 行；ImageNet64 当前只有 6 行。每一行都用“展示行名（实际使用的生成模型和参数）”记录，避免把已生成图片和待定候选 baseline 混在一起。
+
+### CIFAR-10 Current Rows
+
+| Row | Display row | Actual generator and parameters |
+|---:|---|---|
+| 1 | DG-TWFD best replacement / EDM reference | 使用官方 EDM CIFAR-10 cond-VP teacher；checkpoint 来自 DG-TWFD v17 config 的 `paths.network`；显示列 `1/2/4/8` 实际对应 EDM `32/48/64/128` steps；这一行不使用 DG-TWFD student。 |
+| 2 | DG-TWFD identity | 使用 DG-TWFD v17 student checkpoint `runs/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855/checkpoints/best.pt`；warp disabled/effective identity；显示列 `1/2/4/8` 实际对应 student `1/2/4/8` steps。 |
+| 3 | CTM official CIFAR-10 conditional | 使用 CTM CIFAR-10 conditional checkpoint `model043000.pt`；CTM exact transition；Karras sigma grid；显示列 `1/2/4/8` 实际对应 CTM `1/2/4/8` steps。 |
+| 4 | CTM no-GAN DSM 10k | 使用本地 no-GAN CTM DSM checkpoint `ema_0.999_010000.pt`；CTM exact transition；Karras sigma grid；显示列 `1/2/4/8` 实际对应 CTM `1/2/4/8` steps。 |
+
+### ImageNet64 Current Rows
+
+| Row | Display row | Actual generator and parameters |
+|---:|---|---|
+| 1 | DG-TWFD best replacement / EDM reference | 使用官方 EDM ImageNet64 class-conditional cond-ADM checkpoint `edm-imagenet-64x64-cond-adm.pkl`；显示列 `1/2/4/8` 实际对应 EDM `32/48/64/128` steps；这一行不使用 DG-TWFD ImageNet checkpoint。 |
+| 2 | ImageNet DG-TWFD identity proxy / EDM proxy | 使用官方 EDM ImageNet64 class-conditional cond-ADM checkpoint `edm-imagenet-64x64-cond-adm.pkl`；显示列 `1/2/4/8` 实际对应 EDM `16/24/30/36` steps；由于当前没有 DG-TWFD ImageNet identity checkpoint，这一行是 EDM proxy。 |
+| 3 | CD-LPIPS ImageNet64 | 使用 OpenAI consistency distillation ImageNet64 LPIPS checkpoint `cd_imagenet64_lpips.pt`；`karras_sample` onestep/multistep；OpenAI CM ts schedule；显示列 `1/2/4/8` 实际对应 CM `1/2/4/8` steps。 |
+| 4 | CD-L2 ImageNet64 | 使用 OpenAI consistency distillation ImageNet64 L2 checkpoint `cd_imagenet64_l2.pt`；`karras_sample` onestep/multistep；OpenAI CM ts schedule；显示列 `1/2/4/8` 实际对应 CM `1/2/4/8` steps。 |
+| 5 | CT ImageNet64 | 使用 OpenAI consistency training ImageNet64 checkpoint `ct_imagenet64.pt`；`karras_sample` onestep/multistep；OpenAI CM ts schedule；显示列 `1/2/4/8` 实际对应 CM `1/2/4/8` steps。 |
+| 6 | CTM ImageNet64 official | 使用 CTM ImageNet64 checkpoint `ctm_imagenet64_ema_0.999.pt`；CTM exact transition；Karras sigma grid；显示列 `1/2/4/8` 实际对应 CTM `1/2/4/8` steps。 |
+
 ## New Repository Audit
 
 | Repo | Dataset coverage | Public pretrained sampleable model? | Decision |

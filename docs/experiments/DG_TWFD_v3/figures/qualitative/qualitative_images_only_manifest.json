@@ -147,11 +147,18 @@
         1104,
         152
       ],
+      "row_count": 4,
       "rows": [
         "EDM CIFAR-10 cond-VP 32/48/64/128 / class-locked",
         "DG-TWFD identity / class-locked same checkpoint",
         "CTM official CIFAR-10 conditional / class-locked",
         "CTM no-GAN DSM 10k / class-locked"
+      ],
+      "row_log": [
+        "Row 1: DG-TWFD best replacement (actual: official EDM CIFAR-10 cond-VP teacher from the DG-TWFD v17 config network; display columns 1/2/4/8 use actual EDM steps 32/48/64/128; no DG-TWFD student is used in this row).",
+        "Row 2: DG-TWFD identity (actual: DG-TWFD v17 student checkpoint runs/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855/checkpoints/best.pt; warp disabled/effective identity; display columns 1/2/4/8 use actual student steps 1/2/4/8).",
+        "Row 3: CTM official CIFAR-10 conditional (actual: CTM CIFAR-10 conditional checkpoint model043000.pt; CTM exact transition with Karras sigma grid; display columns 1/2/4/8 use actual CTM steps 1/2/4/8).",
+        "Row 4: CTM no-GAN DSM 10k (actual: local no-GAN CTM DSM checkpoint ema_0.999_010000.pt from cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000; CTM exact transition with Karras sigma grid; display columns 1/2/4/8 use actual CTM steps 1/2/4/8)."
       ],
       "columns": [
         "NFE 1",
@@ -209,6 +216,7 @@
         2128,
         424
       ],
+      "row_count": 6,
       "rows": [
         "EDM ImageNet64 cond-ADM 32/48/64/128 / class-locked",
         "EDM ImageNet64 identity proxy 16/24/30/36 / class-locked",
@@ -216,6 +224,14 @@
         "CD-L2 ImageNet64 / class-locked",
         "CT ImageNet64 / class-locked",
         "CTM ImageNet64 official / class-locked"
+      ],
+      "row_log": [
+        "Row 1: DG-TWFD best replacement (actual: official EDM ImageNet64 class-conditional cond-ADM checkpoint edm-imagenet-64x64-cond-adm.pkl; display columns 1/2/4/8 use actual EDM steps 32/48/64/128; no DG-TWFD ImageNet checkpoint is used).",
+        "Row 2: ImageNet DG-TWFD identity proxy (actual: official EDM ImageNet64 class-conditional cond-ADM checkpoint edm-imagenet-64x64-cond-adm.pkl; display columns 1/2/4/8 use actual EDM steps 16/24/30/36; this is an EDM proxy because no DG-TWFD ImageNet identity checkpoint is available).",
+        "Row 3: CD-LPIPS ImageNet64 (actual: OpenAI consistency distillation ImageNet64 LPIPS checkpoint cd_imagenet64_lpips.pt; karras_sample onestep/multistep with OpenAI CM ts schedule; display columns 1/2/4/8 use CM step counts 1/2/4/8).",
+        "Row 4: CD-L2 ImageNet64 (actual: OpenAI consistency distillation ImageNet64 L2 checkpoint cd_imagenet64_l2.pt; karras_sample onestep/multistep with OpenAI CM ts schedule; display columns 1/2/4/8 use CM step counts 1/2/4/8).",
+        "Row 5: CT ImageNet64 (actual: OpenAI consistency training ImageNet64 checkpoint ct_imagenet64.pt; karras_sample onestep/multistep with OpenAI CM ts schedule; display columns 1/2/4/8 use CM step counts 1/2/4/8).",
+        "Row 6: CTM ImageNet64 official (actual: CTM ImageNet64 checkpoint ctm_imagenet64_ema_0.999.pt; CTM exact transition with Karras sigma grid; display columns 1/2/4/8 use actual CTM steps 1/2/4/8)."
       ],
       "columns": [
         "NFE 1",
