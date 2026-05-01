@@ -1,0 +1,63 @@
+experiment:
+  name: cifar10_edm_map_endpoint_ema_v18
+
+paths:
+  data_root: ${DATA_ROOT:-datasets}/cifar10
+  network: ${EDM_CIFAR10_NETWORK:-https://nvlabs-fi-cdn.nvidia.com/edm/pretrained/edm-cifar10-32x32-cond-vp.pkl}
+  fid_stats: ${DATA_ROOT:-datasets}/cifar10/.dgfm_cache/fid_stats_cifar10_test_32_torch_fidelity_inceptionv3_2048.npz
+
+runtime:
+  device: cuda
+  amp: false
+  seed: 51
+
+teacher:
+  use_fp16: false
+  rollout_steps: 18
+
+train:
+  objective: prior_endpoint
+  resume_optimizer: false
+  resume_step: false
+  resume_ema: false
+  max_steps: 100000
+  max_seconds: 28800
+  batch_size: 384
+  num_workers: 0
+  lr: 8.0e-7
+  weight_decay: 0.0
+  log_every: 25
+  save_every: 250
+  match_weight: 1.0
+  defect_weight: 0.02
+  anchor_weight: 0.0
+  perceptual_weight: 0.35
+  perceptual_levels: 3
+  data_denoise_weight: 0.03
+  data_denoise_u_low: 0.35
+  data_denoise_u_high: 0.95
+  data_denoise_normalize: false
+  ema_enabled: true
+  ema_decay: 0.995
+  ema_update_every: 10
+  ema_device: cpu
+  prior_mid_u_low: 0.25
+  prior_mid_u_high: 0.85
+  sigma_data: 0.5
+  sigma_min: 0.002
+  sigma_max: 80.0
+  rho: 7.0
+
+timewarp:
+  enabled: false
+  num_bins: 32
+  init: uniform
+
+eval:
+  steps: [1, 2, 4, 8, 16]
+  use_ema: true
+  num_fid_samples: 4096
+  fid_batch_size: 32
+  sample_batch_size: 64
+  fixed_grid_size: 64
+  fixed_seed: 51

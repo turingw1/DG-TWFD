@@ -67,6 +67,11 @@ def parse_args() -> argparse.Namespace:
         default="auto",
         help="auto loads the learned checkpoint warp; identity disables it; budget uses identity below eval.budget_warp_min_steps and learned warp at/above it.",
     )
+    parser.add_argument(
+        "--use-ema",
+        action="store_true",
+        help="Evaluate checkpoint student_ema weights when available. Config eval.use_ema=true has the same effect.",
+    )
     return parser.parse_args()
 
 
@@ -128,10 +133,15 @@ def main() -> None:
         torch.backends.cudnn.allow_tf32 = True
         torch.set_float32_matmul_precision("high")
 
+    eval_cfg = cfg.get("eval", {})
     teacher = load_edm_network(cfg["paths"]["network"], device=device, use_fp16=False)
     student = clone_student_from_teacher(teacher).to(device)
     ckpt = torch.load(args.checkpoint, map_location=device)
-    student.load_state_dict(ckpt["student"])
+    use_ema = bool(args.use_ema or eval_cfg.get("use_ema", False))
+    student_state_key = "student"
+    if use_ema and ckpt.get("student_ema") is not None:
+        student_state_key = "student_ema"
+    student.load_state_dict(ckpt[student_state_key])
     student.eval().requires_grad_(False)
     warp, _q_base, _q_target = init_warp(cfg, device=device)
     timewarp_enabled = warp is not None
@@ -144,7 +154,6 @@ def main() -> None:
         warp.eval()
         warp_loaded = True
 
-    eval_cfg = cfg.get("eval", {})
     steps = [int(item) for item in (args.steps or eval_cfg.get("steps", [1, 2, 4, 8]))]
     fid_samples = int(args.fid_samples or eval_cfg.get("num_fid_samples", 1024))
     fid_batch_size = int(eval_cfg.get("fid_batch_size", 64))
@@ -212,6 +221,8 @@ def main() -> None:
             "timewarp_enabled": timewarp_enabled,
             "checkpoint_has_warp": checkpoint_has_warp,
             "warp_loaded": warp_loaded,
+            "use_ema": use_ema,
+            "student_state_key": student_state_key,
             "u_grid": [float(item) for item in u_grid.detach().cpu().tolist()],
             "sigma_grid": [float(item) for item in sigma_grid.detach().cpu().tolist()],
             **{f"sample_{key}": value for key, value in stats.items() if key != "shape"},
@@ -228,6 +239,8 @@ def main() -> None:
             "timewarp_enabled": timewarp_enabled,
             "checkpoint_has_warp": checkpoint_has_warp,
             "warp_loaded": warp_loaded,
+            "use_ema": use_ema,
+            "student_state_key": student_state_key,
             "records": records,
         },
     )

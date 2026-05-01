@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import signal
 import shutil
@@ -56,6 +57,30 @@ def _flat_mse_per_sample(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 
 def _safe_mean_normalized(numer: torch.Tensor, denom: torch.Tensor) -> torch.Tensor:
     return (numer / denom.clamp_min(1.0e-6)).mean()
+
+
+def _copy_state_to_cpu(module: torch.nn.Module) -> dict[str, torch.Tensor]:
+    return {key: value.detach().cpu() for key, value in module.state_dict().items()}
+
+
+def _update_ema_model(ema_model: torch.nn.Module, student: torch.nn.Module, decay: float) -> None:
+    with torch.no_grad():
+        student_state = student.state_dict()
+        ema_state = ema_model.state_dict()
+        for key, ema_value in ema_state.items():
+            source = student_state[key].detach().to(device=ema_value.device)
+            if torch.is_floating_point(ema_value):
+                ema_value.mul_(decay).add_(source.to(dtype=ema_value.dtype), alpha=1.0 - decay)
+            else:
+                ema_value.copy_(source)
+
+
+def _next_cifar_batch(data_iter, loader):
+    try:
+        return next(data_iter), data_iter
+    except StopIteration:
+        data_iter = iter(loader)
+        return next(data_iter), data_iter
 
 
 def _warp_snapshot_payload(*, step: int, warp, q_base, q_target, warp_stats) -> dict:
@@ -118,11 +143,24 @@ def main() -> None:
     preserve_match_weight = float(train_cfg.get("preserve_match_weight", 0.0))
     preserve_defect_weight = float(train_cfg.get("preserve_defect_weight", 0.0))
     preserve_perceptual_weight = float(train_cfg.get("preserve_perceptual_weight", 0.0))
+    data_denoise_weight = float(train_cfg.get("data_denoise_weight", 0.0))
+    data_denoise_u_low = float(train_cfg.get("data_denoise_u_low", 0.35))
+    data_denoise_u_high = float(train_cfg.get("data_denoise_u_high", 0.95))
+    data_denoise_normalize = bool(train_cfg.get("data_denoise_normalize", False))
     amp_enabled = bool(runtime_cfg.get("amp", True)) and device.type == "cuda"
+    ema_enabled = bool(train_cfg.get("ema_enabled", False))
+    ema_decay = float(train_cfg.get("ema_decay", 0.9995))
+    ema_update_every = max(1, int(train_cfg.get("ema_update_every", 1)))
+    ema_device_name = str(train_cfg.get("ema_device", "cpu"))
 
     teacher = load_edm_network(cfg["paths"]["network"], device=device, use_fp16=bool(teacher_cfg.get("use_fp16", True)))
     teacher.requires_grad_(False)
     student = clone_student_from_teacher(teacher).to(device)
+    student_ema = None
+    if ema_enabled:
+        ema_device = torch.device(ema_device_name)
+        student_ema = copy.deepcopy(student).to(ema_device)
+        student_ema.eval().requires_grad_(False)
     optimizer = torch.optim.AdamW(
         student.parameters(),
         lr=float(train_cfg.get("lr", 1.0e-6)),
@@ -153,6 +191,12 @@ def main() -> None:
     if args.resume:
         ckpt = torch.load(args.resume, map_location=device)
         student.load_state_dict(ckpt["student"])
+        if student_ema is not None:
+            ema_state = ckpt.get("student_ema") if bool(train_cfg.get("resume_ema", True)) else None
+            if ema_state is not None:
+                student_ema.load_state_dict(ema_state)
+            else:
+                student_ema.load_state_dict(student.state_dict())
         resume_optimizer = bool(train_cfg.get("resume_optimizer", True))
         resume_step = bool(train_cfg.get("resume_step", resume_optimizer))
         resume_warp = bool(train_cfg.get("resume_warp", True))
@@ -189,7 +233,7 @@ def main() -> None:
             start_step = int(ckpt.get("step", 0))
             best_loss = float(ckpt.get("best_loss", best_loss))
 
-    loader = build_cifar10_loader(cfg) if objective == "triplet" else None
+    loader = build_cifar10_loader(cfg) if objective == "triplet" or data_denoise_weight > 0.0 else None
     data_iter = iter(loader) if loader is not None else None
     history_path = log_dir / "train.jsonl"
     start_time = time.time()
@@ -214,6 +258,7 @@ def main() -> None:
         preserve_match_loss = torch.zeros((), device=device)
         preserve_defect_loss = torch.zeros((), device=device)
         preserve_perceptual_loss = torch.zeros((), device=device)
+        data_denoise_loss = torch.zeros((), device=device)
         if objective in {"prior_endpoint", "prior_fullstack"}:
             labels = sample_labels(teacher, batch_size, device=device)
             sigma_t = sigma_from_u(torch.zeros(batch_size, device=device), sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
@@ -360,6 +405,29 @@ def main() -> None:
                         else torch.zeros((), device=device, dtype=match_loss.dtype)
                     )
                     loss = match_weight * match_loss + defect_weight * defect_loss + perceptual_weight * perceptual_loss
+
+                if data_denoise_weight > 0.0:
+                    if data_iter is None or loader is None:
+                        raise RuntimeError("data_denoise_weight requires a CIFAR-10 loader")
+                    (real_images, real_labels_int), data_iter = _next_cifar_batch(data_iter, loader)
+                    real_images = real_images.to(device=device, non_blocking=True) * 2.0 - 1.0
+                    real_labels = make_labels(
+                        real_labels_int,
+                        label_dim=int(getattr(teacher, "label_dim", 0) or 0),
+                        device=device,
+                    )
+                    real_batch = int(real_images.shape[0])
+                    data_u = torch.empty(real_batch, device=device).uniform_(data_denoise_u_low, data_denoise_u_high)
+                    data_sigma = sigma_from_u(data_u, sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
+                    noisy_images = real_images + torch.randn_like(real_images) * data_sigma.view(-1, 1, 1, 1)
+                    denoised_images = student(noisy_images, data_sigma, real_labels).to(real_images.dtype)
+                    data_denoise_per_sample = _flat_mse_per_sample(denoised_images, real_images)
+                    if data_denoise_normalize:
+                        data_denoise_denom = _flat_mse_per_sample(noisy_images, real_images).clamp_min(1.0e-6)
+                        data_denoise_loss = _safe_mean_normalized(data_denoise_per_sample, data_denoise_denom)
+                    else:
+                        data_denoise_loss = data_denoise_per_sample.mean()
+                    loss = loss + data_denoise_weight * data_denoise_loss
         else:
             assert data_iter is not None and loader is not None
             try:
@@ -401,6 +469,8 @@ def main() -> None:
         scaler.scale(loss).backward()
         scaler.step(optimizer)
         scaler.update()
+        if student_ema is not None and step % ema_update_every == 0:
+            _update_ema_model(student_ema, student, ema_decay)
 
         denom = endpoint_denom.detach().float() if "endpoint_denom" in locals() else _flat_mse_per_sample(x_u_ref, x_t).clamp_min(1.0e-6).detach().float()
         raw_defect_per_sample = defect_raw.detach().float()
@@ -456,6 +526,10 @@ def main() -> None:
             "preserve_match_loss": float(preserve_match_loss.detach().float().item()),
             "preserve_defect_loss": float(preserve_defect_loss.detach().float().item()),
             "preserve_perceptual_loss": float(preserve_perceptual_loss.detach().float().item()),
+            "data_denoise_loss": float(data_denoise_loss.detach().float().item()),
+            "data_denoise_weight": data_denoise_weight,
+            "ema_enabled": ema_enabled,
+            "ema_decay": ema_decay if ema_enabled else None,
             "preserve_mid_u_values": preserve_mid_u_values,
             "defect_grad_mode": defect_grad_mode,
             "perceptual_loss": float(perceptual_loss.detach().float().item()) if "perceptual_loss" in locals() else 0.0,
@@ -489,6 +563,7 @@ def main() -> None:
             ckpt = {
                 "step": step,
                 "student": student.state_dict(),
+                "student_ema": _copy_state_to_cpu(student_ema) if student_ema is not None else None,
                 "optimizer": optimizer.state_dict(),
                 "warp": warp.state_dict() if warp is not None else None,
                 "warp_optimizer": warp_optimizer.state_dict() if warp_optimizer is not None else None,
@@ -515,6 +590,7 @@ def main() -> None:
         ckpt = {
             "step": step,
             "student": student.state_dict(),
+            "student_ema": _copy_state_to_cpu(student_ema) if student_ema is not None else None,
             "optimizer": optimizer.state_dict(),
             "warp": warp.state_dict() if warp is not None else None,
             "warp_optimizer": warp_optimizer.state_dict() if warp_optimizer is not None else None,

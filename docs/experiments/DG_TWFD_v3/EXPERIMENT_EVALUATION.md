@@ -146,6 +146,30 @@ identity at every multi-step budget. The next algorithmic improvement should
 make this budget conditioning learnable or periodically recalibrated instead of
 hard-coding the 2-step midpoint at `u=0.60`.
 
+The project target has now been reset to a much stronger CIFAR-10 curve:
+`FID@1/2/4/8 = 3.20 / 2.84 / 2.62 / 2.50`. Against that target, v17 should be
+treated as a mechanism-validation run, not a near-final model. By step9750,
+budget-policy FID is `48.841 / 24.310 / 21.112 / 19.899 / 19.657`; this is a
+real improvement over the v15 handoff, but the single-step model is still about
+an order of magnitude too weak. The limiting factor is no longer schedule
+resolution. It is that the student has not learned a strong one-step
+noise-to-image generator.
+
+The next run, v18, therefore changes the optimization target rather than adding
+another warp tweak. It adds two pieces of training infrastructure:
+
+1. `student_ema` checkpointing and EMA evaluation, because EMA is a core
+   diffusion/consistency-model stabilization mechanism and current evaluations
+   have used raw online weights.
+2. A small real-data denoising anchor at mid/low EDM noise (`u=0.35-0.95`) so
+   endpoint prior distillation does not rely only on teacher-generated prior
+   samples and does not erode the pretrained data-manifold denoiser.
+
+The v18 experimental goal is direct: determine whether endpoint-focused
+training with EMA can resume from the best live v17 checkpoint and materially
+move FID@1, while preserving enough low/mid-noise denoising structure for later
+full-stack/timewarp training to reuse.
+
 ## Latest Decision Metrics
 
 FID uses 2048 generated samples for the active watcher.
