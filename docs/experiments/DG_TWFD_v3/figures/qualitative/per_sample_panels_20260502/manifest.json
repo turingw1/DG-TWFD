@@ -1,0 +1,375 @@
+{
+  "note": "Per-sample image-only panels. Each file is one seed/class. Rows are models and columns are display steps 1/2/4/8. Use pdf_x4 for download and paper composition.",
+  "columns": [
+    "NFE 1",
+    "NFE 2",
+    "NFE 4",
+    "NFE 8"
+  ],
+  "display_scale": 4,
+  "pdf_encoding": "lossless FlateDecode RGB image XObject",
+  "datasets": {
+    "cifar10": {
+      "rows": [
+        "EDM CIFAR-10 cond-VP 32/48/64/128",
+        "DG-TWFD identity",
+        "CTM official CIFAR-10 conditional",
+        "CTM no-GAN DSM 10k",
+        "CD-LPIPS CIFAR-10 JAX",
+        "CD-L2 CIFAR-10 JAX",
+        "CT-LPIPS CIFAR-10 JAX"
+      ],
+      "row_notes": {
+        "EDM CIFAR-10 cond-VP 32/48/64/128": "class-locked",
+        "DG-TWFD identity": "class-locked",
+        "CTM official CIFAR-10 conditional": "class-locked",
+        "CTM no-GAN DSM 10k": "class-locked",
+        "CD-LPIPS CIFAR-10 JAX": "seed-only; released JAX checkpoint is not class-conditional",
+        "CD-L2 CIFAR-10 JAX": "seed-only; released JAX checkpoint is not class-conditional",
+        "CT-LPIPS CIFAR-10 JAX": "seed-only; released JAX checkpoint is not class-conditional"
+      },
+      "panels": [
+        {
+          "stem": "cifar10_seed1000_class00_airplane",
+          "sample_id": 1000,
+          "class_id": 0,
+          "class_name": "airplane",
+          "outputs": {
+            "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/png/cifar10_seed1000_class00_airplane.png",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/pdf/cifar10_seed1000_class00_airplane.pdf",
+            "png_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/png_x4/cifar10_seed1000_class00_airplane_x4.png",
+            "pdf_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/pdf_x4/cifar10_seed1000_class00_airplane_x4.pdf",
+            "pixel_size": [
+              152,
+              272
+            ],
+            "pixel_size_x4": [
+              608,
+              1088
+            ]
+          }
+        },
+        {
+          "stem": "cifar10_seed1001_class01_automobile",
+          "sample_id": 1001,
+          "class_id": 1,
+          "class_name": "automobile",
+          "outputs": {
+            "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/png/cifar10_seed1001_class01_automobile.png",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/pdf/cifar10_seed1001_class01_automobile.pdf",
+            "png_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/png_x4/cifar10_seed1001_class01_automobile_x4.png",
+            "pdf_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/pdf_x4/cifar10_seed1001_class01_automobile_x4.pdf",
+            "pixel_size": [
+              152,
+              272
+            ],
+            "pixel_size_x4": [
+              608,
+              1088
+            ]
+          }
+        },
+        {
+          "stem": "cifar10_seed1002_class02_bird",
+          "sample_id": 1002,
+          "class_id": 2,
+          "class_name": "bird",
+          "outputs": {
+            "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/png/cifar10_seed1002_class02_bird.png",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/pdf/cifar10_seed1002_class02_bird.pdf",
+            "png_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/png_x4/cifar10_seed1002_class02_bird_x4.png",
+            "pdf_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/pdf_x4/cifar10_seed1002_class02_bird_x4.pdf",
+            "pixel_size": [
+              152,
+              272
+            ],
+            "pixel_size_x4": [
+              608,
+              1088
+            ]
+          }
+        },
+        {
+          "stem": "cifar10_seed1003_class03_cat",
+          "sample_id": 1003,
+          "class_id": 3,
+          "class_name": "cat",
+          "outputs": {
+            "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/png/cifar10_seed1003_class03_cat.png",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/pdf/cifar10_seed1003_class03_cat.pdf",
+            "png_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/png_x4/cifar10_seed1003_class03_cat_x4.png",
+            "pdf_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/pdf_x4/cifar10_seed1003_class03_cat_x4.pdf",
+            "pixel_size": [
+              152,
+              272
+            ],
+            "pixel_size_x4": [
+              608,
+              1088
+            ]
+          }
+        },
+        {
+          "stem": "cifar10_seed1004_class04_deer",
+          "sample_id": 1004,
+          "class_id": 4,
+          "class_name": "deer",
+          "outputs": {
+            "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/png/cifar10_seed1004_class04_deer.png",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/pdf/cifar10_seed1004_class04_deer.pdf",
+            "png_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/png_x4/cifar10_seed1004_class04_deer_x4.png",
+            "pdf_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/pdf_x4/cifar10_seed1004_class04_deer_x4.pdf",
+            "pixel_size": [
+              152,
+              272
+            ],
+            "pixel_size_x4": [
+              608,
+              1088
+            ]
+          }
+        },
+        {
+          "stem": "cifar10_seed1005_class05_dog",
+          "sample_id": 1005,
+          "class_id": 5,
+          "class_name": "dog",
+          "outputs": {
+            "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/png/cifar10_seed1005_class05_dog.png",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/pdf/cifar10_seed1005_class05_dog.pdf",
+            "png_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/png_x4/cifar10_seed1005_class05_dog_x4.png",
+            "pdf_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/pdf_x4/cifar10_seed1005_class05_dog_x4.pdf",
+            "pixel_size": [
+              152,
+              272
+            ],
+            "pixel_size_x4": [
+              608,
+              1088
+            ]
+          }
+        },
+        {
+          "stem": "cifar10_seed1006_class06_frog",
+          "sample_id": 1006,
+          "class_id": 6,
+          "class_name": "frog",
+          "outputs": {
+            "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/png/cifar10_seed1006_class06_frog.png",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/pdf/cifar10_seed1006_class06_frog.pdf",
+            "png_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/png_x4/cifar10_seed1006_class06_frog_x4.png",
+            "pdf_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/pdf_x4/cifar10_seed1006_class06_frog_x4.pdf",
+            "pixel_size": [
+              152,
+              272
+            ],
+            "pixel_size_x4": [
+              608,
+              1088
+            ]
+          }
+        },
+        {
+          "stem": "cifar10_seed1007_class07_horse",
+          "sample_id": 1007,
+          "class_id": 7,
+          "class_name": "horse",
+          "outputs": {
+            "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/png/cifar10_seed1007_class07_horse.png",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/pdf/cifar10_seed1007_class07_horse.pdf",
+            "png_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/png_x4/cifar10_seed1007_class07_horse_x4.png",
+            "pdf_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/cifar10/pdf_x4/cifar10_seed1007_class07_horse_x4.pdf",
+            "pixel_size": [
+              152,
+              272
+            ],
+            "pixel_size_x4": [
+              608,
+              1088
+            ]
+          }
+        }
+      ]
+    },
+    "imagenet64": {
+      "rows": [
+        "EDM ImageNet64 cond-ADM 32/48/64/128",
+        "EDM ImageNet64 identity proxy 16/24/30/36",
+        "CD-LPIPS ImageNet64",
+        "CD-L2 ImageNet64",
+        "CT ImageNet64",
+        "CTM ImageNet64 official"
+      ],
+      "row_notes": {
+        "EDM ImageNet64 cond-ADM 32/48/64/128": "class-locked",
+        "EDM ImageNet64 identity proxy 16/24/30/36": "class-locked",
+        "CD-LPIPS ImageNet64": "class-locked",
+        "CD-L2 ImageNet64": "class-locked",
+        "CT ImageNet64": "class-locked",
+        "CTM ImageNet64 official": "class-locked"
+      },
+      "panels": [
+        {
+          "stem": "imagenet64_idx00_class0008_seed31",
+          "sample_id": 0,
+          "class_id": 8,
+          "seed": 31,
+          "outputs": {
+            "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/png/imagenet64_idx00_class0008_seed31.png",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/pdf/imagenet64_idx00_class0008_seed31.pdf",
+            "png_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/png_x4/imagenet64_idx00_class0008_seed31_x4.png",
+            "pdf_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/pdf_x4/imagenet64_idx00_class0008_seed31_x4.pdf",
+            "pixel_size": [
+              280,
+              424
+            ],
+            "pixel_size_x4": [
+              1120,
+              1696
+            ]
+          }
+        },
+        {
+          "stem": "imagenet64_idx01_class0022_seed31",
+          "sample_id": 1,
+          "class_id": 22,
+          "seed": 31,
+          "outputs": {
+            "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/png/imagenet64_idx01_class0022_seed31.png",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/pdf/imagenet64_idx01_class0022_seed31.pdf",
+            "png_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/png_x4/imagenet64_idx01_class0022_seed31_x4.png",
+            "pdf_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/pdf_x4/imagenet64_idx01_class0022_seed31_x4.pdf",
+            "pixel_size": [
+              280,
+              424
+            ],
+            "pixel_size_x4": [
+              1120,
+              1696
+            ]
+          }
+        },
+        {
+          "stem": "imagenet64_idx02_class0207_seed31",
+          "sample_id": 2,
+          "class_id": 207,
+          "seed": 31,
+          "outputs": {
+            "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/png/imagenet64_idx02_class0207_seed31.png",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/pdf/imagenet64_idx02_class0207_seed31.pdf",
+            "png_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/png_x4/imagenet64_idx02_class0207_seed31_x4.png",
+            "pdf_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/pdf_x4/imagenet64_idx02_class0207_seed31_x4.pdf",
+            "pixel_size": [
+              280,
+              424
+            ],
+            "pixel_size_x4": [
+              1120,
+              1696
+            ]
+          }
+        },
+        {
+          "stem": "imagenet64_idx03_class0281_seed31",
+          "sample_id": 3,
+          "class_id": 281,
+          "seed": 31,
+          "outputs": {
+            "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/png/imagenet64_idx03_class0281_seed31.png",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/pdf/imagenet64_idx03_class0281_seed31.pdf",
+            "png_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/png_x4/imagenet64_idx03_class0281_seed31_x4.png",
+            "pdf_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/pdf_x4/imagenet64_idx03_class0281_seed31_x4.pdf",
+            "pixel_size": [
+              280,
+              424
+            ],
+            "pixel_size_x4": [
+              1120,
+              1696
+            ]
+          }
+        },
+        {
+          "stem": "imagenet64_idx04_class0404_seed31",
+          "sample_id": 4,
+          "class_id": 404,
+          "seed": 31,
+          "outputs": {
+            "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/png/imagenet64_idx04_class0404_seed31.png",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/pdf/imagenet64_idx04_class0404_seed31.pdf",
+            "png_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/png_x4/imagenet64_idx04_class0404_seed31_x4.png",
+            "pdf_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/pdf_x4/imagenet64_idx04_class0404_seed31_x4.pdf",
+            "pixel_size": [
+              280,
+              424
+            ],
+            "pixel_size_x4": [
+              1120,
+              1696
+            ]
+          }
+        },
+        {
+          "stem": "imagenet64_idx05_class0555_seed31",
+          "sample_id": 5,
+          "class_id": 555,
+          "seed": 31,
+          "outputs": {
+            "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/png/imagenet64_idx05_class0555_seed31.png",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/pdf/imagenet64_idx05_class0555_seed31.pdf",
+            "png_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/png_x4/imagenet64_idx05_class0555_seed31_x4.png",
+            "pdf_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/pdf_x4/imagenet64_idx05_class0555_seed31_x4.pdf",
+            "pixel_size": [
+              280,
+              424
+            ],
+            "pixel_size_x4": [
+              1120,
+              1696
+            ]
+          }
+        },
+        {
+          "stem": "imagenet64_idx06_class0751_seed31",
+          "sample_id": 6,
+          "class_id": 751,
+          "seed": 31,
+          "outputs": {
+            "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/png/imagenet64_idx06_class0751_seed31.png",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/pdf/imagenet64_idx06_class0751_seed31.pdf",
+            "png_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/png_x4/imagenet64_idx06_class0751_seed31_x4.png",
+            "pdf_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/pdf_x4/imagenet64_idx06_class0751_seed31_x4.pdf",
+            "pixel_size": [
+              280,
+              424
+            ],
+            "pixel_size_x4": [
+              1120,
+              1696
+            ]
+          }
+        },
+        {
+          "stem": "imagenet64_idx07_class0817_seed31",
+          "sample_id": 7,
+          "class_id": 817,
+          "seed": 31,
+          "outputs": {
+            "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/png/imagenet64_idx07_class0817_seed31.png",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/pdf/imagenet64_idx07_class0817_seed31.pdf",
+            "png_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/png_x4/imagenet64_idx07_class0817_seed31_x4.png",
+            "pdf_x4": "docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/imagenet64/pdf_x4/imagenet64_idx07_class0817_seed31_x4.pdf",
+            "pixel_size": [
+              280,
+              424
+            ],
+            "pixel_size_x4": [
+              1120,
+              1696
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

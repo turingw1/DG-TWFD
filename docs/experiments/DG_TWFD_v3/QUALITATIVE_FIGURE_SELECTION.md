@@ -35,6 +35,35 @@ docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_
 
 CIFAR-10 conditional rows use class ids `0..7` (`airplane, automobile, bird, cat, deer, dog, frog, horse`) with latent seeds `1000..1007`. CIFAR-10 JAX CD/CT rows reuse sample seeds `1000..1007` but have no class labels. ImageNet64 columns use class ids `[8, 22, 207, 281, 404, 555, 751, 817]` with deterministic seed `31`.
 
+## Per-Sample Panels
+
+为了避免一张长图过宽，另生成了按 seed/class 拆分的小面板。每个文件只包含一个 seed/class；面板内部行是模型，列是 `1 / 2 / 4 / 8` display steps。文件仍然是 image-only，不内嵌文字标签；行列解释记录在 `manifest.json`，方便后续在 LaTeX 或矢量编辑器里加标签。
+
+推荐使用 `pdf_x4/` 目录中的 lossless PDF：
+
+```text
+docs/experiments/DG_TWFD_v3/figures/qualitative/per_sample_panels_20260502/
+├── README.md
+├── manifest.json
+├── cifar10/
+│   ├── pdf/
+│   ├── pdf_x4/
+│   ├── png/
+│   └── png_x4/
+└── imagenet64/
+    ├── pdf/
+    ├── pdf_x4/
+    ├── png/
+    └── png_x4/
+```
+
+当前文件数量：
+
+| Dataset | Panels | Native panel size | x4 panel size | Rows x Columns |
+|---|---:|---|---|---|
+| CIFAR-10 | 8 | `152 x 272` | `608 x 1088` | 7 models x 4 steps |
+| ImageNet64 | 8 | `280 x 424` | `1120 x 1696` | 6 models x 4 steps |
+
 ## Current Figure Row Log
 
 这部分是当前 PDF 的严格行解释，不是候选模型列表。CIFAR-10 当前有 7 行；ImageNet64 当前有 6 行。每一行都用“展示行名（实际使用的生成模型和参数）”记录，避免把已生成图片和待定候选 baseline 混在一起。
