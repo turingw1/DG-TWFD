@@ -211,6 +211,15 @@ alone if the 8/16-step regression keeps widening; the next decision checkpoint
 should either reintroduce full-stack/timewarp from the improved endpoint or add
 a stronger composition-preservation term.
 
+The next two-hour readout keeps the same decision. At step3500, v18 EMA reaches
+`45.429 / 26.102 / 21.318 / 20.103 / 20.911` at `1/2/4/8/16`. Relative to
+step2250, FID@1/2/4 improve by about `1.22 / 0.84 / 0.40`, while FID@8 worsens
+by about `0.12` and FID@16 by about `0.33`. This is still a productive
+endpoint run, but it is now visibly consuming multi-step composition quality.
+The practical rule is to keep the run alive while FID@1/2/4 improve at this
+rate, then branch a v19 full-stack/timewarp recovery from the best v18 endpoint
+checkpoint before the 8/16-step degradation becomes the dominant effect.
+
 ## Latest Decision Metrics
 
 FID uses 2048 generated samples for the active watcher.
