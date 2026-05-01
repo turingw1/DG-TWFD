@@ -245,7 +245,7 @@ Early v19 readout supports the design:
 | v18 step4684 EMA | identity | 44.325 | 25.580 | 21.097 | 20.325 | 21.273 |
 | v19 step250 EMA | budget | 44.792 | 23.314 | 21.104 | 20.553 | 21.025 |
 | v19 step500 EMA | budget | 44.859 | 23.327 | 21.049 | 20.517 | 21.009 |
-| v19 step750 EMA | auto | 44.987 | 27.038 | 20.990 | 20.484 | 21.003 |
+| v19 step750 EMA | budget | 44.987 | 23.336 | 20.990 | 20.484 | 21.003 |
 
 This is the desired first-stage tradeoff. The v18 endpoint gain is mostly
 retained, calibrated 2-step immediately becomes the best result in this project
