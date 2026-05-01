@@ -1026,11 +1026,9 @@
       ]
     }
   ],
-  "environment_notes": [],
-  "omitted": [
-    {
-      "model": "OpenAI CIFAR-10 JAX consistency models",
-      "reason": "Current active environment has Python 3.13 and lacks jax/flax/ml_collections/tensorflow; these models are unconditional for class labels, so they belong in a separate seed-only panel after a compatible JAX env is available."
-    }
-  ]
+  "environment_notes": [
+    "OpenAI CIFAR-10 JAX consistency rows were generated separately with scripts/figures/generate_cifar10_consistency_jax_qualitative.py.",
+    "Those CD/CT rows are seed-locked only because the released CIFAR JAX checkpoints are not class-label conditional."
+  ],
+  "omitted": []
 }

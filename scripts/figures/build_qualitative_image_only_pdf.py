@@ -180,6 +180,45 @@ def main() -> None:
             "sample_ids": [1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007],
             "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ctm_nogan_dsm_10k/steps{step}",
         },
+        {
+            "label": "CD-LPIPS CIFAR-10 JAX / seed-locked",
+            "row_log": (
+                "Row 5: CD-LPIPS CIFAR-10 JAX "
+                "(actual: OpenAI consistency_models_cifar10 cd-lpips/checkpoint_80; "
+                "official JCM stochastic iterative sampler adapted from editing_multistep_sampling.ipynb; "
+                "display columns 1/2/4/8 use CM transition counts 1/2/4/8. "
+                "The released CIFAR JAX checkpoint is not class-label conditional, so this row is seed-locked only)."
+            ),
+            "source_type": "flat_pngdir",
+            "sample_ids": [1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007],
+            "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/cd_lpips_cifar10_jax/steps{step}",
+        },
+        {
+            "label": "CD-L2 CIFAR-10 JAX / seed-locked",
+            "row_log": (
+                "Row 6: CD-L2 CIFAR-10 JAX "
+                "(actual: OpenAI consistency_models_cifar10 cd-l2/checkpoint_80; "
+                "official JCM stochastic iterative sampler adapted from editing_multistep_sampling.ipynb; "
+                "display columns 1/2/4/8 use CM transition counts 1/2/4/8. "
+                "The released CIFAR JAX checkpoint is not class-label conditional, so this row is seed-locked only)."
+            ),
+            "source_type": "flat_pngdir",
+            "sample_ids": [1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007],
+            "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/cd_l2_cifar10_jax/steps{step}",
+        },
+        {
+            "label": "CT-LPIPS CIFAR-10 JAX / seed-locked",
+            "row_log": (
+                "Row 7: CT-LPIPS CIFAR-10 JAX "
+                "(actual: OpenAI consistency_models_cifar10 ct-lpips/checkpoint_74; "
+                "official JCM stochastic iterative sampler adapted from editing_multistep_sampling.ipynb; "
+                "display columns 1/2/4/8 use CM transition counts 1/2/4/8. "
+                "The released CIFAR JAX checkpoint is not class-label conditional, so this row is seed-locked only)."
+            ),
+            "source_type": "flat_pngdir",
+            "sample_ids": [1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007],
+            "pattern": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/ct_lpips_cifar10_jax/steps{step}",
+        },
     ]
     imagenet_rows = [
         {
@@ -260,6 +299,17 @@ def main() -> None:
             / "manifest.json"
         ).read_text(encoding="utf-8")
     )
+    consistency_cifar_manifest_path = (
+        OUTDIR
+        / "class_locked_samples"
+        / "cifar10_20260501"
+        / "consistency_cifar10_jax_manifest.json"
+    )
+    consistency_cifar_manifest = (
+        json.loads(consistency_cifar_manifest_path.read_text(encoding="utf-8"))
+        if consistency_cifar_manifest_path.exists()
+        else None
+    )
     imagenet_manifest = json.loads(
         (
             OUTDIR
@@ -271,14 +321,19 @@ def main() -> None:
     manifest = {
         "note": (
             "PDF panels contain images only; labels are intentionally absent. "
-            "Rows, NFE columns, class ids, and sample ids are documented here."
+            "Rows, NFE columns, class ids, sample ids, and seed-locking caveats are documented here."
         ),
-        "omitted": [
-            "OpenAI CIFAR-10 JAX consistency checkpoints are not mixed into the class-locked CIFAR panel: the active environment lacks a compatible JAX/Flax stack, and the released CIFAR models are not class-label conditional in the same sense.",
-        ],
+        "omitted": [],
         "class_locking": {
             "cifar10": cifar_manifest["columns"],
             "imagenet64": imagenet_manifest["columns"],
+        },
+        "seed_locked_only": {
+            "cifar10_consistency_jax": (
+                consistency_cifar_manifest.get("sample_seeds", [])
+                if consistency_cifar_manifest is not None
+                else []
+            ),
         },
         "step_mapping": {
             "cifar10": cifar_manifest.get("step_mapping", {}),

@@ -1,8 +1,6 @@
 {
-  "note": "PDF panels contain images only; labels are intentionally absent. Rows, NFE columns, class ids, and sample ids are documented here.",
-  "omitted": [
-    "OpenAI CIFAR-10 JAX consistency checkpoints are not mixed into the class-locked CIFAR panel: the active environment lacks a compatible JAX/Flax stack, and the released CIFAR models are not class-label conditional in the same sense."
-  ],
+  "note": "PDF panels contain images only; labels are intentionally absent. Rows, NFE columns, class ids, sample ids, and seed-locking caveats are documented here.",
+  "omitted": [],
   "class_locking": {
     "cifar10": [
       {
@@ -97,6 +95,18 @@
       }
     ]
   },
+  "seed_locked_only": {
+    "cifar10_consistency_jax": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004,
+      1005,
+      1006,
+      1007
+    ]
+  },
   "step_mapping": {
     "cifar10": {
       "edm_reference_replaces_dg_twfd_best": {
@@ -145,20 +155,26 @@
       "output_pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/qualitative_cifar10_class_locked_images_only.pdf",
       "pixel_size": [
         1104,
-        152
+        272
       ],
-      "row_count": 4,
+      "row_count": 7,
       "rows": [
         "EDM CIFAR-10 cond-VP 32/48/64/128 / class-locked",
         "DG-TWFD identity / class-locked same checkpoint",
         "CTM official CIFAR-10 conditional / class-locked",
-        "CTM no-GAN DSM 10k / class-locked"
+        "CTM no-GAN DSM 10k / class-locked",
+        "CD-LPIPS CIFAR-10 JAX / seed-locked",
+        "CD-L2 CIFAR-10 JAX / seed-locked",
+        "CT-LPIPS CIFAR-10 JAX / seed-locked"
       ],
       "row_log": [
         "Row 1: DG-TWFD best replacement (actual: official EDM CIFAR-10 cond-VP teacher from the DG-TWFD v17 config network; display columns 1/2/4/8 use actual EDM steps 32/48/64/128; no DG-TWFD student is used in this row).",
         "Row 2: DG-TWFD identity (actual: DG-TWFD v17 student checkpoint runs/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855/checkpoints/best.pt; warp disabled/effective identity; display columns 1/2/4/8 use actual student steps 1/2/4/8).",
         "Row 3: CTM official CIFAR-10 conditional (actual: CTM CIFAR-10 conditional checkpoint model043000.pt; CTM exact transition with Karras sigma grid; display columns 1/2/4/8 use actual CTM steps 1/2/4/8).",
-        "Row 4: CTM no-GAN DSM 10k (actual: local no-GAN CTM DSM checkpoint ema_0.999_010000.pt from cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000; CTM exact transition with Karras sigma grid; display columns 1/2/4/8 use actual CTM steps 1/2/4/8)."
+        "Row 4: CTM no-GAN DSM 10k (actual: local no-GAN CTM DSM checkpoint ema_0.999_010000.pt from cifar10_nogan_dsm_10k_mb4_gb16_resume_from8000; CTM exact transition with Karras sigma grid; display columns 1/2/4/8 use actual CTM steps 1/2/4/8).",
+        "Row 5: CD-LPIPS CIFAR-10 JAX (actual: OpenAI consistency_models_cifar10 cd-lpips/checkpoint_80; official JCM stochastic iterative sampler adapted from editing_multistep_sampling.ipynb; display columns 1/2/4/8 use CM transition counts 1/2/4/8. The released CIFAR JAX checkpoint is not class-label conditional, so this row is seed-locked only).",
+        "Row 6: CD-L2 CIFAR-10 JAX (actual: OpenAI consistency_models_cifar10 cd-l2/checkpoint_80; official JCM stochastic iterative sampler adapted from editing_multistep_sampling.ipynb; display columns 1/2/4/8 use CM transition counts 1/2/4/8. The released CIFAR JAX checkpoint is not class-label conditional, so this row is seed-locked only).",
+        "Row 7: CT-LPIPS CIFAR-10 JAX (actual: OpenAI consistency_models_cifar10 ct-lpips/checkpoint_74; official JCM stochastic iterative sampler adapted from editing_multistep_sampling.ipynb; display columns 1/2/4/8 use CM transition counts 1/2/4/8. The released CIFAR JAX checkpoint is not class-label conditional, so this row is seed-locked only)."
       ],
       "columns": [
         "NFE 1",
@@ -198,6 +214,36 @@
           1007
         ],
         "CTM no-GAN DSM 10k / class-locked": [
+          1000,
+          1001,
+          1002,
+          1003,
+          1004,
+          1005,
+          1006,
+          1007
+        ],
+        "CD-LPIPS CIFAR-10 JAX / seed-locked": [
+          1000,
+          1001,
+          1002,
+          1003,
+          1004,
+          1005,
+          1006,
+          1007
+        ],
+        "CD-L2 CIFAR-10 JAX / seed-locked": [
+          1000,
+          1001,
+          1002,
+          1003,
+          1004,
+          1005,
+          1006,
+          1007
+        ],
+        "CT-LPIPS CIFAR-10 JAX / seed-locked": [
           1000,
           1001,
           1002,
