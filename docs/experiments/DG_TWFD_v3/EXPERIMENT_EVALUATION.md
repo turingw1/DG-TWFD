@@ -231,6 +231,30 @@ multi-midpoint preservation, and a smaller real-data denoise anchor. The v19
 goal is to keep the new `44.x` endpoint while recovering the lost high-budget
 quality.
 
+Implementation note: v19 adds `train.resume_student_key`, allowing the student
+to initialize from `student_ema`. The first v19 launch with batch `64` was
+healthy numerically but used about `78.5GB` on A100 80GB, leaving too little
+headroom for concurrent eval. It was stopped at step1 and relaunched as
+`edm_first_cifar10_prior_fullstack_timewarp_v19_endpoint_recovery_bs48_from_v18_step4684`
+with batch `48`, which runs at about `60-63GB` during train/eval overlap.
+
+Early v19 readout supports the design:
+
+| checkpoint | policy | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 |
+|---|---|---:|---:|---:|---:|---:|
+| v18 step4684 EMA | identity | 44.325 | 25.580 | 21.097 | 20.325 | 21.273 |
+| v19 step250 EMA | budget | 44.792 | 23.314 | 21.104 | 20.553 | 21.025 |
+| v19 step500 EMA | budget | 44.859 | 23.327 | 21.049 | 20.517 | 21.009 |
+| v19 step750 EMA | auto | 44.987 | 27.038 | 20.990 | 20.484 | 21.003 |
+
+This is the desired first-stage tradeoff. The v18 endpoint gain is mostly
+retained, calibrated 2-step immediately becomes the best result in this project
+track, and 4-step is already slightly better than v18 final. The remaining
+problem is high-budget recovery: 8-step is improving but still behind v18
+final, and 16-step remains far behind the v17/v15 high-budget path. Continue
+v19 and watch whether the RQS warp/preservation terms recover 8/16 without
+erasing the new endpoint.
+
 ## Latest Decision Metrics
 
 FID uses 2048 generated samples for the active watcher.
