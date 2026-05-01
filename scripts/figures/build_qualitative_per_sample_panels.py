@@ -28,6 +28,10 @@ SAMPLE_PIXEL_SIZE = 256
 TARGET_DPI = 300
 CIFAR_SAMPLE_ROOT = QUAL_DIR / "class_locked_samples" / "cifar10_20260502_paper"
 IMAGENET_SAMPLE_ROOT = QUAL_DIR / "class_locked_samples" / "imagenet64_20260502_paper"
+PDF_SUBDIRS = {
+    "cifar10": "pdf_seperatedbyseed",
+    "imagenet64": "pdf_imnt_sepbyseed",
+}
 
 
 def _save_lossless_pdf(image: Image.Image, path: Path) -> None:
@@ -106,9 +110,10 @@ def _compose_grid(rows: list[dict], sample_id: int) -> Image.Image:
 
 def _write_panel(panel: Image.Image, dataset: str, stem: str) -> dict:
     dataset_dir = OUTDIR / dataset
+    pdf_subdir = PDF_SUBDIRS.get(dataset, "pdf")
     paths = {
         "png": dataset_dir / "png" / f"{stem}.png",
-        "pdf": dataset_dir / "pdf" / f"{stem}.pdf",
+        "pdf": dataset_dir / pdf_subdir / f"{stem}.pdf",
     }
     for path in paths.values():
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -170,7 +175,7 @@ def _imagenet_rows() -> list[dict]:
             "pattern": f"{base}/edm_imagenet64_cond_adm_32_48_64_128/steps{{step}}",
         },
         {
-            "label": "EDM ImageNet64 identity proxy 8/16/24/30",
+            "label": "EDM ImageNet64 identity proxy 6/8/16/24",
             "pattern": f"{base}/edm_imagenet64_identity_8_16_24_30/steps{{step}}",
         },
         {
@@ -271,7 +276,8 @@ def main() -> None:
         "# Paper-Ready Per-Sample Qualitative Panels\n\n"
         "Each file contains one seed/class. Rows are model variants and columns are "
         "`1 / 2 / 4 / 8` display steps. The panels are image-only; row/column labels "
-        "are recorded in `manifest.json` for LaTeX or vector-editor labeling.\n\n"
+        "are recorded in `manifest.json` for LaTeX or vector-editor labeling. "
+        "PDFs are stored in the per-seed PDF folders under each dataset.\n\n"
         "Samples are nearest-neighbor upscaled to 256 x 256 before tiling. No gaps "
         "or borders are inserted. The PDFs use lossless `FlateDecode`; text labels "
         "should be added in LaTeX.\n"

@@ -39,7 +39,7 @@
           "class_name": "airplane",
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/png/cifar10_seed1000_class00_airplane.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf/cifar10_seed1000_class00_airplane.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf_seperatedbyseed/cifar10_seed1000_class00_airplane.pdf",
             "pixel_size": [
               1024,
               1792
@@ -54,7 +54,7 @@
           "class_name": "automobile",
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/png/cifar10_seed1001_class01_automobile.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf/cifar10_seed1001_class01_automobile.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf_seperatedbyseed/cifar10_seed1001_class01_automobile.pdf",
             "pixel_size": [
               1024,
               1792
@@ -69,7 +69,7 @@
           "class_name": "bird",
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/png/cifar10_seed1002_class02_bird.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf/cifar10_seed1002_class02_bird.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf_seperatedbyseed/cifar10_seed1002_class02_bird.pdf",
             "pixel_size": [
               1024,
               1792
@@ -84,7 +84,7 @@
           "class_name": "cat",
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/png/cifar10_seed1003_class03_cat.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf/cifar10_seed1003_class03_cat.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf_seperatedbyseed/cifar10_seed1003_class03_cat.pdf",
             "pixel_size": [
               1024,
               1792
@@ -99,7 +99,7 @@
           "class_name": "deer",
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/png/cifar10_seed1004_class04_deer.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf/cifar10_seed1004_class04_deer.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf_seperatedbyseed/cifar10_seed1004_class04_deer.pdf",
             "pixel_size": [
               1024,
               1792
@@ -114,7 +114,7 @@
           "class_name": "dog",
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/png/cifar10_seed1005_class05_dog.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf/cifar10_seed1005_class05_dog.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf_seperatedbyseed/cifar10_seed1005_class05_dog.pdf",
             "pixel_size": [
               1024,
               1792
@@ -129,7 +129,7 @@
           "class_name": "frog",
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/png/cifar10_seed1006_class06_frog.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf/cifar10_seed1006_class06_frog.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf_seperatedbyseed/cifar10_seed1006_class06_frog.pdf",
             "pixel_size": [
               1024,
               1792
@@ -144,7 +144,7 @@
           "class_name": "horse",
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/png/cifar10_seed1007_class07_horse.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf/cifar10_seed1007_class07_horse.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf_seperatedbyseed/cifar10_seed1007_class07_horse.pdf",
             "pixel_size": [
               1024,
               1792
@@ -159,7 +159,7 @@
           "class_name": "ship",
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/png/cifar10_seed1008_class08_ship.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf/cifar10_seed1008_class08_ship.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf_seperatedbyseed/cifar10_seed1008_class08_ship.pdf",
             "pixel_size": [
               1024,
               1792
@@ -174,7 +174,7 @@
           "class_name": "truck",
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/png/cifar10_seed1009_class09_truck.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf/cifar10_seed1009_class09_truck.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf_seperatedbyseed/cifar10_seed1009_class09_truck.pdf",
             "pixel_size": [
               1024,
               1792
@@ -189,7 +189,7 @@
           "class_name": "airplane",
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/png/cifar10_seed1010_class00_airplane.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf/cifar10_seed1010_class00_airplane.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf_seperatedbyseed/cifar10_seed1010_class00_airplane.pdf",
             "pixel_size": [
               1024,
               1792
@@ -204,7 +204,7 @@
           "class_name": "automobile",
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/png/cifar10_seed1011_class01_automobile.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf/cifar10_seed1011_class01_automobile.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf_seperatedbyseed/cifar10_seed1011_class01_automobile.pdf",
             "pixel_size": [
               1024,
               1792
@@ -219,7 +219,7 @@
           "class_name": "bird",
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/png/cifar10_seed1012_class02_bird.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf/cifar10_seed1012_class02_bird.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf_seperatedbyseed/cifar10_seed1012_class02_bird.pdf",
             "pixel_size": [
               1024,
               1792
@@ -234,7 +234,7 @@
           "class_name": "cat",
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/png/cifar10_seed1013_class03_cat.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf/cifar10_seed1013_class03_cat.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf_seperatedbyseed/cifar10_seed1013_class03_cat.pdf",
             "pixel_size": [
               1024,
               1792
@@ -249,7 +249,7 @@
           "class_name": "deer",
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/png/cifar10_seed1014_class04_deer.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf/cifar10_seed1014_class04_deer.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf_seperatedbyseed/cifar10_seed1014_class04_deer.pdf",
             "pixel_size": [
               1024,
               1792
@@ -264,7 +264,7 @@
           "class_name": "dog",
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/png/cifar10_seed1015_class05_dog.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf/cifar10_seed1015_class05_dog.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf_seperatedbyseed/cifar10_seed1015_class05_dog.pdf",
             "pixel_size": [
               1024,
               1792
@@ -279,7 +279,7 @@
           "class_name": "frog",
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/png/cifar10_seed1016_class06_frog.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf/cifar10_seed1016_class06_frog.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf_seperatedbyseed/cifar10_seed1016_class06_frog.pdf",
             "pixel_size": [
               1024,
               1792
@@ -294,7 +294,7 @@
           "class_name": "horse",
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/png/cifar10_seed1017_class07_horse.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf/cifar10_seed1017_class07_horse.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/cifar10/pdf_seperatedbyseed/cifar10_seed1017_class07_horse.pdf",
             "pixel_size": [
               1024,
               1792
@@ -307,7 +307,7 @@
     "imagenet64": {
       "rows": [
         "EDM ImageNet64 cond-ADM 32/48/64/128",
-        "EDM ImageNet64 identity proxy 8/16/24/30",
+        "EDM ImageNet64 identity proxy 6/8/16/24",
         "CD-LPIPS ImageNet64",
         "CD-L2 ImageNet64",
         "CT ImageNet64",
@@ -315,7 +315,7 @@
       ],
       "row_notes": {
         "EDM ImageNet64 cond-ADM 32/48/64/128": "class-locked",
-        "EDM ImageNet64 identity proxy 8/16/24/30": "class-locked",
+        "EDM ImageNet64 identity proxy 6/8/16/24": "class-locked",
         "CD-LPIPS ImageNet64": "class-locked",
         "CD-L2 ImageNet64": "class-locked",
         "CT ImageNet64": "class-locked",
@@ -329,7 +329,7 @@
           "seed": 31,
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/png/imagenet64_idx00_class0008_seed31.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf/imagenet64_idx00_class0008_seed31.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf_imnt_sepbyseed/imagenet64_idx00_class0008_seed31.pdf",
             "pixel_size": [
               1024,
               1536
@@ -344,7 +344,7 @@
           "seed": 32,
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/png/imagenet64_idx01_class0022_seed32.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf/imagenet64_idx01_class0022_seed32.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf_imnt_sepbyseed/imagenet64_idx01_class0022_seed32.pdf",
             "pixel_size": [
               1024,
               1536
@@ -359,7 +359,7 @@
           "seed": 33,
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/png/imagenet64_idx02_class0207_seed33.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf/imagenet64_idx02_class0207_seed33.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf_imnt_sepbyseed/imagenet64_idx02_class0207_seed33.pdf",
             "pixel_size": [
               1024,
               1536
@@ -374,7 +374,7 @@
           "seed": 34,
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/png/imagenet64_idx03_class0281_seed34.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf/imagenet64_idx03_class0281_seed34.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf_imnt_sepbyseed/imagenet64_idx03_class0281_seed34.pdf",
             "pixel_size": [
               1024,
               1536
@@ -389,7 +389,7 @@
           "seed": 35,
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/png/imagenet64_idx04_class0404_seed35.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf/imagenet64_idx04_class0404_seed35.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf_imnt_sepbyseed/imagenet64_idx04_class0404_seed35.pdf",
             "pixel_size": [
               1024,
               1536
@@ -404,7 +404,7 @@
           "seed": 36,
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/png/imagenet64_idx05_class0555_seed36.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf/imagenet64_idx05_class0555_seed36.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf_imnt_sepbyseed/imagenet64_idx05_class0555_seed36.pdf",
             "pixel_size": [
               1024,
               1536
@@ -419,7 +419,7 @@
           "seed": 37,
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/png/imagenet64_idx06_class0751_seed37.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf/imagenet64_idx06_class0751_seed37.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf_imnt_sepbyseed/imagenet64_idx06_class0751_seed37.pdf",
             "pixel_size": [
               1024,
               1536
@@ -434,7 +434,7 @@
           "seed": 38,
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/png/imagenet64_idx07_class0817_seed38.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf/imagenet64_idx07_class0817_seed38.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf_imnt_sepbyseed/imagenet64_idx07_class0817_seed38.pdf",
             "pixel_size": [
               1024,
               1536
@@ -449,7 +449,7 @@
           "seed": 39,
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/png/imagenet64_idx08_class0130_seed39.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf/imagenet64_idx08_class0130_seed39.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf_imnt_sepbyseed/imagenet64_idx08_class0130_seed39.pdf",
             "pixel_size": [
               1024,
               1536
@@ -464,7 +464,7 @@
           "seed": 40,
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/png/imagenet64_idx09_class0145_seed40.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf/imagenet64_idx09_class0145_seed40.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf_imnt_sepbyseed/imagenet64_idx09_class0145_seed40.pdf",
             "pixel_size": [
               1024,
               1536
@@ -479,7 +479,7 @@
           "seed": 41,
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/png/imagenet64_idx10_class0292_seed41.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf/imagenet64_idx10_class0292_seed41.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf_imnt_sepbyseed/imagenet64_idx10_class0292_seed41.pdf",
             "pixel_size": [
               1024,
               1536
@@ -494,7 +494,7 @@
           "seed": 42,
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/png/imagenet64_idx11_class0340_seed42.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf/imagenet64_idx11_class0340_seed42.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf_imnt_sepbyseed/imagenet64_idx11_class0340_seed42.pdf",
             "pixel_size": [
               1024,
               1536
@@ -509,7 +509,7 @@
           "seed": 43,
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/png/imagenet64_idx12_class0407_seed43.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf/imagenet64_idx12_class0407_seed43.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf_imnt_sepbyseed/imagenet64_idx12_class0407_seed43.pdf",
             "pixel_size": [
               1024,
               1536
@@ -524,7 +524,7 @@
           "seed": 44,
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/png/imagenet64_idx13_class0444_seed44.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf/imagenet64_idx13_class0444_seed44.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf_imnt_sepbyseed/imagenet64_idx13_class0444_seed44.pdf",
             "pixel_size": [
               1024,
               1536
@@ -539,7 +539,7 @@
           "seed": 45,
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/png/imagenet64_idx14_class0569_seed45.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf/imagenet64_idx14_class0569_seed45.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf_imnt_sepbyseed/imagenet64_idx14_class0569_seed45.pdf",
             "pixel_size": [
               1024,
               1536
@@ -554,7 +554,7 @@
           "seed": 46,
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/png/imagenet64_idx15_class0701_seed46.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf/imagenet64_idx15_class0701_seed46.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf_imnt_sepbyseed/imagenet64_idx15_class0701_seed46.pdf",
             "pixel_size": [
               1024,
               1536
@@ -569,7 +569,7 @@
           "seed": 47,
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/png/imagenet64_idx16_class0779_seed47.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf/imagenet64_idx16_class0779_seed47.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf_imnt_sepbyseed/imagenet64_idx16_class0779_seed47.pdf",
             "pixel_size": [
               1024,
               1536
@@ -584,7 +584,7 @@
           "seed": 48,
           "outputs": {
             "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/png/imagenet64_idx17_class0980_seed48.png",
-            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf/imagenet64_idx17_class0980_seed48.pdf",
+            "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/imagenet64/pdf_imnt_sepbyseed/imagenet64_idx17_class0980_seed48.pdf",
             "pixel_size": [
               1024,
               1536

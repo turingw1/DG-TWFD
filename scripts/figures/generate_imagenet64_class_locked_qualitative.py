@@ -60,7 +60,9 @@ from run_ctm_schedule_warp_eval import DATASET_DEFAULTS, _ctm_transition, _karra
 
 
 EDM_REFERENCE_STEPS = {1: 32, 2: 48, 4: 64, 8: 128}
-EDM_IDENTITY_STEPS = {1: 8, 2: 16, 4: 24, 8: 30}
+# Keep the existing row directory name so this update replaces the current
+# images in-place instead of introducing another output root.
+EDM_IDENTITY_STEPS = {1: 6, 2: 8, 4: 16, 8: 24}
 EDM_IDENTITY_ROW = "edm_imagenet64_identity_8_16_24_30"
 DEFAULT_CLASS_IDS = [
     8,

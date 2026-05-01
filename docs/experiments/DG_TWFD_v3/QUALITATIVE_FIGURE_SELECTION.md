@@ -37,10 +37,10 @@ docs/experiments/DG_TWFD_v3/figures/qualitative/paper_panels_20260502/
 ├── README.md
 ├── manifest.json
 ├── cifar10/
-│   ├── pdf/
+│   ├── pdf_seperatedbyseed/
 │   └── png/
 └── imagenet64/
-    ├── pdf/
+    ├── pdf_imnt_sepbyseed/
     └── png/
 ```
 
@@ -81,7 +81,7 @@ CIFAR-10 conditional rows use 18 class/seed pairs: seeds `1000..1017`, with clas
 | Row | Display row | Actual generator and parameters |
 |---:|---|---|
 | 1 | DG-TWFD best replacement / EDM reference | 使用官方 EDM ImageNet64 class-conditional cond-ADM checkpoint `edm-imagenet-64x64-cond-adm.pkl`；显示列 `1/2/4/8` 实际对应 EDM `32/48/64/128` steps；这一行不使用 DG-TWFD ImageNet checkpoint。 |
-| 2 | ImageNet DG-TWFD identity proxy / EDM proxy | 使用官方 EDM ImageNet64 class-conditional cond-ADM checkpoint `edm-imagenet-64x64-cond-adm.pkl`；显示列 `1/2/4/8` 实际对应 EDM `8/16/24/30` steps；由于当前没有 DG-TWFD ImageNet identity checkpoint，这一行是 EDM proxy。 |
+| 2 | ImageNet DG-TWFD identity proxy / EDM proxy | 使用官方 EDM ImageNet64 class-conditional cond-ADM checkpoint `edm-imagenet-64x64-cond-adm.pkl`；显示列 `1/2/4/8` 实际对应 EDM `6/8/16/24` steps；由于当前没有 DG-TWFD ImageNet identity checkpoint，这一行是 EDM proxy。 |
 | 3 | CD-LPIPS ImageNet64 | 使用 OpenAI consistency distillation ImageNet64 LPIPS checkpoint `cd_imagenet64_lpips.pt`；`karras_sample` onestep/multistep；OpenAI CM ts schedule；显示列 `1/2/4/8` 实际对应 CM `1/2/4/8` steps。 |
 | 4 | CD-L2 ImageNet64 | 使用 OpenAI consistency distillation ImageNet64 L2 checkpoint `cd_imagenet64_l2.pt`；`karras_sample` onestep/multistep；OpenAI CM ts schedule；显示列 `1/2/4/8` 实际对应 CM `1/2/4/8` steps。 |
 | 5 | CT ImageNet64 | 使用 OpenAI consistency training ImageNet64 checkpoint `ct_imagenet64.pt`；`karras_sample` onestep/multistep；OpenAI CM ts schedule；显示列 `1/2/4/8` 实际对应 CM `1/2/4/8` steps。 |
@@ -124,13 +124,13 @@ CIFAR-10 conditional rows use 18 class/seed pairs: seeds `1000..1017`, with clas
 | Sample set | Model | NFE 1 | NFE 2 | NFE 4 | NFE 8 | Keep? | Notes |
 |---|---|---|---|---|---|---|---|
 | sample A | EDM 32/48/64/128 | `[image: A / edm-32 / display-1]` | `[image: A / edm-48 / display-2]` | `[image: A / edm-64 / display-4]` | `[image: A / edm-128 / display-8]` | yes | 替换原 DG-TWFD best 行；使用官方 EDM ImageNet64 cond-ADM checkpoint。 |
-| sample A | EDM identity proxy 16/24/30/36 | `[image: A / edm-16 / display-1]` | `[image: A / edm-24 / display-2]` | `[image: A / edm-30 / display-4]` | `[image: A / edm-36 / display-8]` | yes | 按要求作为 ImageNet DG-TWFD identity proxy；当前无 ImageNet DG-TWFD checkpoint。 |
+| sample A | EDM identity proxy 6/8/16/24 | `[image: A / edm-6 / display-1]` | `[image: A / edm-8 / display-2]` | `[image: A / edm-16 / display-4]` | `[image: A / edm-24 / display-8]` | yes | 按要求作为 ImageNet DG-TWFD identity proxy；当前无 ImageNet DG-TWFD checkpoint。 |
 | sample A | CD-LPIPS | `[image: A / cd-lpips / 1]` | `[image: A / cd-lpips / 2]` | `[image: A / cd-lpips / 4]` | `[image: A / cd-lpips / 8]` | yes | Consistency distillation, LPIPS loss。 |
 | sample A | CD-L2 | `[image: A / cd-l2 / 1]` | `[image: A / cd-l2 / 2]` | `[image: A / cd-l2 / 4]` | `[image: A / cd-l2 / 8]` | yes | Consistency distillation, L2 loss。 |
 | sample A | CT | `[image: A / ct / 1]` | `[image: A / ct / 2]` | `[image: A / ct / 4]` | `[image: A / ct / 8]` | yes | Consistency training baseline。 |
 | sample A | CTM official | `[image: A / ctm / 1]` | `[image: A / ctm / 2]` | `[image: A / ctm / 4]` | `[image: A / ctm / 8]` | yes | 已使用 CTM ImageNet64 official checkpoint 和 exact Karras grid 生成，纳入最新 PDF。 |
 | sample B | EDM 32/48/64/128 | `[image: B / edm-32 / display-1]` | `[image: B / edm-48 / display-2]` | `[image: B / edm-64 / display-4]` | `[image: B / edm-128 / display-8]` | optional | 第二组样本，可删；当前最新 PDF 只使用 sample A 的 8 类 class-locked strip。 |
-| sample B | EDM identity proxy 16/24/30/36 | `[image: B / edm-16 / display-1]` | `[image: B / edm-24 / display-2]` | `[image: B / edm-30 / display-4]` | `[image: B / edm-36 / display-8]` | optional | 第二组样本，可删。 |
+| sample B | EDM identity proxy 6/8/16/24 | `[image: B / edm-6 / display-1]` | `[image: B / edm-8 / display-2]` | `[image: B / edm-16 / display-4]` | `[image: B / edm-24 / display-8]` | optional | 第二组样本，可删。 |
 | sample B | CD-LPIPS | `[image: B / cd-lpips / 1]` | `[image: B / cd-lpips / 2]` | `[image: B / cd-lpips / 4]` | `[image: B / cd-lpips / 8]` | optional | 第二组样本，可删。 |
 | sample B | CD-L2 | `[image: B / cd-l2 / 1]` | `[image: B / cd-l2 / 2]` | `[image: B / cd-l2 / 4]` | `[image: B / cd-l2 / 8]` | optional | 第二组样本，可删。 |
 | sample B | CT | `[image: B / ct / 1]` | `[image: B / ct / 2]` | `[image: B / ct / 4]` | `[image: B / ct / 8]` | optional | 第二组样本，可删。 |
@@ -150,7 +150,7 @@ CIFAR-10 conditional rows use 18 class/seed pairs: seeds `1000..1017`, with clas
 | CIFAR-10 | CD-L2 | `[8 seed-locked samples]` | `[8 seed-locked samples]` | `[8 seed-locked samples]` | `[8 seed-locked samples]` | yes |
 | CIFAR-10 | CT-LPIPS | `[8 seed-locked samples]` | `[8 seed-locked samples]` | `[8 seed-locked samples]` | `[8 seed-locked samples]` | yes |
 | ImageNet64 | EDM 32/48/64/128 | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
-| ImageNet64 | EDM identity proxy 16/24/30/36 | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
+| ImageNet64 | EDM identity proxy 6/8/16/24 | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
 | ImageNet64 | CD-LPIPS | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
 | ImageNet64 | CD-L2 | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
 | ImageNet64 | CT | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
@@ -189,7 +189,7 @@ CIFAR-10 conditional rows use 18 class/seed pairs: seeds `1000..1017`, with clas
 | Include | Figure split | Block | Display label | Method / run id | Step 1 | Step 2 | Step 4 | Step 8 | Metric budget | Sample source | Metric source | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | yes | main | Teacher reference | EDM ImageNet64 cond-ADM 32/48/64/128 | `class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm_32_48_64_128` | display 1 -> actual 32 | display 2 -> actual 48 | display 4 -> actual 64 | display 8 -> actual 128 | qualitative only | `docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm_32_48_64_128/steps*` | `qualitative_images_only_manifest.json` | Latest panel row replacing former DG-TWFD best slot. |
-| yes | main | Identity proxy | EDM ImageNet64 16/24/30/36 | `class_locked_samples/imagenet64_20260501/edm_imagenet64_identity_16_24_30_36` | display 1 -> actual 16 | display 2 -> actual 24 | display 4 -> actual 30 | display 8 -> actual 36 | qualitative only | `docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_identity_16_24_30_36/steps*` | `qualitative_images_only_manifest.json` | Requested ImageNet identity/proxy row; no ImageNet DG-TWFD checkpoint is currently available. |
+| yes | main | Identity proxy | EDM ImageNet64 6/8/16/24 | `class_locked_samples/imagenet64_20260502_paper/edm_imagenet64_identity_8_16_24_30` | display 1 -> actual 6 | display 2 -> actual 8 | display 4 -> actual 16 | display 8 -> actual 24 | qualitative only | `docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260502_paper/edm_imagenet64_identity_8_16_24_30/steps*` | `manifest.json` | Requested ImageNet identity/proxy row; no ImageNet DG-TWFD checkpoint is currently available. Directory name is retained to replace the current files in-place. |
 | yes | main | Official baseline | CD-LPIPS official | `cd_imagenet64_lpips_5k` | yes | yes | yes | yes | FID-5k | `runs/cd_imagenet64_lpips_5k/samples/steps*/images` | `eval/cd_imagenet64_lpips_5k/reports/summary.csv` | OpenAI consistency distillation baseline. |
 | yes | main | Official baseline | CD-L2 official | `cd_imagenet64_l2_5k` | yes | yes | yes | yes | FID-5k | `runs/cd_imagenet64_l2_5k/samples/steps*/images` | `eval/cd_imagenet64_l2_5k/reports/summary.csv` | OpenAI consistency distillation baseline. |
 | yes | main | Official baseline | CT official | `ct_imagenet64_5k` | yes | yes | yes | yes | FID-5k | `runs/ct_imagenet64_5k/samples/steps*/images` | `eval/ct_imagenet64_5k/reports/summary.csv` | OpenAI consistency training baseline. |
