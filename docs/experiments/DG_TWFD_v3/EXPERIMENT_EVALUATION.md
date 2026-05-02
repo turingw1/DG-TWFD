@@ -305,6 +305,19 @@ two-hour supervision; the next useful intervention should target learnable or
 periodically recalibrated low-budget clocking rather than another generic
 timewarp capacity increase.
 
+The first two-hour v20 supervision window confirms stability but also exposes a
+low-slope plateau. By step2000, budget-policy FID-2048 is
+`45.706 / 23.963 / 21.025 / 19.842 / 20.333`. The endpoint improved another
+`0.14` FID from step250, and 8/16-step quality was preserved or slightly
+improved, so the run is not harmful. However, FID@2 is flat and FID@4 is within
+small-sample noise of step250. The current objective is therefore acting like a
+conservative endpoint-balanced fine-tune, not a strong capability jump. Keep
+v20 alive for one more two-hour window because it is still moving in the right
+direction, but if the next window has the same slope, the next branch should
+increase useful endpoint learning pressure while explicitly protecting
+composition, and should replace the fixed 2-step midpoint with a learned or
+periodically recalibrated low-budget clock.
+
 ## Latest Decision Metrics
 
 FID uses 2048 generated samples for the active watcher.
