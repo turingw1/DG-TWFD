@@ -54,6 +54,7 @@ learned RQS warp。
 | v20 endpoint-balanced | step3000 | 45.614 | 23.977 | 20.958 | 19.845 | 20.334 | 稳定微调，斜率太小 |
 | v21 CTM-aligned | step250 | 44.830 | 24.020 | 20.799 | 20.241 | 20.602 | endpoint/4-step 立刻改善，8/16 初期受扰动 |
 | v21 CTM-aligned | step500 | 44.971 | 24.044 | 20.811 | 20.206 | 20.589 | 1/4 优于 v20，8/16 开始轻微回收 |
+| v21 CTM-aligned | step750 | 45.100 | 24.061 | 20.835 | 20.183 | 20.568 | 8/16 继续回收，但 endpoint 连续回弹 |
 
 ## 实验演化脉络
 
@@ -125,6 +126,9 @@ pixel/perceptual matching，所以表现为保守 fine-tune，而不是能力跃
 - step500 FID@1 比 step250 回弹到 44.971，说明 adapter/DSM 的早期更新
   可能在 endpoint 与 composition 间拉扯；但 8/16 已从 step250 的
   20.241/20.602 轻微回收到 20.206/20.589；
+- step750 进一步确认 tradeoff：8/16 回收到 20.183/20.568，但 FID@1 回弹到
+  45.100。若下一轮 FID@1 继续回弹，说明当前 data transition/adapter 更新正在
+  牺牲 endpoint，应分支 v21b 调低 data transition 或加强 endpoint/EMA 保护；
 - auto 2-step 继续错误，必须看 budget policy，不应报告 auto-2。
 
 当前判断：v21 的方向是对的，因为它第一次在很早步数就显著拉动 endpoint；
