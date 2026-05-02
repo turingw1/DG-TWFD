@@ -412,5 +412,100 @@
     "The representative trajectory is selected by the requested improvement quantile, not by visual inspection.",
     "Teacher variation is the mean dense-teacher state MSE between adjacent dense PF-ODE nodes.",
     "Panel C uses finite semigroup-defect segments only; the final sigma=0 endpoint segment can be numerically singular for this adapter diagnostic."
-  ]
+  ],
+  "redraw": {
+    "version": "v2_neurips_mechanism_redraw",
+    "script": "scripts/figures/redraw_timewarp_mechanism_from_npz.py",
+    "claim": "time allocation and paired semigroup-defect reduction; no pointwise teacher-path closeness claim",
+    "data_source": "docs/experiments/DG_TWFD_v3/figures/mechanism/timewarp_mechanism_20260502/timewarp_mechanism_data.npz",
+    "panels": {
+      "A": {
+        "density_mass_sum": 1.0,
+        "corr_density_defect": 0.9847578892382254,
+        "corr_density_variation": -0.5355473387133471,
+        "dg_original_waypoints": [
+          0.0,
+          0.17351162433624268,
+          0.2795358896255493,
+          0.3784294128417969,
+          0.47567999362945557,
+          0.577673077583313,
+          0.6910035610198975,
+          0.8182735443115234,
+          1.0
+        ]
+      },
+      "B": {
+        "waypoint_source": "teacher path interpolation; student composed states intentionally omitted",
+        "high_defect_percentile": 75.0,
+        "labelled_waypoints": [
+          0,
+          2,
+          4,
+          6,
+          8
+        ]
+      },
+      "C": {
+        "n": 24,
+        "segment_count": 7,
+        "identity_mean_defect": 7.815719521886422e-05,
+        "dg_mean_defect": 6.599893666112795e-05,
+        "relative_reduction": 0.15556160278896144,
+        "fraction_dg_better": 0.875,
+        "paired_segment_mean_identity_minus_dg": [
+          -8.845434437413739e-05,
+          2.1231794221421296e-05,
+          4.589329334218443e-05,
+          8.042050527971394e-05,
+          4.425534067801588e-05,
+          -9.909744827988712e-06,
+          -8.329034415055503e-06
+        ],
+        "identity_ci_low": [
+          6.036548955989929e-05,
+          4.6092420795199966e-05,
+          6.473740861755079e-05,
+          0.00010456605524495899,
+          9.929876478054211e-05,
+          3.915190433948131e-05,
+          1.1701660911001e-05
+        ],
+        "identity_ci_high": [
+          7.615127355317478e-05,
+          8.159584157662418e-05,
+          0.00011817569811303958,
+          0.00019314666799724955,
+          0.00014794166809224406,
+          5.062407620926024e-05,
+          1.5793333371050264e-05
+        ],
+        "dg_ci_low": [
+          0.00013298494469230114,
+          3.053214290768362e-05,
+          3.039428656848031e-05,
+          4.434179426956082e-05,
+          6.362428750890103e-05,
+          4.621163877800427e-05,
+          1.9377504626542458e-05
+        ],
+        "dg_ci_high": [
+          0.00018315374801053014,
+          5.371111452537509e-05,
+          5.784347870113984e-05,
+          8.951708067949461e-05,
+          9.56597149411209e-05,
+          6.365887676338389e-05,
+          2.5088516141143678e-05
+        ]
+      }
+    },
+    "path_error_caution": {
+      "common_path_identity_mean_error": 1.0557929277420044,
+      "common_path_dg_mean_error": 2.9839441776275635,
+      "node_identity_mean_error": 0.04515929892659187,
+      "node_dg_mean_error": 0.04982158914208412,
+      "interpretation": "These pointwise path metrics do not support claiming DG is closer to the teacher path."
+    }
+  }
 }

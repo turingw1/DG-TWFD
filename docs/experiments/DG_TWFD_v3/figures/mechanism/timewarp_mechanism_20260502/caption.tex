@@ -1,4 +1,4 @@
-\textbf{Effect of defect-guided time warping on real teacher trajectories.}
-The learned warp expands high-defect regions in warped time, so uniformly spaced warped steps induce denser original-time waypoints where composition is hardest.
-Projected held-out trajectories show that DG-TWFD preserves the same teacher path while changing the lower-step waypoint traversal.
-Aggregate defect curves report held-out means with bootstrap confidence intervals.
+\textbf{Real-trajectory mechanism of defect-guided time warping.}
+The learned clock allocates larger warped-time mass to original-time regions with high empirical semigroup defect, so uniform warped-time sampling induces non-uniform original-time waypoints.
+On a held-out CIFAR-10 trajectory, the teacher path is unchanged while the low-step waypoint traversal is redistributed toward the high-defect segment.
+Across held-out trajectories, DG-TWFD reduces paired semigroup defect under the same step budget.
