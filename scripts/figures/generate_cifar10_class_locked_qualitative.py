@@ -106,6 +106,12 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--use-fp16-ctm", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument(
+        "--include-dg-full",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Also generate the DG-TWFD student with the learned checkpoint warp/clock.",
+    )
     return parser.parse_args()
 
 
@@ -315,6 +321,7 @@ def main() -> None:
         ],
         "step_mapping": {
             "edm_reference_replaces_dg_twfd_best": {str(key): value for key, value in EDM_REFERENCE_STEPS.items()},
+            "dg_twfd_full_learned_clock": {str(key): key for key in steps},
             "dg_twfd_identity_same_checkpoint": {str(key): key for key in steps},
             "ctm_rows": {str(key): key for key in steps},
         },
@@ -322,7 +329,7 @@ def main() -> None:
         "environment_notes": [],
     }
 
-    cfg, teacher, student, _warp, ckpt = _load_dg_models(args, device)
+    cfg, teacher, student, warp, ckpt = _load_dg_models(args, device)
 
     for display_step in steps:
         actual_step = int(EDM_REFERENCE_STEPS[display_step])
@@ -353,6 +360,33 @@ def main() -> None:
             }
         )
 
+    if args.include_dg_full:
+        for step_count in steps:
+            samples, u_grid, sigma_grid = _sample_edm_student(
+                student=student,
+                warp=warp,
+                cfg=cfg,
+                step_count=step_count,
+                class_ids=class_ids,
+                seeds=seeds,
+                device=device,
+            )
+            sample_dir = output_root / "dg_twfd_full_learned_clock" / f"steps{step_count}"
+            written = _save_tensor_images(samples, sample_dir, seeds)
+            manifest["rows"].append(
+                {
+                    "row": "dg_twfd_full_learned_clock",
+                    "description": "DG-TWFD student checkpoint with its learned warp/clock enabled.",
+                    "step_count": int(step_count),
+                    "checkpoint": str(_resolve(args.dg_checkpoint)),
+                    "checkpoint_step": int(ckpt.get("step", -1)),
+                    "u_grid": [float(item) for item in u_grid.detach().cpu().tolist()],
+                    "sigma_grid": [float(item) for item in sigma_grid.detach().cpu().tolist()],
+                    "sample_dir": str(sample_dir.relative_to(ROOT)),
+                    "files": written,
+                }
+            )
+
     for step_count in steps:
         samples, u_grid, sigma_grid = _sample_edm_student(
             student=student,
@@ -379,7 +413,7 @@ def main() -> None:
             }
         )
 
-    del teacher, student, _warp
+    del teacher, student, warp
     if device.type == "cuda":
         torch.cuda.empty_cache()
 

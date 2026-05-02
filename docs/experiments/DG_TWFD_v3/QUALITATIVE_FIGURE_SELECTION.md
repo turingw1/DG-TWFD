@@ -60,7 +60,71 @@ docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_
 
 CIFAR-10 conditional rows use 18 class/seed pairs: seeds `1000..1017`, with class ids `[0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7]`. CIFAR-10 JAX CD/CT rows reuse sample seeds `1000..1017` but have no class labels. ImageNet64 uses 18 class/seed pairs with class ids `[8,22,207,281,404,555,751,817,130,145,292,340,407,444,569,701,779,980]` and seeds `31..48`.
 
-## Current Figure Row Log
+## NeurIPS Main-Text Panel 2026-05-02
+
+这版是按 NeurIPS 主文要求重新生成的紧凑 qualitative figure。目标是展示 `1 / 2 / 4 / 8` 少步采样下的 class preservation 和视觉一致性。样本选择规则是：先按语义类别预选固定 class/seed pairs，再生成所有方法输出；主文每个数据集展示 4 组样本，appendix 保留 8 组完整样本。
+
+输出目录：
+
+```text
+docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/
+├── main_text/qualitative_neurips_main.pdf
+├── main_text/qualitative_neurips_main.png
+├── appendix/cifar10_appendix_all_samples.pdf
+├── appendix/imagenet64_appendix_all_samples.pdf
+├── appendix/cifar10_seed_only_reference.pdf
+├── caption.txt
+└── manifest.json
+```
+
+样本目录：
+
+```text
+docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_neurips_main_20260502/
+docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_neurips_main_20260502_identity_4_10_18_30/
+```
+
+导出规则：
+
+| Rule | Value |
+|---|---|
+| Display steps | `1 / 2 / 4 / 8` |
+| CIFAR-10 samples | 8 preselected class/seed pairs: airplane, automobile, cat, horse, ship, truck, bird, deer |
+| ImageNet64 samples | 8 preselected class/seed pairs: bird, dog, cat-like, vehicle, sports car, clutter, object, bird detail |
+| Main paper samples | CIFAR: plane/car/cat/truck; ImageNet64: bird/dog/vehicle/clutter |
+| Raster handling | samples are nearest-neighbor upscaled before PDF embedding |
+| Text handling | dataset names, method names, sample labels, and step labels are vector text in PDF |
+| Main figure size | generated as a compact single PDF intended for `<=0.98\linewidth` and `<0.55` page height |
+
+主文行解释：
+
+| Dataset | Display row | Actual generator and parameters |
+|---|---|---|
+| CIFAR-10 | DG-TWFD | 使用 DG-TWFD CIFAR-10 best student checkpoint；learned/full clock；显示列 `1/2/4/8` 对应 student `1/2/4/8` steps。 |
+| CIFAR-10 | Identity | 使用同一个 DG-TWFD CIFAR-10 best student checkpoint；identity clock；显示列 `1/2/4/8` 对应 student `1/2/4/8` steps。 |
+| CIFAR-10 | CTM | 使用 CTM CIFAR-10 official conditional checkpoint `model043000.pt`；CTM exact transition；显示列 `1/2/4/8` 对应 CTM `1/2/4/8` steps。 |
+| ImageNet64 | EDM ref. | 使用官方 EDM ImageNet64 class-conditional cond-ADM checkpoint；显示列 `1/2/4/8` 实际对应 EDM `32/48/64/128` steps。 |
+| ImageNet64 | EDM clock | 使用官方 EDM ImageNet64 class-conditional cond-ADM checkpoint；作为 ImageNet identity proxy；显示列 `1/2/4/8` 实际对应 EDM `4/10/18/30` steps。 |
+| ImageNet64 | CD-LPIPS | 使用 OpenAI consistency distillation ImageNet64 LPIPS checkpoint；显示列 `1/2/4/8` 对应 CM `1/2/4/8` steps。 |
+| ImageNet64 | CD-L2 | 使用 OpenAI consistency distillation ImageNet64 L2 checkpoint；显示列 `1/2/4/8` 对应 CM `1/2/4/8` steps。 |
+| ImageNet64 | CT | 使用 OpenAI consistency training ImageNet64 checkpoint；显示列 `1/2/4/8` 对应 CM `1/2/4/8` steps。 |
+| ImageNet64 | CTM | 使用 CTM ImageNet64 official checkpoint `ctm_imagenet64_ema_0.999.pt`；CTM exact transition；显示列 `1/2/4/8` 对应 CTM `1/2/4/8` steps。 |
+
+重要 caveat：
+
+| Item | Policy |
+|---|---|
+| ImageNet64 DG-TWFD | 当前 workspace 没有可用 ImageNet64 DG-TWFD checkpoint，因此不能把 ImageNet64 的 EDM proxy 写成 DG-TWFD。 |
+| CIFAR-10 OpenAI JAX CD/CT | 这些公开 CIFAR-10 checkpoint 是 unconditional，不支持 class label；已单独放到 `cifar10_seed_only_reference`，不能混入 class-preservation 主图。 |
+| Appendix | CIFAR appendix 加入 `CTM no-GAN`；ImageNet appendix 保留全部 8 个预选 class/seed pairs。 |
+
+建议 caption：
+
+```text
+Qualitative samples under 1, 2, 4, and 8 sampling steps test low-step class preservation and visual coherence. Rows use matched class labels and initial noise seeds for class-conditional methods; unconditional CIFAR-10 consistency checkpoints are shown separately as seed-only references.
+```
+
+## Previous Paper Panels Row Log
 
 这部分是当前 PDF 的严格行解释，不是候选模型列表。CIFAR-10 当前有 7 行；ImageNet64 当前有 6 行。每一行都用“展示行名（实际使用的生成模型和参数）”记录，避免把已生成图片和待定候选 baseline 混在一起。
 

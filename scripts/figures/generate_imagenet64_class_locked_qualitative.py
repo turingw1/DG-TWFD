@@ -129,6 +129,18 @@ def _parse_args() -> argparse.Namespace:
         default=DEFAULT_SAMPLE_SEEDS,
         help="One deterministic latent/noise seed per visual column.",
     )
+    parser.add_argument(
+        "--identity-actual-steps",
+        nargs=4,
+        type=int,
+        default=[EDM_IDENTITY_STEPS[step] for step in [1, 2, 4, 8]],
+        help="Actual EDM step counts used by the display 1/2/4/8 identity proxy columns.",
+    )
+    parser.add_argument(
+        "--identity-row",
+        default=EDM_IDENTITY_ROW,
+        help="Output row directory name for the EDM identity/proxy row.",
+    )
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--use-fp16", action=argparse.BooleanOptionalAction, default=False)
     return parser.parse_args()
@@ -389,8 +401,14 @@ def main() -> None:
     output_root = Path(_resolve(args.output_root))
     output_root.mkdir(parents=True, exist_ok=True)
     steps = [int(item) for item in args.steps]
+    if steps != [1, 2, 4, 8]:
+        raise ValueError("ImageNet qualitative step display must remain exactly 1 2 4 8")
     class_ids = [int(item) for item in args.class_ids]
     sample_seeds = [int(item) for item in args.sample_seeds]
+    identity_steps = {
+        display_step: int(actual_step)
+        for display_step, actual_step in zip([1, 2, 4, 8], args.identity_actual_steps)
+    }
     manifest: dict[str, Any] = {
         "note": "Each column fixes the same ImageNet class id and deterministic latent/noise seed across class-conditional rows.",
         "steps": steps,
@@ -400,7 +418,7 @@ def main() -> None:
         ],
         "step_mapping": {
             "edm_reference_replaces_dg_twfd_best": {str(key): value for key, value in EDM_REFERENCE_STEPS.items()},
-            "edm_identity_proxy": {str(key): value for key, value in EDM_IDENTITY_STEPS.items()},
+            "edm_identity_proxy": {str(key): value for key, value in identity_steps.items()},
             "ctm_imagenet64_official": {str(key): key for key in steps},
         },
         "rows": [],
@@ -427,12 +445,12 @@ def main() -> None:
             }
         )
     for display_step in steps:
-        actual_step = int(EDM_IDENTITY_STEPS[display_step])
+        actual_step = int(identity_steps[display_step])
         samples, sigma_grid = _sample_edm(net=edm, step_count=actual_step, class_ids=class_ids, seeds=sample_seeds, device=device)
-        sample_dir = output_root / EDM_IDENTITY_ROW / f"steps{display_step}"
+        sample_dir = output_root / str(args.identity_row) / f"steps{display_step}"
         manifest["rows"].append(
             {
-                "row": EDM_IDENTITY_ROW,
+                "row": str(args.identity_row),
                 "description": "EDM ImageNet64 medium-step identity/proxy row requested for DG-TWFD identity comparison.",
                 "display_step": int(display_step),
                 "actual_edm_steps": actual_step,

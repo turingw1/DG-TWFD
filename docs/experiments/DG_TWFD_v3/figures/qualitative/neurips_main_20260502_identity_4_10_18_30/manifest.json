@@ -1,0 +1,173 @@
+{
+  "purpose": "NeurIPS main-text qualitative panels for low-step class preservation and visual coherence.",
+  "selection_rule": "Class/seed pairs were preselected from semantic categories before inspecting this generation output. Main text uses four pairs per dataset; appendix contains all eight preselected pairs.",
+  "display_steps": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "imagenet_identity_proxy_actual_edm_steps": {
+    "1": 4,
+    "2": 10,
+    "4": 18,
+    "8": 30
+  },
+  "cifar_samples": [
+    {
+      "class_id": 0,
+      "class_name": "airplane",
+      "short_name": "plane",
+      "seed": 1000
+    },
+    {
+      "class_id": 1,
+      "class_name": "automobile",
+      "short_name": "car",
+      "seed": 1001
+    },
+    {
+      "class_id": 3,
+      "class_name": "cat",
+      "short_name": "cat",
+      "seed": 1003
+    },
+    {
+      "class_id": 7,
+      "class_name": "horse",
+      "short_name": "horse",
+      "seed": 1007
+    },
+    {
+      "class_id": 8,
+      "class_name": "ship",
+      "short_name": "ship",
+      "seed": 1008
+    },
+    {
+      "class_id": 9,
+      "class_name": "truck",
+      "short_name": "truck",
+      "seed": 1009
+    },
+    {
+      "class_id": 2,
+      "class_name": "bird",
+      "short_name": "bird",
+      "seed": 1002
+    },
+    {
+      "class_id": 4,
+      "class_name": "deer",
+      "short_name": "deer",
+      "seed": 1004
+    }
+  ],
+  "imagenet_samples": [
+    {
+      "class_id": 22,
+      "class_name": "bird",
+      "short_name": "bird",
+      "seed": 31
+    },
+    {
+      "class_id": 207,
+      "class_name": "dog",
+      "short_name": "dog",
+      "seed": 32
+    },
+    {
+      "class_id": 281,
+      "class_name": "cat-like",
+      "short_name": "cat",
+      "seed": 33
+    },
+    {
+      "class_id": 407,
+      "class_name": "vehicle",
+      "short_name": "vehicle",
+      "seed": 34
+    },
+    {
+      "class_id": 817,
+      "class_name": "sports car",
+      "short_name": "car",
+      "seed": 35
+    },
+    {
+      "class_id": 701,
+      "class_name": "clutter",
+      "short_name": "clutter",
+      "seed": 36
+    },
+    {
+      "class_id": 444,
+      "class_name": "object",
+      "short_name": "object",
+      "seed": 37
+    },
+    {
+      "class_id": 8,
+      "class_name": "bird detail",
+      "short_name": "bird2",
+      "seed": 38
+    }
+  ],
+  "main_indices": {
+    "cifar10": [
+      0,
+      1,
+      2,
+      5
+    ],
+    "imagenet64": [
+      0,
+      1,
+      3,
+      5
+    ]
+  },
+  "rows": {
+    "cifar10_main": [
+      "DG-TWFD",
+      "Identity",
+      "CTM"
+    ],
+    "imagenet64_main": [
+      "EDM ref.",
+      "EDM clock",
+      "CD-LPIPS",
+      "CD-L2",
+      "CT",
+      "CTM"
+    ],
+    "cifar10_seed_only_reference": [
+      "CD-LPIPS",
+      "CD-L2",
+      "CT-LPIPS"
+    ]
+  },
+  "caveats": [
+    "CIFAR-10 OpenAI JAX consistency checkpoints are unconditional and are rendered only in a separate seed-only reference panel.",
+    "No ImageNet64 DG-TWFD checkpoint is available in the current workspace; ImageNet identity clock is an EDM proxy and is labeled as such."
+  ],
+  "outputs": {
+    "main_text": {
+      "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/main_text/qualitative_neurips_main.pdf",
+      "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/main_text/qualitative_neurips_main.png"
+    },
+    "cifar10_appendix": {
+      "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/appendix/cifar10_appendix_all_samples.pdf",
+      "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/appendix/cifar10_appendix_all_samples.png"
+    },
+    "imagenet64_appendix": {
+      "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/appendix/imagenet64_appendix_all_samples.pdf",
+      "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/appendix/imagenet64_appendix_all_samples.png"
+    },
+    "cifar10_seed_only_reference": {
+      "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/appendix/cifar10_seed_only_reference.pdf",
+      "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/appendix/cifar10_seed_only_reference.png"
+    }
+  },
+  "caption_suggestion": "Qualitative samples under 1, 2, 4, and 8 sampling steps test low-step class preservation and visual coherence. Rows use matched class labels and initial noise seeds for class-conditional methods; unconditional CIFAR-10 consistency checkpoints are shown separately as seed-only references."
+}
