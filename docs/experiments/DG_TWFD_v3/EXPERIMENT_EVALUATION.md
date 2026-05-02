@@ -55,6 +55,8 @@ learned RQS warp。
 | v21 CTM-aligned | step250 | 44.830 | 24.020 | 20.799 | 20.241 | 20.602 | endpoint/4-step 立刻改善，8/16 初期受扰动 |
 | v21 CTM-aligned | step500 | 44.971 | 24.044 | 20.811 | 20.206 | 20.589 | 1/4 优于 v20，8/16 开始轻微回收 |
 | v21 CTM-aligned | step750 | 45.100 | 24.061 | 20.835 | 20.183 | 20.568 | 8/16 继续回收，但 endpoint 连续回弹 |
+| v21 CTM-aligned | step8111 | 44.987 | 26.967 | 25.259 | 24.296 | 26.736 | endpoint 小幅保留，composition 明确失败 |
+| v21b CTM-gated | step250 | 44.843 | 24.034 | 20.831 | 20.225 | 20.596 | 保守 CTM 复现早期增益，等待 step500/750 验证是否抗退化 |
 
 ## 实验演化脉络
 
@@ -129,10 +131,20 @@ pixel/perceptual matching，所以表现为保守 fine-tune，而不是能力跃
 - step750 进一步确认 tradeoff：8/16 回收到 20.183/20.568，但 FID@1 回弹到
   45.100。若下一轮 FID@1 继续回弹，说明当前 data transition/adapter 更新正在
   牺牲 endpoint，应分支 v21b 调低 data transition 或加强 endpoint/EMA 保护；
+- step8111 给出明确负结论：FID@1 虽从中期最差约 46.2 回到 44.987，但
+  4/8/16 已退化到 25.259/24.296/26.736，远差于 v20 的
+  20.958/19.845/20.334。问题不是训练崩溃，而是 `data_transition_weight=0.85`
+  与 `transition_adapter_lr=3e-5` 在长跑中持续改写 transition family，超过
+  preservation 的约束能力；
+- v21b 从 v21 step250 接续后，首轮 step250 budget FID 为
+  44.843/24.034/20.831/20.225/20.596，基本复现 v21 早期健康区间，并没有
+  立刻造成新的 8/16 退化。真正验收点是 step500/750 是否不再出现 v21 那种
+  4/8/16 单调恶化；
 - auto 2-step 继续错误，必须看 budget policy，不应报告 auto-2。
 
-当前判断：v21 的方向是对的，因为它第一次在很早步数就显著拉动 endpoint；
-但 loss 配比还没有完成，后续监督重点是 8/16 是否回收。
+当前判断：v21 证明 “显式 `s` 条件 + real-data transition” 有早期价值，但
+当前权重过强，不能直接长跑。v21b 从 v21 step250 继续，保留早期 endpoint/4-step
+收益，同时降低 adapter/data-transition 强度并提高 preservation。
 
 ## 机制图 v1 观察
 
@@ -168,6 +180,16 @@ transition 本身，或改用真实可访问 waypoint/segment-level metric。
    - stop-grad EMA target model；
    - adaptive DSM/consistency balance；
    - 更强的 `s` 条件注入，而不是小 residual adapter。
+5. v21b 已准备：
+   - config:
+     `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_v21b_ctm_gated.yaml`
+   - launcher:
+     `experiments/edm_first/scripts/launch_prior_fullstack_timewarp_v21b_ctm_gated.sh`
+   - source:
+     `runs/edm_first_cifar10_prior_fullstack_timewarp_v21_ctm_aligned_from_v20_step3292/checkpoints/step250.pt`
+   - 关键改动：`transition_adapter_lr 3e-5 -> 8e-6`，
+     `data_transition_weight 0.85 -> 0.25`，`data_transition_endpoint_prob 0.65 -> 0.35`，
+     提高 preserve bridge/defect/perceptual，并降低 warp 学习率。
 
 ## Artifact 索引
 
