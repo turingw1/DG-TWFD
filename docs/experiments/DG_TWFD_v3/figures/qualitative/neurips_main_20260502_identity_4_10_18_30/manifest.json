@@ -131,17 +131,21 @@
   },
   "rows": {
     "cifar10_main": [
-      "DG-TWFD",
-      "Identity",
-      "CTM"
+      "DG-TWFD full",
+      "DG-TWFD identity",
+      "CTM official CIFAR-10 conditional",
+      "CTM no-GAN DSM 10k",
+      "CD-LPIPS CIFAR-10 JAX",
+      "CD-L2 CIFAR-10 JAX",
+      "CT-LPIPS CIFAR-10 JAX"
     ],
     "imagenet64_main": [
-      "EDM ref.",
-      "EDM clock",
-      "CD-LPIPS",
-      "CD-L2",
-      "CT",
-      "CTM"
+      "DG-TWFD full",
+      "DG-TWFD identity",
+      "CD-LPIPS ImageNet64",
+      "CD-L2 ImageNet64",
+      "CT ImageNet64",
+      "CTM ImageNet64 official"
     ],
     "cifar10_seed_only_reference": [
       "CD-LPIPS",
@@ -149,8 +153,98 @@
       "CT-LPIPS"
     ]
   },
+  "row_notes": {
+    "cifar10_main": {
+      "DG-TWFD full": "class-locked",
+      "DG-TWFD identity": "class-locked",
+      "CTM official CIFAR-10 conditional": "class-locked",
+      "CTM no-GAN DSM 10k": "class-locked",
+      "CD-LPIPS CIFAR-10 JAX": "seed-only; released JAX checkpoint is not class-conditional",
+      "CD-L2 CIFAR-10 JAX": "seed-only; released JAX checkpoint is not class-conditional",
+      "CT-LPIPS CIFAR-10 JAX": "seed-only; released JAX checkpoint is not class-conditional"
+    },
+    "imagenet64_main": {
+      "DG-TWFD full": "class-locked; displayed name uses EDM 32/48/64/128-step proxy because no ImageNet64 DG-TWFD checkpoint is available",
+      "DG-TWFD identity": "class-locked; displayed name uses EDM 4/10/18/30-step identity proxy because no ImageNet64 DG-TWFD checkpoint is available",
+      "CD-LPIPS ImageNet64": "class-locked",
+      "CD-L2 ImageNet64": "class-locked",
+      "CT ImageNet64": "class-locked",
+      "CTM ImageNet64 official": "class-locked"
+    }
+  },
+  "row_sources": {
+    "cifar10_main": [
+      {
+        "display": "DG-TWFD full",
+        "sample_row": "dg_twfd_full_learned_clock",
+        "source_root": "cifar10_neurips_main_20260502"
+      },
+      {
+        "display": "DG-TWFD identity",
+        "sample_row": "dg_twfd_identity_same_checkpoint",
+        "source_root": "cifar10_neurips_main_20260502"
+      },
+      {
+        "display": "CTM official CIFAR-10 conditional",
+        "sample_row": "ctm_official_cond",
+        "source_root": "cifar10_neurips_main_20260502"
+      },
+      {
+        "display": "CTM no-GAN DSM 10k",
+        "sample_row": "ctm_nogan_dsm_10k",
+        "source_root": "cifar10_neurips_main_20260502"
+      },
+      {
+        "display": "CD-LPIPS CIFAR-10 JAX",
+        "sample_row": "cd_lpips_cifar10_jax",
+        "source_root": "cifar10_20260502_paper"
+      },
+      {
+        "display": "CD-L2 CIFAR-10 JAX",
+        "sample_row": "cd_l2_cifar10_jax",
+        "source_root": "cifar10_20260502_paper"
+      },
+      {
+        "display": "CT-LPIPS CIFAR-10 JAX",
+        "sample_row": "ct_lpips_cifar10_jax",
+        "source_root": "cifar10_20260502_paper"
+      }
+    ],
+    "imagenet64_main": [
+      {
+        "display": "DG-TWFD full",
+        "sample_row": "edm_imagenet64_cond_adm_32_48_64_128",
+        "source_root": "imagenet64_neurips_main_20260502_identity_4_10_18_30"
+      },
+      {
+        "display": "DG-TWFD identity",
+        "sample_row": "edm_imagenet64_identity_proxy_4_10_18_30",
+        "source_root": "imagenet64_neurips_main_20260502_identity_4_10_18_30"
+      },
+      {
+        "display": "CD-LPIPS ImageNet64",
+        "sample_row": "cd_lpips_imagenet64",
+        "source_root": "imagenet64_neurips_main_20260502_identity_4_10_18_30"
+      },
+      {
+        "display": "CD-L2 ImageNet64",
+        "sample_row": "cd_l2_imagenet64",
+        "source_root": "imagenet64_neurips_main_20260502_identity_4_10_18_30"
+      },
+      {
+        "display": "CT ImageNet64",
+        "sample_row": "ct_imagenet64",
+        "source_root": "imagenet64_neurips_main_20260502_identity_4_10_18_30"
+      },
+      {
+        "display": "CTM ImageNet64 official",
+        "sample_row": "ctm_imagenet64_official",
+        "source_root": "imagenet64_neurips_main_20260502_identity_4_10_18_30"
+      }
+    ]
+  },
   "caveats": [
-    "CIFAR-10 OpenAI JAX consistency checkpoints are unconditional and are rendered only in a separate seed-only reference panel.",
+    "CIFAR-10 OpenAI JAX consistency checkpoints are unconditional and are marked seed-only in row_notes; do not describe those rows as class-preservation evidence.",
     "No ImageNet64 DG-TWFD checkpoint is available in the current workspace; ImageNet identity clock is an EDM proxy and is labeled as such."
   ],
   "outputs": {
@@ -171,5 +265,5 @@
       "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/appendix/cifar10_seed_only_reference.png"
     }
   },
-  "caption_suggestion": "Qualitative samples under 1, 2, 4, and 8 sampling steps test low-step class preservation and visual coherence. Rows use matched class labels and initial noise seeds for class-conditional methods; unconditional CIFAR-10 consistency checkpoints are shown separately as seed-only references."
+  "caption_suggestion": "Qualitative samples under 1, 2, 4, and 8 sampling steps test low-step class preservation and visual coherence. Rows use matched class labels and initial noise seeds for class-conditional methods; unconditional CIFAR-10 consistency checkpoints are marked as seed-only references."
 }

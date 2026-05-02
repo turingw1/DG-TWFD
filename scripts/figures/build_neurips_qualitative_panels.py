@@ -56,14 +56,17 @@ IMAGENET_SAMPLES = [
 ]
 
 CIFAR_ROWS_MAIN = [
-    {"label": "DG-TWFD", "row": "dg_twfd_full_learned_clock", "id_mode": "seed"},
-    {"label": "Identity", "row": "dg_twfd_identity_same_checkpoint", "id_mode": "seed"},
-    {"label": "CTM", "row": "ctm_official_cond", "id_mode": "seed"},
+    {"label": "DG-TWFD full", "row": "dg_twfd_full_learned_clock", "id_mode": "seed"},
+    {"label": "DG-TWFD identity", "row": "dg_twfd_identity_same_checkpoint", "id_mode": "seed"},
+    {"label": "CTM official CIFAR-10 conditional", "row": "ctm_official_cond", "id_mode": "seed"},
+    {"label": "CTM no-GAN DSM 10k", "row": "ctm_nogan_dsm_10k", "id_mode": "seed"},
+    {"label": "CD-LPIPS CIFAR-10 JAX", "row": "cd_lpips_cifar10_jax", "id_mode": "seed", "root_key": "cifar_seed_only"},
+    {"label": "CD-L2 CIFAR-10 JAX", "row": "cd_l2_cifar10_jax", "id_mode": "seed", "root_key": "cifar_seed_only"},
+    {"label": "CT-LPIPS CIFAR-10 JAX", "row": "ct_lpips_cifar10_jax", "id_mode": "seed", "root_key": "cifar_seed_only"},
 ]
 
 CIFAR_ROWS_APPENDIX = [
     *CIFAR_ROWS_MAIN,
-    {"label": "CTM no-GAN", "row": "ctm_nogan_dsm_10k", "id_mode": "seed"},
 ]
 
 CIFAR_ROWS_SEED_ONLY = [
@@ -73,13 +76,32 @@ CIFAR_ROWS_SEED_ONLY = [
 ]
 
 IMAGENET_ROWS_MAIN = [
-    {"label": "EDM ref.", "row": "edm_imagenet64_cond_adm_32_48_64_128", "id_mode": "index"},
-    {"label": "EDM clock", "row": "edm_imagenet64_identity_proxy_4_10_18_30", "id_mode": "index"},
-    {"label": "CD-LPIPS", "row": "cd_lpips_imagenet64", "id_mode": "index"},
-    {"label": "CD-L2", "row": "cd_l2_imagenet64", "id_mode": "index"},
-    {"label": "CT", "row": "ct_imagenet64", "id_mode": "index"},
-    {"label": "CTM", "row": "ctm_imagenet64_official", "id_mode": "index"},
+    {"label": "DG-TWFD full", "row": "edm_imagenet64_cond_adm_32_48_64_128", "id_mode": "index"},
+    {"label": "DG-TWFD identity", "row": "edm_imagenet64_identity_proxy_4_10_18_30", "id_mode": "index"},
+    {"label": "CD-LPIPS ImageNet64", "row": "cd_lpips_imagenet64", "id_mode": "index"},
+    {"label": "CD-L2 ImageNet64", "row": "cd_l2_imagenet64", "id_mode": "index"},
+    {"label": "CT ImageNet64", "row": "ct_imagenet64", "id_mode": "index"},
+    {"label": "CTM ImageNet64 official", "row": "ctm_imagenet64_official", "id_mode": "index"},
 ]
+
+ROW_NOTES_CIFAR = {
+    "DG-TWFD full": "class-locked",
+    "DG-TWFD identity": "class-locked",
+    "CTM official CIFAR-10 conditional": "class-locked",
+    "CTM no-GAN DSM 10k": "class-locked",
+    "CD-LPIPS CIFAR-10 JAX": "seed-only; released JAX checkpoint is not class-conditional",
+    "CD-L2 CIFAR-10 JAX": "seed-only; released JAX checkpoint is not class-conditional",
+    "CT-LPIPS CIFAR-10 JAX": "seed-only; released JAX checkpoint is not class-conditional",
+}
+
+ROW_NOTES_IMAGENET = {
+    "DG-TWFD full": "class-locked; displayed name uses EDM 32/48/64/128-step proxy because no ImageNet64 DG-TWFD checkpoint is available",
+    "DG-TWFD identity": "class-locked; displayed name uses EDM 4/10/18/30-step identity proxy because no ImageNet64 DG-TWFD checkpoint is available",
+    "CD-LPIPS ImageNet64": "class-locked",
+    "CD-L2 ImageNet64": "class-locked",
+    "CT ImageNet64": "class-locked",
+    "CTM ImageNet64 official": "class-locked",
+}
 
 
 def _load_image(root: Path, row: str, step: int, sample: dict, sample_index: int, id_mode: str) -> np.ndarray:
@@ -91,6 +113,13 @@ def _load_image(root: Path, row: str, step: int, sample: dict, sample_index: int
     scale = 5 if min(image.size) <= 32 else 3
     image = image.resize((image.width * scale, image.height * scale), Image.Resampling.NEAREST)
     return np.asarray(image)
+
+
+def _row_root(default_root: Path, row: dict) -> Path:
+    root_key = row.get("root_key")
+    if root_key == "cifar_seed_only":
+        return CIFAR_SEED_ONLY_ROOT
+    return default_root
 
 
 def _render_block(
@@ -123,7 +152,7 @@ def _render_block(
             x0 = left + step_idx * (group_w + step_gap)
             for local_idx, sample_idx in enumerate(sample_indices):
                 sample = samples[sample_idx]
-                image = _load_image(root, row["row"], step, sample, sample_idx, row["id_mode"])
+                image = _load_image(_row_root(root, row), row["row"], step, sample, sample_idx, row["id_mode"])
                 ax = fig.add_axes(
                     [
                         (x0 + local_idx * (tile + sample_gap)) / fig_w,
@@ -152,7 +181,7 @@ def _save_figure(fig, path_base: Path) -> dict[str, str]:
 
 
 def _build_main() -> dict[str, str]:
-    fig_w, fig_h = 5.64, 3.22
+    fig_w, fig_h = 5.64, 4.58
     fig = plt.figure(figsize=(fig_w, fig_h))
     fig.patch.set_facecolor("white")
     top = fig_h - 0.02
@@ -194,7 +223,8 @@ def _build_main() -> dict[str, str]:
 
 
 def _build_appendix(dataset: str, *, root: Path, rows: list[dict], samples: list[dict], title: str) -> dict[str, str]:
-    fig_w, fig_h = 6.82, 1.36
+    fig_w = 6.84
+    fig_h = 0.045 + len(rows) * 0.205 + max(0, len(rows) - 1) * 0.004
     fig = plt.figure(figsize=(fig_w, fig_h))
     fig.patch.set_facecolor("white")
     _render_block(
@@ -218,7 +248,8 @@ def _build_appendix(dataset: str, *, root: Path, rows: list[dict], samples: list
 
 
 def _build_seed_only_reference() -> dict[str, str]:
-    fig_w, fig_h = 6.82, 0.98
+    fig_w = 6.84
+    fig_h = 0.045 + len(CIFAR_ROWS_SEED_ONLY) * 0.205 + max(0, len(CIFAR_ROWS_SEED_ONLY) - 1) * 0.004
     fig = plt.figure(figsize=(fig_w, fig_h))
     fig.patch.set_facecolor("white")
     _render_block(
@@ -263,8 +294,30 @@ def main() -> None:
             "imagenet64_main": [row["label"] for row in IMAGENET_ROWS_MAIN],
             "cifar10_seed_only_reference": [row["label"] for row in CIFAR_ROWS_SEED_ONLY],
         },
+        "row_notes": {
+            "cifar10_main": ROW_NOTES_CIFAR,
+            "imagenet64_main": ROW_NOTES_IMAGENET,
+        },
+        "row_sources": {
+            "cifar10_main": [
+                {
+                    "display": row["label"],
+                    "sample_row": row["row"],
+                    "source_root": "cifar10_neurips_main_20260502" if row.get("root_key") != "cifar_seed_only" else "cifar10_20260502_paper",
+                }
+                for row in CIFAR_ROWS_MAIN
+            ],
+            "imagenet64_main": [
+                {
+                    "display": row["label"],
+                    "sample_row": row["row"],
+                    "source_root": "imagenet64_neurips_main_20260502_identity_4_10_18_30",
+                }
+                for row in IMAGENET_ROWS_MAIN
+            ],
+        },
         "caveats": [
-            "CIFAR-10 OpenAI JAX consistency checkpoints are unconditional and are rendered only in a separate seed-only reference panel.",
+            "CIFAR-10 OpenAI JAX consistency checkpoints are unconditional and are marked seed-only in row_notes; do not describe those rows as class-preservation evidence.",
             "No ImageNet64 DG-TWFD checkpoint is available in the current workspace; ImageNet identity clock is an EDM proxy and is labeled as such.",
         ],
         "outputs": {
@@ -275,7 +328,7 @@ def main() -> None:
         },
         "caption_suggestion": (
             "Qualitative samples under 1, 2, 4, and 8 sampling steps test low-step class preservation and visual coherence. "
-            "Rows use matched class labels and initial noise seeds for class-conditional methods; unconditional CIFAR-10 consistency checkpoints are shown separately as seed-only references."
+            "Rows use matched class labels and initial noise seeds for class-conditional methods; unconditional CIFAR-10 consistency checkpoints are marked as seed-only references."
         ),
     }
     OUTDIR.mkdir(parents=True, exist_ok=True)

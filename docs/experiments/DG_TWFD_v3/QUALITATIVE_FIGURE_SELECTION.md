@@ -96,32 +96,36 @@ docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_
 | Text handling | no rendered text in exported PDF/PNG; labels are manifest-only |
 | Main figure size | generated as a compact single PDF intended for `<=0.98\linewidth` and `<0.55` page height |
 
-主文行解释：
+主文行解释和 row notes：
 
-| Dataset | Display row | Actual generator and parameters |
-|---|---|---|
-| CIFAR-10 | DG-TWFD | 使用 DG-TWFD CIFAR-10 best student checkpoint；learned/full clock；显示列 `1/2/4/8` 对应 student `1/2/4/8` steps。 |
-| CIFAR-10 | Identity | 使用同一个 DG-TWFD CIFAR-10 best student checkpoint；identity clock；显示列 `1/2/4/8` 对应 student `1/2/4/8` steps。 |
-| CIFAR-10 | CTM | 使用 CTM CIFAR-10 official conditional checkpoint `model043000.pt`；CTM exact transition；显示列 `1/2/4/8` 对应 CTM `1/2/4/8` steps。 |
-| ImageNet64 | EDM ref. | 使用官方 EDM ImageNet64 class-conditional cond-ADM checkpoint；显示列 `1/2/4/8` 实际对应 EDM `32/48/64/128` steps。 |
-| ImageNet64 | EDM clock | 使用官方 EDM ImageNet64 class-conditional cond-ADM checkpoint；作为 ImageNet identity proxy；显示列 `1/2/4/8` 实际对应 EDM `4/10/18/30` steps。 |
-| ImageNet64 | CD-LPIPS | 使用 OpenAI consistency distillation ImageNet64 LPIPS checkpoint；显示列 `1/2/4/8` 对应 CM `1/2/4/8` steps。 |
-| ImageNet64 | CD-L2 | 使用 OpenAI consistency distillation ImageNet64 L2 checkpoint；显示列 `1/2/4/8` 对应 CM `1/2/4/8` steps。 |
-| ImageNet64 | CT | 使用 OpenAI consistency training ImageNet64 checkpoint；显示列 `1/2/4/8` 对应 CM `1/2/4/8` steps。 |
-| ImageNet64 | CTM | 使用 CTM ImageNet64 official checkpoint `ctm_imagenet64_ema_0.999.pt`；CTM exact transition；显示列 `1/2/4/8` 对应 CTM `1/2/4/8` steps。 |
+| Dataset | Display row | Row note | Actual generator and parameters |
+|---|---|---|---|
+| CIFAR-10 | DG-TWFD full | class-locked | 使用 DG-TWFD CIFAR-10 best student checkpoint；learned/full clock；显示列 `1/2/4/8` 对应 student `1/2/4/8` steps。 |
+| CIFAR-10 | DG-TWFD identity | class-locked | 使用同一个 DG-TWFD CIFAR-10 best student checkpoint；identity clock；显示列 `1/2/4/8` 对应 student `1/2/4/8` steps。 |
+| CIFAR-10 | CTM official CIFAR-10 conditional | class-locked | 使用 CTM CIFAR-10 official conditional checkpoint `model043000.pt`；CTM exact transition；显示列 `1/2/4/8` 对应 CTM `1/2/4/8` steps。 |
+| CIFAR-10 | CTM no-GAN DSM 10k | class-locked | 使用本地 no-GAN CTM DSM checkpoint `ema_0.999_010000.pt`；CTM exact transition；显示列 `1/2/4/8` 对应 CTM `1/2/4/8` steps。 |
+| CIFAR-10 | CD-LPIPS CIFAR-10 JAX | seed-only | 使用 OpenAI `consistency_models_cifar10` 的 `cd-lpips/checkpoint_80`；公开 JAX checkpoint 无 class label 条件，因此只作为 seed-only reference。 |
+| CIFAR-10 | CD-L2 CIFAR-10 JAX | seed-only | 使用 OpenAI `consistency_models_cifar10` 的 `cd-l2/checkpoint_80`；公开 JAX checkpoint 无 class label 条件，因此只作为 seed-only reference。 |
+| CIFAR-10 | CT-LPIPS CIFAR-10 JAX | seed-only | 使用 OpenAI `consistency_models_cifar10` 的 `ct-lpips/checkpoint_74`；公开 JAX checkpoint 无 class label 条件，因此只作为 seed-only reference。 |
+| ImageNet64 | DG-TWFD full | class-locked proxy | 当前无 ImageNet64 DG-TWFD checkpoint；展示名背后按既定替代规则使用官方 EDM ImageNet64 cond-ADM checkpoint，显示列 `1/2/4/8` 实际对应 EDM `32/48/64/128` steps。 |
+| ImageNet64 | DG-TWFD identity | class-locked proxy | 当前无 ImageNet64 DG-TWFD checkpoint；展示名背后按既定替代规则使用官方 EDM ImageNet64 cond-ADM checkpoint，显示列 `1/2/4/8` 实际对应 EDM `4/10/18/30` steps。 |
+| ImageNet64 | CD-LPIPS ImageNet64 | class-locked | 使用 OpenAI consistency distillation ImageNet64 LPIPS checkpoint；显示列 `1/2/4/8` 对应 CM `1/2/4/8` steps。 |
+| ImageNet64 | CD-L2 ImageNet64 | class-locked | 使用 OpenAI consistency distillation ImageNet64 L2 checkpoint；显示列 `1/2/4/8` 对应 CM `1/2/4/8` steps。 |
+| ImageNet64 | CT ImageNet64 | class-locked | 使用 OpenAI consistency training ImageNet64 checkpoint；显示列 `1/2/4/8` 对应 CM `1/2/4/8` steps。 |
+| ImageNet64 | CTM ImageNet64 official | class-locked | 使用 CTM ImageNet64 official checkpoint `ctm_imagenet64_ema_0.999.pt`；CTM exact transition；显示列 `1/2/4/8` 对应 CTM `1/2/4/8` steps。 |
 
 重要 caveat：
 
 | Item | Policy |
 |---|---|
 | ImageNet64 DG-TWFD | 当前 workspace 没有可用 ImageNet64 DG-TWFD checkpoint，因此不能把 ImageNet64 的 EDM proxy 写成 DG-TWFD。 |
-| CIFAR-10 OpenAI JAX CD/CT | 这些公开 CIFAR-10 checkpoint 是 unconditional，不支持 class label；已单独放到 `cifar10_seed_only_reference`，不能混入 class-preservation 主图。 |
-| Appendix | CIFAR appendix 加入 `CTM no-GAN`；ImageNet appendix 保留全部 8 个预选 class/seed pairs。 |
+| CIFAR-10 OpenAI JAX CD/CT | 这些公开 CIFAR-10 checkpoint 是 unconditional，不支持 class label；当前按你的 row layout 放入 image-only grid，但必须标注为 seed-only reference，不能写成 class-preservation evidence。 |
+| Appendix | CIFAR 和 ImageNet appendix 均保留全部 8 个预选 class/seed pairs。 |
 
 建议 caption：
 
 ```text
-Qualitative samples under 1, 2, 4, and 8 sampling steps test low-step class preservation and visual coherence. Rows use matched class labels and initial noise seeds for class-conditional methods; unconditional CIFAR-10 consistency checkpoints are shown separately as seed-only references.
+Qualitative samples under 1, 2, 4, and 8 sampling steps test low-step class preservation and visual coherence. Rows use matched class labels and initial noise seeds for class-conditional methods; unconditional CIFAR-10 consistency checkpoints are marked as seed-only references.
 ```
 
 ## Previous Paper Panels Row Log
