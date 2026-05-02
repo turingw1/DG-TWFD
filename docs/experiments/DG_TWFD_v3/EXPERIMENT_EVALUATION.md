@@ -14,23 +14,23 @@ changes the next full-stack direction. It is not a step-by-step run ledger.
 
 ## Current Active Track
 
-- Track: EDM-first CIFAR-10 endpoint-EMA repair branch for stronger one-step
-  generation.
-- Run tag: `edm_first_cifar10_endpoint_ema_v18_from_v17_last`.
+- Track: EDM-first CIFAR-10 v20 endpoint-balanced full-stack/timewarp
+  continuation.
+- Run tag:
+  `edm_first_cifar10_prior_fullstack_timewarp_v20_endpoint_balanced_from_v19_step7106`.
 - Config:
-  `experiments/edm_first/configs/cifar10_edm_map_endpoint_ema_v18.yaml`.
+  `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_v20_endpoint_balanced.yaml`.
 - Initialization checkpoint:
-  `runs/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855/checkpoints/last.pt`.
-- Important detail: v18 deliberately disables timewarp and full-stack bridge
-  preservation. It tests whether EMA weights plus a small real-data EDM
-  denoise anchor can repair the weak one-step generator. If this branch
-  materially improves FID@1, the resulting checkpoint should be reintroduced to
-  the full-stack/timewarp objective rather than reported as the final
-  all-budget model.
+  `runs/edm_first_cifar10_prior_fullstack_timewarp_v19_endpoint_recovery_bs48_from_v18_step4684/checkpoints/step7106.pt`.
+- Important detail: v20 starts from the v19 final EMA student plus learned RQS
+  warp. It lowers the student and warp learning rates, strengthens direct
+  endpoint and real-data denoise anchors, and reduces bridge pressure. Its
+  acceptance test is to improve FID@1 from v19 final while not giving back the
+  recovered 8/16-step quality.
 - Live backup:
-  `/temp/Zhengwei/projects/DG-TWFD/critical/runs/edm_first_cifar10_endpoint_ema_v18_from_v17_last`.
+  `/temp/Zhengwei/projects/DG-TWFD/critical/runs/edm_first_cifar10_prior_fullstack_timewarp_v20_endpoint_balanced_from_v19_step7106`.
 - Milestone backups:
-  `/temp/Zhengwei/projects/DG-TWFD/critical/eval/edm_first_cifar10_endpoint_ema_v18_from_v17_last_step*`.
+  `/temp/Zhengwei/projects/DG-TWFD/critical/eval/edm_first_cifar10_prior_fullstack_timewarp_v20_endpoint_balanced_from_v19_step7106_step*`.
 
 ## v16 RQS Timewarp Rationale
 
@@ -292,6 +292,18 @@ lower student LR and lower warp LR, strengthen direct endpoint and real-data
 denoise anchors, and reduce bridge pressure. Its acceptance test is simple:
 improve FID@1 from v19 final without giving back the recovered 8/16-step
 quality.
+
+V20 has passed the first online gate at step250. Budget-policy FID-2048 is
+`45.841 / 23.942 / 21.018 / 19.846 / 20.340` at `1/2/4/8/16`. Relative to v19
+final, FID@1 improves by about `0.95`, FID@8 by about `0.20`, and FID@16 by
+about `0.24`, while FID@2 is effectively tied. This is the desired initial
+signal: the endpoint-balanced continuation is not sacrificing the high-budget
+recovery that v19 bought. The remaining bottleneck is still the 2-step auto
+clock, not the model weights: auto warp gives FID@2 `28.965`, while the
+calibrated budget midpoint `u=0.60` gives `23.942`. Continue v20 under
+two-hour supervision; the next useful intervention should target learnable or
+periodically recalibrated low-budget clocking rather than another generic
+timewarp capacity increase.
 
 ## Latest Decision Metrics
 
