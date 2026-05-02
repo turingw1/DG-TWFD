@@ -265,6 +265,14 @@ recovery is still active and endpoint remains better than v17, but the next
 decision gate should stop or branch if FID@1 approaches the old v17 level
 before 16-step reaches the v17/v15 high-budget region.
 
+The second v19 supervision window continues the same tradeoff rather than
+changing direction. Step4250 budget FID-2048 is
+`46.706 / 23.749 / 20.788 / 20.171 / 20.742`. The high-budget side still
+improves, but the slope is now concentrated at 8/16 and is slower than in the
+first window. Endpoint FID keeps drifting upward, though it remains clearly
+better than v17. Continue one more window, but treat FID@1 near `48` or a flat
+16-step curve as the stop/branch trigger.
+
 ## Latest Decision Metrics
 
 FID uses 2048 generated samples for the active watcher.
