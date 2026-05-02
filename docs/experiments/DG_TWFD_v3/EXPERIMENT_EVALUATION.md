@@ -281,6 +281,18 @@ toward the old v17 range. Let the run reach its configured wall-clock limit,
 then select the best tradeoff checkpoint instead of continuing the same recipe
 indefinitely.
 
+V19 completed at step7106. Final budget FID-2048 is
+`46.795 / 23.945 / 20.821 / 20.041 / 20.578`. The best high-budget checkpoint
+is the final one by `4/8/16` mean (`20.480`), and step7000 is the nearly tied
+best balanced checkpoint by `2/4/8/16` mean (`21.346`). V19 succeeded at
+recovering 8/16 from the endpoint-only v18 branch and produced the strongest
+2-step result in the project track, but it did not preserve the full endpoint
+gain. V20 should therefore start from v19 final EMA and learned RQS warp, use a
+lower student LR and lower warp LR, strengthen direct endpoint and real-data
+denoise anchors, and reduce bridge pressure. Its acceptance test is simple:
+improve FID@1 from v19 final without giving back the recovered 8/16-step
+quality.
+
 ## Latest Decision Metrics
 
 FID uses 2048 generated samples for the active watcher.
