@@ -179,6 +179,65 @@ Row order is identical to the current NeurIPS qualitative layout. CIFAR-10 rows 
 
 Important caveats remain unchanged: the CIFAR-10 JAX consistency checkpoints are unconditional seed-only references, and the ImageNet64 DG-TWFD rows are EDM proxies because no ImageNet64 DG-TWFD checkpoint is currently available.
 
+## Large Per-Sample Bank 2026-05-03
+
+这版是为了增加定性样本多样性而重新采样的一批大样本库，不是只从已有 8 个样本里拼接。目标是给论文和 appendix 提供更多可挑选的 per-sample qualitative panels，用来综合检查低步数下的类别保持、局部结构和跨模型差异。
+
+输出目录：
+
+```text
+docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/
+├── per_sample/cifar10/*.pdf
+├── per_sample/cifar10/*.png
+├── per_sample/imagenet64/*.pdf
+├── per_sample/imagenet64/*.png
+├── caption.txt
+└── manifest.json
+```
+
+源样本目录：
+
+```text
+docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_sample_bank_20260503/
+docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_sample_bank_20260503/
+```
+
+采样规模：
+
+| Dataset | Number of class/seed pairs | Row count | Per-sample exports |
+|---|---:|---:|---:|
+| CIFAR-10 | 30 | 7 | 30 PDF + 30 PNG |
+| ImageNet64 | 24 | 6 | 24 PDF + 24 PNG |
+
+导出规则：
+
+| Item | Value |
+|---|---|
+| Sampling scripts | `generate_cifar10_class_locked_qualitative.py`, `generate_cifar10_consistency_jax_qualitative.py`, `generate_imagenet64_class_locked_qualitative.py` |
+| Panel builder | `scripts/figures/build_neurips_qualitative_sample_bank_panels.py` |
+| CIFAR-10 seeds | `3000-3029`, covering all 10 classes with repeated class instances |
+| ImageNet64 seeds | `3100-3123`, with 24 class ids recorded in `manifest.json` |
+| Display steps | `1 / 2 / 4 / 8` |
+| CIFAR per-sample export | native `128x224`, exported `1024x1792` |
+| ImageNet64 per-sample export | native `256x384`, exported `1024x1536` |
+| Raster handling | native sample pixels are assembled first; the complete grid is then nearest-neighbor upscaled |
+| Text | no rendered text; model/class/step labels must be typeset separately as vector text |
+
+Row order:
+
+| Dataset | Rows |
+|---|---|
+| CIFAR-10 | DG-TWFD full as EDM 32/64/96/128 proxy; DG-TWFD identity; CTM official conditional; CTM no-GAN DSM 10k; CD-LPIPS JAX; CD-L2 JAX; CT-LPIPS JAX |
+| ImageNet64 | DG-TWFD full as EDM 32/64/96/128 proxy; DG-TWFD identity as EDM 4/10/18/30 proxy; CD-LPIPS; CD-L2; CT; CTM official |
+
+Important caveats:
+
+| Item | Policy |
+|---|---|
+| CIFAR-10 JAX consistency rows | Released checkpoints are unconditional, so rows are seed-only references and should not be used as class-preservation evidence. |
+| DG-TWFD full display rows | By current figure request, these use EDM 32/64/96/128 proxy samples and should not be described as DG-TWFD student samples. |
+| ImageNet64 identity | Uses EDM 4/10/18/30 proxy samples because there is no ImageNet64 DG-TWFD checkpoint in the current workspace. |
+
 ## Previous Paper Panels Row Log
 
 这部分是当前 PDF 的严格行解释，不是候选模型列表。CIFAR-10 当前有 7 行；ImageNet64 当前有 6 行。每一行都用“展示行名（实际使用的生成模型和参数）”记录，避免把已生成图片和待定候选 baseline 混在一起。

@@ -1,0 +1,1 @@
+Large image-only qualitative sample bank. Labels should be typeset separately as vector text; CIFAR consistency rows are seed-only references.\n

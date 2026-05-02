@@ -1,0 +1,1237 @@
+{
+  "purpose": "Large qualitative sample bank for browsing many per-sample model comparisons.",
+  "image_only": true,
+  "rendered_text": false,
+  "sampling_logic_changed_by_panel_builder": false,
+  "native_assembly_before_export": true,
+  "display_steps": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "source_roots": {
+    "cifar10": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_sample_bank_20260503",
+    "imagenet64": "docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_sample_bank_20260503"
+  },
+  "sample_counts": {
+    "cifar10": 30,
+    "imagenet64": 24
+  },
+  "rows": {
+    "cifar10": [
+      "DG-TWFD full",
+      "DG-TWFD identity",
+      "CTM official CIFAR-10 conditional",
+      "CTM no-GAN DSM 10k",
+      "CD-LPIPS CIFAR-10 JAX",
+      "CD-L2 CIFAR-10 JAX",
+      "CT-LPIPS CIFAR-10 JAX"
+    ],
+    "imagenet64": [
+      "DG-TWFD full",
+      "DG-TWFD identity",
+      "CD-LPIPS ImageNet64",
+      "CD-L2 ImageNet64",
+      "CT ImageNet64",
+      "CTM ImageNet64 official"
+    ]
+  },
+  "row_locking": {
+    "cifar10": {
+      "DG-TWFD full": "class-locked proxy",
+      "DG-TWFD identity": "class-locked",
+      "CTM official CIFAR-10 conditional": "class-locked",
+      "CTM no-GAN DSM 10k": "class-locked",
+      "CD-LPIPS CIFAR-10 JAX": "seed-only",
+      "CD-L2 CIFAR-10 JAX": "seed-only",
+      "CT-LPIPS CIFAR-10 JAX": "seed-only"
+    },
+    "imagenet64": {
+      "DG-TWFD full": "class-locked proxy",
+      "DG-TWFD identity": "class-locked proxy",
+      "CD-LPIPS ImageNet64": "class-locked",
+      "CD-L2 ImageNet64": "class-locked",
+      "CT ImageNet64": "class-locked",
+      "CTM ImageNet64 official": "class-locked"
+    }
+  },
+  "row_sources": {
+    "cifar10": [
+      {
+        "display": "DG-TWFD full",
+        "sample_row": "edm_cifar10_cond_vp_32_64_96_128",
+        "source_root": "cifar10_sample_bank_20260503"
+      },
+      {
+        "display": "DG-TWFD identity",
+        "sample_row": "dg_twfd_identity_same_checkpoint",
+        "source_root": "cifar10_sample_bank_20260503"
+      },
+      {
+        "display": "CTM official CIFAR-10 conditional",
+        "sample_row": "ctm_official_cond",
+        "source_root": "cifar10_sample_bank_20260503"
+      },
+      {
+        "display": "CTM no-GAN DSM 10k",
+        "sample_row": "ctm_nogan_dsm_10k",
+        "source_root": "cifar10_sample_bank_20260503"
+      },
+      {
+        "display": "CD-LPIPS CIFAR-10 JAX",
+        "sample_row": "cd_lpips_cifar10_jax",
+        "source_root": "cifar10_sample_bank_20260503"
+      },
+      {
+        "display": "CD-L2 CIFAR-10 JAX",
+        "sample_row": "cd_l2_cifar10_jax",
+        "source_root": "cifar10_sample_bank_20260503"
+      },
+      {
+        "display": "CT-LPIPS CIFAR-10 JAX",
+        "sample_row": "ct_lpips_cifar10_jax",
+        "source_root": "cifar10_sample_bank_20260503"
+      }
+    ],
+    "imagenet64": [
+      {
+        "display": "DG-TWFD full",
+        "sample_row": "edm_imagenet64_cond_adm_32_64_96_128",
+        "source_root": "imagenet64_sample_bank_20260503"
+      },
+      {
+        "display": "DG-TWFD identity",
+        "sample_row": "edm_imagenet64_identity_proxy_4_10_18_30",
+        "source_root": "imagenet64_sample_bank_20260503"
+      },
+      {
+        "display": "CD-LPIPS ImageNet64",
+        "sample_row": "cd_lpips_imagenet64",
+        "source_root": "imagenet64_sample_bank_20260503"
+      },
+      {
+        "display": "CD-L2 ImageNet64",
+        "sample_row": "cd_l2_imagenet64",
+        "source_root": "imagenet64_sample_bank_20260503"
+      },
+      {
+        "display": "CT ImageNet64",
+        "sample_row": "ct_imagenet64",
+        "source_root": "imagenet64_sample_bank_20260503"
+      },
+      {
+        "display": "CTM ImageNet64 official",
+        "sample_row": "ctm_imagenet64_official",
+        "source_root": "imagenet64_sample_bank_20260503"
+      }
+    ]
+  },
+  "actual_proxy_steps": {
+    "dg_twfd_full_edm_proxy": {
+      "1": 32,
+      "2": 64,
+      "4": 96,
+      "8": 128
+    },
+    "imagenet64_identity_edm_proxy": {
+      "1": 4,
+      "2": 10,
+      "4": 18,
+      "8": 30
+    }
+  },
+  "caveats": [
+    "CIFAR-10 JAX consistency checkpoints are unconditional and seed-only.",
+    "DG-TWFD full display rows use EDM 32/64/96/128-step proxy samples by request.",
+    "ImageNet64 DG-TWFD identity uses EDM 4/10/18/30-step proxy samples."
+  ],
+  "outputs": {
+    "per_sample": {
+      "cifar10": [
+        {
+          "sample": {
+            "index": 0,
+            "class_id": 0,
+            "class_name": "airplane",
+            "short_name": "airplane",
+            "seed": 3000
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_000_class0000_airplane_seed3000.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_000_class0000_airplane_seed3000.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 1,
+            "class_id": 1,
+            "class_name": "automobile",
+            "short_name": "automobile",
+            "seed": 3001
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_001_class0001_automobile_seed3001.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_001_class0001_automobile_seed3001.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 2,
+            "class_id": 2,
+            "class_name": "bird",
+            "short_name": "bird",
+            "seed": 3002
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_002_class0002_bird_seed3002.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_002_class0002_bird_seed3002.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 3,
+            "class_id": 3,
+            "class_name": "cat",
+            "short_name": "cat",
+            "seed": 3003
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_003_class0003_cat_seed3003.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_003_class0003_cat_seed3003.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 4,
+            "class_id": 4,
+            "class_name": "deer",
+            "short_name": "deer",
+            "seed": 3004
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_004_class0004_deer_seed3004.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_004_class0004_deer_seed3004.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 5,
+            "class_id": 5,
+            "class_name": "dog",
+            "short_name": "dog",
+            "seed": 3005
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_005_class0005_dog_seed3005.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_005_class0005_dog_seed3005.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 6,
+            "class_id": 6,
+            "class_name": "frog",
+            "short_name": "frog",
+            "seed": 3006
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_006_class0006_frog_seed3006.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_006_class0006_frog_seed3006.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 7,
+            "class_id": 7,
+            "class_name": "horse",
+            "short_name": "horse",
+            "seed": 3007
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_007_class0007_horse_seed3007.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_007_class0007_horse_seed3007.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 8,
+            "class_id": 8,
+            "class_name": "ship",
+            "short_name": "ship",
+            "seed": 3008
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_008_class0008_ship_seed3008.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_008_class0008_ship_seed3008.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 9,
+            "class_id": 9,
+            "class_name": "truck",
+            "short_name": "truck",
+            "seed": 3009
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_009_class0009_truck_seed3009.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_009_class0009_truck_seed3009.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 10,
+            "class_id": 2,
+            "class_name": "bird",
+            "short_name": "bird",
+            "seed": 3010
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_010_class0002_bird_seed3010.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_010_class0002_bird_seed3010.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 11,
+            "class_id": 4,
+            "class_name": "deer",
+            "short_name": "deer",
+            "seed": 3011
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_011_class0004_deer_seed3011.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_011_class0004_deer_seed3011.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 12,
+            "class_id": 6,
+            "class_name": "frog",
+            "short_name": "frog",
+            "seed": 3012
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_012_class0006_frog_seed3012.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_012_class0006_frog_seed3012.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 13,
+            "class_id": 8,
+            "class_name": "ship",
+            "short_name": "ship",
+            "seed": 3013
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_013_class0008_ship_seed3013.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_013_class0008_ship_seed3013.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 14,
+            "class_id": 0,
+            "class_name": "airplane",
+            "short_name": "airplane",
+            "seed": 3014
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_014_class0000_airplane_seed3014.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_014_class0000_airplane_seed3014.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 15,
+            "class_id": 3,
+            "class_name": "cat",
+            "short_name": "cat",
+            "seed": 3015
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_015_class0003_cat_seed3015.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_015_class0003_cat_seed3015.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 16,
+            "class_id": 5,
+            "class_name": "dog",
+            "short_name": "dog",
+            "seed": 3016
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_016_class0005_dog_seed3016.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_016_class0005_dog_seed3016.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 17,
+            "class_id": 7,
+            "class_name": "horse",
+            "short_name": "horse",
+            "seed": 3017
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_017_class0007_horse_seed3017.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_017_class0007_horse_seed3017.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 18,
+            "class_id": 9,
+            "class_name": "truck",
+            "short_name": "truck",
+            "seed": 3018
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_018_class0009_truck_seed3018.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_018_class0009_truck_seed3018.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 19,
+            "class_id": 1,
+            "class_name": "automobile",
+            "short_name": "automobile",
+            "seed": 3019
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_019_class0001_automobile_seed3019.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_019_class0001_automobile_seed3019.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 20,
+            "class_id": 4,
+            "class_name": "deer",
+            "short_name": "deer",
+            "seed": 3020
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_020_class0004_deer_seed3020.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_020_class0004_deer_seed3020.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 21,
+            "class_id": 0,
+            "class_name": "airplane",
+            "short_name": "airplane",
+            "seed": 3021
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_021_class0000_airplane_seed3021.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_021_class0000_airplane_seed3021.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 22,
+            "class_id": 8,
+            "class_name": "ship",
+            "short_name": "ship",
+            "seed": 3022
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_022_class0008_ship_seed3022.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_022_class0008_ship_seed3022.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 23,
+            "class_id": 2,
+            "class_name": "bird",
+            "short_name": "bird",
+            "seed": 3023
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_023_class0002_bird_seed3023.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_023_class0002_bird_seed3023.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 24,
+            "class_id": 6,
+            "class_name": "frog",
+            "short_name": "frog",
+            "seed": 3024
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_024_class0006_frog_seed3024.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_024_class0006_frog_seed3024.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 25,
+            "class_id": 1,
+            "class_name": "automobile",
+            "short_name": "automobile",
+            "seed": 3025
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_025_class0001_automobile_seed3025.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_025_class0001_automobile_seed3025.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 26,
+            "class_id": 5,
+            "class_name": "dog",
+            "short_name": "dog",
+            "seed": 3026
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_026_class0005_dog_seed3026.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_026_class0005_dog_seed3026.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 27,
+            "class_id": 9,
+            "class_name": "truck",
+            "short_name": "truck",
+            "seed": 3027
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_027_class0009_truck_seed3027.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_027_class0009_truck_seed3027.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 28,
+            "class_id": 3,
+            "class_name": "cat",
+            "short_name": "cat",
+            "seed": 3028
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_028_class0003_cat_seed3028.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_028_class0003_cat_seed3028.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample": {
+            "index": 29,
+            "class_id": 7,
+            "class_name": "horse",
+            "short_name": "horse",
+            "seed": 3029
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_029_class0007_horse_seed3029.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_029_class0007_horse_seed3029.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        }
+      ],
+      "imagenet64": [
+        {
+          "sample": {
+            "index": 0,
+            "class_id": 8,
+            "class_name": "imagenet_class_0008",
+            "short_name": "id0008",
+            "seed": 3100
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_000_class0008_id0008_seed3100.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_000_class0008_id0008_seed3100.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 1,
+            "class_id": 22,
+            "class_name": "imagenet_class_0022",
+            "short_name": "id0022",
+            "seed": 3101
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_001_class0022_id0022_seed3101.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_001_class0022_id0022_seed3101.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 2,
+            "class_id": 130,
+            "class_name": "imagenet_class_0130",
+            "short_name": "id0130",
+            "seed": 3102
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_002_class0130_id0130_seed3102.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_002_class0130_id0130_seed3102.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 3,
+            "class_id": 145,
+            "class_name": "imagenet_class_0145",
+            "short_name": "id0145",
+            "seed": 3103
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_003_class0145_id0145_seed3103.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_003_class0145_id0145_seed3103.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 4,
+            "class_id": 207,
+            "class_name": "imagenet_class_0207",
+            "short_name": "id0207",
+            "seed": 3104
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_004_class0207_id0207_seed3104.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_004_class0207_id0207_seed3104.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 5,
+            "class_id": 217,
+            "class_name": "imagenet_class_0217",
+            "short_name": "id0217",
+            "seed": 3105
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_005_class0217_id0217_seed3105.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_005_class0217_id0217_seed3105.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 6,
+            "class_id": 281,
+            "class_name": "imagenet_class_0281",
+            "short_name": "id0281",
+            "seed": 3106
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_006_class0281_id0281_seed3106.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_006_class0281_id0281_seed3106.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 7,
+            "class_id": 292,
+            "class_name": "imagenet_class_0292",
+            "short_name": "id0292",
+            "seed": 3107
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_007_class0292_id0292_seed3107.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_007_class0292_id0292_seed3107.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 8,
+            "class_id": 340,
+            "class_name": "imagenet_class_0340",
+            "short_name": "id0340",
+            "seed": 3108
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_008_class0340_id0340_seed3108.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_008_class0340_id0340_seed3108.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 9,
+            "class_id": 407,
+            "class_name": "imagenet_class_0407",
+            "short_name": "id0407",
+            "seed": 3109
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_009_class0407_id0407_seed3109.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_009_class0407_id0407_seed3109.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 10,
+            "class_id": 444,
+            "class_name": "imagenet_class_0444",
+            "short_name": "id0444",
+            "seed": 3110
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_010_class0444_id0444_seed3110.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_010_class0444_id0444_seed3110.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 11,
+            "class_id": 555,
+            "class_name": "imagenet_class_0555",
+            "short_name": "id0555",
+            "seed": 3111
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_011_class0555_id0555_seed3111.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_011_class0555_id0555_seed3111.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 12,
+            "class_id": 569,
+            "class_name": "imagenet_class_0569",
+            "short_name": "id0569",
+            "seed": 3112
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_012_class0569_id0569_seed3112.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_012_class0569_id0569_seed3112.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 13,
+            "class_id": 701,
+            "class_name": "imagenet_class_0701",
+            "short_name": "id0701",
+            "seed": 3113
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_013_class0701_id0701_seed3113.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_013_class0701_id0701_seed3113.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 14,
+            "class_id": 751,
+            "class_name": "imagenet_class_0751",
+            "short_name": "id0751",
+            "seed": 3114
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_014_class0751_id0751_seed3114.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_014_class0751_id0751_seed3114.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 15,
+            "class_id": 779,
+            "class_name": "imagenet_class_0779",
+            "short_name": "id0779",
+            "seed": 3115
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_015_class0779_id0779_seed3115.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_015_class0779_id0779_seed3115.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 16,
+            "class_id": 817,
+            "class_name": "imagenet_class_0817",
+            "short_name": "id0817",
+            "seed": 3116
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_016_class0817_id0817_seed3116.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_016_class0817_id0817_seed3116.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 17,
+            "class_id": 850,
+            "class_name": "imagenet_class_0850",
+            "short_name": "id0850",
+            "seed": 3117
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_017_class0850_id0850_seed3117.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_017_class0850_id0850_seed3117.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 18,
+            "class_id": 859,
+            "class_name": "imagenet_class_0859",
+            "short_name": "id0859",
+            "seed": 3118
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_018_class0859_id0859_seed3118.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_018_class0859_id0859_seed3118.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 19,
+            "class_id": 895,
+            "class_name": "imagenet_class_0895",
+            "short_name": "id0895",
+            "seed": 3119
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_019_class0895_id0895_seed3119.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_019_class0895_id0895_seed3119.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 20,
+            "class_id": 980,
+            "class_name": "imagenet_class_0980",
+            "short_name": "id0980",
+            "seed": 3120
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_020_class0980_id0980_seed3120.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_020_class0980_id0980_seed3120.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 21,
+            "class_id": 404,
+            "class_name": "imagenet_class_0404",
+            "short_name": "id0404",
+            "seed": 3121
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_021_class0404_id0404_seed3121.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_021_class0404_id0404_seed3121.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 22,
+            "class_id": 609,
+            "class_name": "imagenet_class_0609",
+            "short_name": "id0609",
+            "seed": 3122
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_022_class0609_id0609_seed3122.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_022_class0609_id0609_seed3122.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample": {
+            "index": 23,
+            "class_id": 654,
+            "class_name": "imagenet_class_0654",
+            "short_name": "id0654",
+            "seed": 3123
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_023_class0654_id0654_seed3123.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_023_class0654_id0654_seed3123.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        }
+      ]
+    }
+  }
+}
