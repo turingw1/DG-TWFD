@@ -1,5 +1,7 @@
 {
-  "purpose": "NeurIPS main-text qualitative panels for low-step class preservation and visual coherence.",
+  "purpose": "NeurIPS main-text qualitative image-only panels for low-step class preservation and visual coherence.",
+  "image_only": true,
+  "rendered_text": false,
   "selection_rule": "Class/seed pairs were preselected from semantic categories before inspecting this generation output. Main text uses four pairs per dataset; appendix contains all eight preselected pairs.",
   "display_steps": [
     1,

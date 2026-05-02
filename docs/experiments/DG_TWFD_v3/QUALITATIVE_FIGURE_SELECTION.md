@@ -62,7 +62,7 @@ CIFAR-10 conditional rows use 18 class/seed pairs: seeds `1000..1017`, with clas
 
 ## NeurIPS Main-Text Panel 2026-05-02
 
-这版是按 NeurIPS 主文要求重新生成的紧凑 qualitative figure。目标是展示 `1 / 2 / 4 / 8` 少步采样下的 class preservation 和视觉一致性。样本选择规则是：先按语义类别预选固定 class/seed pairs，再生成所有方法输出；主文每个数据集展示 4 组样本，appendix 保留 8 组完整样本。
+这版是按 NeurIPS 主文要求重新生成的紧凑 qualitative figure。目标是展示 `1 / 2 / 4 / 8` 少步采样下的 class preservation 和视觉一致性。样本选择规则是：先按语义类别预选固定 class/seed pairs，再生成所有方法输出；主文每个数据集展示 4 组样本，appendix 保留 8 组完整样本。当前导出的 PDF/PNG 是 image-only 版本，不在图中渲染任何文字；dataset、method、sample、step 标签只保留在 manifest 中，后续由 LaTeX 或矢量编辑器排版。
 
 输出目录：
 
@@ -93,7 +93,7 @@ docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_
 | ImageNet64 samples | 8 preselected class/seed pairs: bird, dog, cat-like, vehicle, sports car, clutter, object, bird detail |
 | Main paper samples | CIFAR: plane/car/cat/truck; ImageNet64: bird/dog/vehicle/clutter |
 | Raster handling | samples are nearest-neighbor upscaled before PDF embedding |
-| Text handling | dataset names, method names, sample labels, and step labels are vector text in PDF |
+| Text handling | no rendered text in exported PDF/PNG; labels are manifest-only |
 | Main figure size | generated as a compact single PDF intended for `<=0.98\linewidth` and `<0.55` page height |
 
 主文行解释：

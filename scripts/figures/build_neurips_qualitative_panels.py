@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Build NeurIPS main-text qualitative panels with vector labels.
+"""Build NeurIPS main-text qualitative image-only panels.
 
-The main figure uses class-conditional rows only. CIFAR-10 JAX consistency
-checkpoints are unconditional, so they are rendered as a separate seed-only
-reference panel and are not mixed into the class-preservation figure.
+The generated PDFs contain only raster sample images. All dataset, method,
+sample, and step labels are recorded in the sidecar manifest so they can be
+typeset separately in LaTeX or a vector editor.
 """
 
 from __future__ import annotations
@@ -115,30 +115,12 @@ def _render_block(
     n_samples = len(selected)
     group_w = n_samples * tile + (n_samples - 1) * sample_gap
 
-    fig.text(left / fig_w, top / fig_h, dataset_label, ha="left", va="top", fontsize=7.4, weight="bold")
-    if subtitle:
-        fig.text((left + 0.78) / fig_w, top / fig_h, subtitle, ha="left", va="top", fontsize=5.2)
-    y = top - 0.13
-
-    for step_idx, step in enumerate(STEPS):
-        x0 = left + 0.62 + step_idx * (group_w + step_gap)
-        for local_idx, sample in enumerate(selected):
-            label = sample.get("short_name", sample["class_name"])
-            fig.text(
-                (x0 + local_idx * (tile + sample_gap) + tile / 2) / fig_w,
-                y / fig_h,
-                label,
-                ha="center",
-                va="bottom",
-                fontsize=4.9,
-            )
-
-    y -= 0.055
+    del dataset_label, subtitle
+    y = top
     for row_idx, row in enumerate(rows):
         yy = y - row_idx * (tile + row_gap) - tile
-        fig.text((left + 0.55) / fig_w, (yy + tile / 2) / fig_h, row["label"], ha="right", va="center", fontsize=6.0)
         for step_idx, step in enumerate(STEPS):
-            x0 = left + 0.62 + step_idx * (group_w + step_gap)
+            x0 = left + step_idx * (group_w + step_gap)
             for local_idx, sample_idx in enumerate(sample_indices):
                 sample = samples[sample_idx]
                 image = _load_image(root, row["row"], step, sample, sample_idx, row["id_mode"])
@@ -154,10 +136,7 @@ def _render_block(
                 ax.set_axis_off()
 
     bottom = y - len(rows) * tile - (len(rows) - 1) * row_gap
-    for step_idx, step in enumerate(STEPS):
-        x0 = left + 0.62 + step_idx * (group_w + step_gap)
-        fig.text((x0 + group_w / 2) / fig_w, (bottom - 0.05) / fig_h, f"{step} step", ha="center", va="top", fontsize=5.9)
-    return bottom - 0.18
+    return bottom - 0.055
 
 
 def _save_figure(fig, path_base: Path) -> dict[str, str]:
@@ -173,10 +152,10 @@ def _save_figure(fig, path_base: Path) -> dict[str, str]:
 
 
 def _build_main() -> dict[str, str]:
-    fig_w, fig_h = 6.48, 3.78
+    fig_w, fig_h = 5.64, 3.22
     fig = plt.figure(figsize=(fig_w, fig_h))
     fig.patch.set_facecolor("white")
-    top = fig_h - 0.08
+    top = fig_h - 0.02
     top = _render_block(
         fig,
         root=CIFAR_ROOT,
@@ -188,11 +167,11 @@ def _build_main() -> dict[str, str]:
         fig_w=fig_w,
         fig_h=fig_h,
         top=top,
-        left=0.08,
-        tile=0.292,
-        sample_gap=0.006,
-        step_gap=0.047,
-        row_gap=0.014,
+        left=0.02,
+        tile=0.340,
+        sample_gap=0.004,
+        step_gap=0.040,
+        row_gap=0.004,
     )
     _render_block(
         fig,
@@ -205,17 +184,17 @@ def _build_main() -> dict[str, str]:
         fig_w=fig_w,
         fig_h=fig_h,
         top=top,
-        left=0.08,
-        tile=0.292,
-        sample_gap=0.006,
-        step_gap=0.047,
-        row_gap=0.014,
+        left=0.02,
+        tile=0.340,
+        sample_gap=0.004,
+        step_gap=0.040,
+        row_gap=0.004,
     )
     return _save_figure(fig, OUTDIR / "main_text" / "qualitative_neurips_main")
 
 
 def _build_appendix(dataset: str, *, root: Path, rows: list[dict], samples: list[dict], title: str) -> dict[str, str]:
-    fig_w, fig_h = 7.6, 4.9
+    fig_w, fig_h = 6.82, 1.36
     fig = plt.figure(figsize=(fig_w, fig_h))
     fig.patch.set_facecolor("white")
     _render_block(
@@ -228,18 +207,18 @@ def _build_appendix(dataset: str, *, root: Path, rows: list[dict], samples: list
         subtitle="all preselected samples",
         fig_w=fig_w,
         fig_h=fig_h,
-        top=fig_h - 0.08,
-        left=0.08,
+        top=fig_h - 0.02,
+        left=0.02,
         tile=0.205,
-        sample_gap=0.006,
-        step_gap=0.045,
-        row_gap=0.016,
+        sample_gap=0.004,
+        step_gap=0.040,
+        row_gap=0.004,
     )
     return _save_figure(fig, OUTDIR / "appendix" / f"{dataset}_appendix_all_samples")
 
 
 def _build_seed_only_reference() -> dict[str, str]:
-    fig_w, fig_h = 7.6, 2.3
+    fig_w, fig_h = 6.82, 0.98
     fig = plt.figure(figsize=(fig_w, fig_h))
     fig.patch.set_facecolor("white")
     _render_block(
@@ -252,19 +231,21 @@ def _build_seed_only_reference() -> dict[str, str]:
         subtitle="OpenAI JAX checkpoints are unconditional; not evidence for class preservation",
         fig_w=fig_w,
         fig_h=fig_h,
-        top=fig_h - 0.08,
-        left=0.08,
+        top=fig_h - 0.02,
+        left=0.02,
         tile=0.205,
-        sample_gap=0.006,
-        step_gap=0.045,
-        row_gap=0.016,
+        sample_gap=0.004,
+        step_gap=0.040,
+        row_gap=0.004,
     )
     return _save_figure(fig, OUTDIR / "appendix" / "cifar10_seed_only_reference")
 
 
 def main() -> None:
     manifest = {
-        "purpose": "NeurIPS main-text qualitative panels for low-step class preservation and visual coherence.",
+        "purpose": "NeurIPS main-text qualitative image-only panels for low-step class preservation and visual coherence.",
+        "image_only": True,
+        "rendered_text": False,
         "selection_rule": (
             "Class/seed pairs were preselected from semantic categories before inspecting this generation output. "
             "Main text uses four pairs per dataset; appendix contains all eight preselected pairs."
