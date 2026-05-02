@@ -318,6 +318,47 @@ increase useful endpoint learning pressure while explicitly protecting
 composition, and should replace the fixed 2-step midpoint with a learned or
 periodically recalibrated low-budget clock.
 
+## 2026-05-02 V20 Acceptance Audit And CTM Gap
+
+The v20 curve is healthy but not a SOTA path by itself. Through step2500,
+budget-policy FID-2048 moved only from
+`45.841 / 23.942 / 21.018 / 19.846 / 20.340` to
+`45.663 / 23.966 / 20.985 / 19.843 / 20.329`. The run is not wasting compute:
+endpoint and 4-step improve slightly while 8/16 are preserved. But the slope is
+too small for the project target `3.20 / 2.84 / 2.62 / 2.50`.
+
+The main limitation is architectural/objective-level, not the RQS warp
+resolution. In this code path, `student_transition(x_t, sigma_t, sigma_s)`
+uses the EDM denoiser once and applies a first-order Euler update; for
+`sigma_s=0`, one-step generation is simply the student denoiser output at
+`sigma_max`. That means the model is being asked to turn pure high-noise
+latents into images with an EDM denoiser interface that was not originally
+trained as a one-step generative transport map.
+
+CTM is different in the decisive places. It trains a two-time-conditioned
+trajectory map `G_theta(x_t, t, s)` with an explicit `s` embedding, a stop-grad
+target model, Heun teacher targets, LPIPS-style consistency loss, and real-data
+DSM with adaptive balancing. The no-GAN CTM result can improve much faster
+because every iteration includes a strong data-manifold denoising objective and
+because the network is parameterized for arbitrary `t -> s` transport. DG-TWFD
+v20 instead uses mostly prior-rollout pixel/perceptual matching plus a very
+small real-data denoise anchor (`0.035`) and a conservative LR (`1e-7`), so it
+behaves like a careful fine-tune around the existing EDM denoiser rather than a
+new one-step generator.
+
+The next real improvement should be a CTM-aligned v21 branch:
+
+1. Add explicit target-time conditioning or a small transition adapter/head so
+   the student can represent `G(x_t, t, s)` directly, instead of deriving every
+   transition from one denoiser output at `t`.
+2. Replace the weak data anchor with CTM-style DSM on real CIFAR-10 noise
+   levels, using adaptive balancing against the consistency loss.
+3. Use a stop-grad EMA target model for consistency targets, not only teacher
+   rollout pixels and direct-vs-bridge self agreement.
+4. Keep RQS timewarp for 4+ steps, but make the low-budget clock learned or
+   periodically recalibrated; the fixed `u=0.60` 2-step node remains a
+   diagnostic workaround, not an algorithmic endpoint.
+
 ## Latest Decision Metrics
 
 FID uses 2048 generated samples for the active watcher.
