@@ -62,7 +62,8 @@ CIFAR10_CLASS_NAMES = [
     "truck",
 ]
 
-EDM_REFERENCE_STEPS = {1: 32, 2: 48, 4: 64, 8: 128}
+EDM_REFERENCE_STEPS = {1: 32, 2: 64, 4: 96, 8: 128}
+EDM_REFERENCE_ROW = "edm_cifar10_cond_vp_32_64_96_128"
 DEFAULT_CLASS_IDS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7]
 DEFAULT_LATENT_SEEDS = list(range(1000, 1018))
 
@@ -341,14 +342,14 @@ def main() -> None:
             seeds=seeds,
             device=device,
         )
-        sample_dir = output_root / "edm_cifar10_cond_vp_32_48_64_128" / f"steps{display_step}"
+        sample_dir = output_root / EDM_REFERENCE_ROW / f"steps{display_step}"
         written = _save_tensor_images(samples, sample_dir, seeds)
         manifest["rows"].append(
             {
-                "row": "edm_cifar10_cond_vp_32_48_64_128",
+                "row": EDM_REFERENCE_ROW,
                 "description": (
                     "Official EDM CIFAR-10 class-conditional teacher. This row replaces "
-                    "the previous DG-TWFD best row for qualitative reference quality."
+                    "the DG-TWFD full row for qualitative reference quality."
                 ),
                 "display_step": int(display_step),
                 "actual_edm_steps": actual_step,

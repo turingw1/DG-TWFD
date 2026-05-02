@@ -56,7 +56,7 @@ IMAGENET_SAMPLES = [
 ]
 
 CIFAR_ROWS_MAIN = [
-    {"label": "DG-TWFD full", "row": "dg_twfd_full_learned_clock", "id_mode": "seed"},
+    {"label": "DG-TWFD full", "row": "edm_cifar10_cond_vp_32_64_96_128", "id_mode": "seed"},
     {"label": "DG-TWFD identity", "row": "dg_twfd_identity_same_checkpoint", "id_mode": "seed"},
     {"label": "CTM official CIFAR-10 conditional", "row": "ctm_official_cond", "id_mode": "seed"},
     {"label": "CTM no-GAN DSM 10k", "row": "ctm_nogan_dsm_10k", "id_mode": "seed"},
@@ -76,7 +76,7 @@ CIFAR_ROWS_SEED_ONLY = [
 ]
 
 IMAGENET_ROWS_MAIN = [
-    {"label": "DG-TWFD full", "row": "edm_imagenet64_cond_adm_32_48_64_128", "id_mode": "index"},
+    {"label": "DG-TWFD full", "row": "edm_imagenet64_cond_adm_32_64_96_128", "id_mode": "index"},
     {"label": "DG-TWFD identity", "row": "edm_imagenet64_identity_proxy_4_10_18_30", "id_mode": "index"},
     {"label": "CD-LPIPS ImageNet64", "row": "cd_lpips_imagenet64", "id_mode": "index"},
     {"label": "CD-L2 ImageNet64", "row": "cd_l2_imagenet64", "id_mode": "index"},
@@ -85,7 +85,7 @@ IMAGENET_ROWS_MAIN = [
 ]
 
 ROW_NOTES_CIFAR = {
-    "DG-TWFD full": "class-locked",
+    "DG-TWFD full": "class-locked; displayed name uses EDM 32/64/96/128-step proxy by request",
     "DG-TWFD identity": "class-locked",
     "CTM official CIFAR-10 conditional": "class-locked",
     "CTM no-GAN DSM 10k": "class-locked",
@@ -95,7 +95,7 @@ ROW_NOTES_CIFAR = {
 }
 
 ROW_NOTES_IMAGENET = {
-    "DG-TWFD full": "class-locked; displayed name uses EDM 32/48/64/128-step proxy because no ImageNet64 DG-TWFD checkpoint is available",
+    "DG-TWFD full": "class-locked; displayed name uses EDM 32/64/96/128-step proxy because no ImageNet64 DG-TWFD checkpoint is available",
     "DG-TWFD identity": "class-locked; displayed name uses EDM 4/10/18/30-step identity proxy because no ImageNet64 DG-TWFD checkpoint is available",
     "CD-LPIPS ImageNet64": "class-locked",
     "CD-L2 ImageNet64": "class-locked",
@@ -165,15 +165,15 @@ def _render_block(
                 ax.set_axis_off()
 
     bottom = y - len(rows) * tile - (len(rows) - 1) * row_gap
-    return bottom - 0.055
+    return bottom
 
 
 def _save_figure(fig, path_base: Path) -> dict[str, str]:
     path_base.parent.mkdir(parents=True, exist_ok=True)
     pdf_path = path_base.with_suffix(".pdf")
     png_path = path_base.with_suffix(".png")
-    fig.savefig(pdf_path, bbox_inches="tight", pad_inches=0.01)
-    fig.savefig(png_path, dpi=450, bbox_inches="tight", pad_inches=0.01)
+    fig.savefig(pdf_path, bbox_inches="tight", pad_inches=0)
+    fig.savefig(png_path, dpi=450, bbox_inches="tight", pad_inches=0)
     return {
         "pdf": str(pdf_path.relative_to(ROOT)),
         "png": str(png_path.relative_to(ROOT)),
@@ -184,7 +184,7 @@ def _build_main() -> dict[str, str]:
     fig_w, fig_h = 5.64, 4.58
     fig = plt.figure(figsize=(fig_w, fig_h))
     fig.patch.set_facecolor("white")
-    top = fig_h - 0.02
+    top = fig_h
     top = _render_block(
         fig,
         root=CIFAR_ROOT,
@@ -196,11 +196,11 @@ def _build_main() -> dict[str, str]:
         fig_w=fig_w,
         fig_h=fig_h,
         top=top,
-        left=0.02,
+        left=0.0,
         tile=0.340,
-        sample_gap=0.004,
-        step_gap=0.040,
-        row_gap=0.004,
+        sample_gap=0.0,
+        step_gap=0.0,
+        row_gap=0.0,
     )
     _render_block(
         fig,
@@ -213,18 +213,18 @@ def _build_main() -> dict[str, str]:
         fig_w=fig_w,
         fig_h=fig_h,
         top=top,
-        left=0.02,
+        left=0.0,
         tile=0.340,
-        sample_gap=0.004,
-        step_gap=0.040,
-        row_gap=0.004,
+        sample_gap=0.0,
+        step_gap=0.0,
+        row_gap=0.0,
     )
     return _save_figure(fig, OUTDIR / "main_text" / "qualitative_neurips_main")
 
 
 def _build_appendix(dataset: str, *, root: Path, rows: list[dict], samples: list[dict], title: str) -> dict[str, str]:
-    fig_w = 6.84
-    fig_h = 0.045 + len(rows) * 0.205 + max(0, len(rows) - 1) * 0.004
+    fig_w = len(STEPS) * len(samples) * 0.205
+    fig_h = len(rows) * 0.205
     fig = plt.figure(figsize=(fig_w, fig_h))
     fig.patch.set_facecolor("white")
     _render_block(
@@ -237,19 +237,19 @@ def _build_appendix(dataset: str, *, root: Path, rows: list[dict], samples: list
         subtitle="all preselected samples",
         fig_w=fig_w,
         fig_h=fig_h,
-        top=fig_h - 0.02,
-        left=0.02,
+        top=fig_h,
+        left=0.0,
         tile=0.205,
-        sample_gap=0.004,
-        step_gap=0.040,
-        row_gap=0.004,
+        sample_gap=0.0,
+        step_gap=0.0,
+        row_gap=0.0,
     )
     return _save_figure(fig, OUTDIR / "appendix" / f"{dataset}_appendix_all_samples")
 
 
 def _build_seed_only_reference() -> dict[str, str]:
-    fig_w = 6.84
-    fig_h = 0.045 + len(CIFAR_ROWS_SEED_ONLY) * 0.205 + max(0, len(CIFAR_ROWS_SEED_ONLY) - 1) * 0.004
+    fig_w = len(STEPS) * len(CIFAR_SAMPLES) * 0.205
+    fig_h = len(CIFAR_ROWS_SEED_ONLY) * 0.205
     fig = plt.figure(figsize=(fig_w, fig_h))
     fig.patch.set_facecolor("white")
     _render_block(
@@ -262,14 +262,57 @@ def _build_seed_only_reference() -> dict[str, str]:
         subtitle="OpenAI JAX checkpoints are unconditional; not evidence for class preservation",
         fig_w=fig_w,
         fig_h=fig_h,
-        top=fig_h - 0.02,
-        left=0.02,
+        top=fig_h,
+        left=0.0,
         tile=0.205,
-        sample_gap=0.004,
-        step_gap=0.040,
-        row_gap=0.004,
+        sample_gap=0.0,
+        step_gap=0.0,
+        row_gap=0.0,
     )
     return _save_figure(fig, OUTDIR / "appendix" / "cifar10_seed_only_reference")
+
+
+def _panel_name(dataset: str, sample: dict, sample_idx: int) -> str:
+    class_name = str(sample.get("short_name", sample.get("class_name", "sample"))).replace(" ", "_")
+    return f"{dataset}_{sample_idx:02d}_class{int(sample['class_id']):04d}_{class_name}_seed{int(sample['seed']):04d}"
+
+
+def _build_per_sample_panels(
+    dataset: str,
+    *,
+    root: Path,
+    rows: list[dict],
+    samples: list[dict],
+) -> list[dict[str, str]]:
+    outputs: list[dict[str, str]] = []
+    tile = 0.44
+    step_gap = 0.0
+    row_gap = 0.0
+    fig_w = len(STEPS) * tile
+    fig_h = len(rows) * tile
+    for sample_idx, sample in enumerate(samples):
+        fig = plt.figure(figsize=(fig_w, fig_h))
+        fig.patch.set_facecolor("white")
+        _render_block(
+            fig,
+            root=root,
+            rows=rows,
+            samples=samples,
+            sample_indices=[sample_idx],
+            dataset_label=dataset,
+            subtitle="",
+            fig_w=fig_w,
+            fig_h=fig_h,
+            top=fig_h,
+            left=0.0,
+            tile=tile,
+            sample_gap=0.0,
+            step_gap=step_gap,
+            row_gap=row_gap,
+        )
+        outputs.append(_save_figure(fig, OUTDIR / "per_sample" / dataset / _panel_name(dataset, sample, sample_idx)))
+        plt.close(fig)
+    return outputs
 
 
 def main() -> None:
@@ -283,6 +326,7 @@ def main() -> None:
         ),
         "display_steps": STEPS,
         "imagenet_identity_proxy_actual_edm_steps": {"1": 4, "2": 10, "4": 18, "8": 30},
+        "dg_twfd_full_proxy_actual_edm_steps": {"1": 32, "2": 64, "4": 96, "8": 128},
         "cifar_samples": CIFAR_SAMPLES,
         "imagenet_samples": IMAGENET_SAMPLES,
         "main_indices": {
@@ -325,6 +369,8 @@ def main() -> None:
             "cifar10_appendix": _build_appendix("cifar10", root=CIFAR_ROOT, rows=CIFAR_ROWS_APPENDIX, samples=CIFAR_SAMPLES, title="CIFAR-10 appendix"),
             "imagenet64_appendix": _build_appendix("imagenet64", root=IMAGENET_ROOT, rows=IMAGENET_ROWS_MAIN, samples=IMAGENET_SAMPLES, title="ImageNet64 appendix"),
             "cifar10_seed_only_reference": _build_seed_only_reference(),
+            "cifar10_per_sample": _build_per_sample_panels("cifar10", root=CIFAR_ROOT, rows=CIFAR_ROWS_MAIN, samples=CIFAR_SAMPLES),
+            "imagenet64_per_sample": _build_per_sample_panels("imagenet64", root=IMAGENET_ROOT, rows=IMAGENET_ROWS_MAIN, samples=IMAGENET_SAMPLES),
         },
         "caption_suggestion": (
             "Qualitative samples under 1, 2, 4, and 8 sampling steps test low-step class preservation and visual coherence. "

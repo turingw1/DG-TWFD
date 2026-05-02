@@ -59,7 +59,8 @@ from cm.script_util import create_model_and_diffusion, model_and_diffusion_defau
 from run_ctm_schedule_warp_eval import DATASET_DEFAULTS, _ctm_transition, _karras_nodes, _load_ctm  # noqa: E402
 
 
-EDM_REFERENCE_STEPS = {1: 32, 2: 48, 4: 64, 8: 128}
+EDM_REFERENCE_STEPS = {1: 32, 2: 64, 4: 96, 8: 128}
+EDM_REFERENCE_ROW = "edm_imagenet64_cond_adm_32_64_96_128"
 # Keep the existing row directory name so this update replaces the current
 # images in-place instead of introducing another output root.
 EDM_IDENTITY_STEPS = {1: 6, 2: 8, 4: 16, 8: 24}
@@ -428,13 +429,13 @@ def main() -> None:
     for display_step in steps:
         actual_step = int(EDM_REFERENCE_STEPS[display_step])
         samples, sigma_grid = _sample_edm(net=edm, step_count=actual_step, class_ids=class_ids, seeds=sample_seeds, device=device)
-        sample_dir = output_root / "edm_imagenet64_cond_adm_32_48_64_128" / f"steps{display_step}"
+        sample_dir = output_root / EDM_REFERENCE_ROW / f"steps{display_step}"
         manifest["rows"].append(
             {
-                "row": "edm_imagenet64_cond_adm_32_48_64_128",
+                "row": EDM_REFERENCE_ROW,
                 "description": (
                     "Official EDM ImageNet64 class-conditional teacher. This row replaces "
-                    "the previous DG-TWFD best row for qualitative reference quality."
+                    "the DG-TWFD full row for qualitative reference quality."
                 ),
                 "display_step": int(display_step),
                 "actual_edm_steps": actual_step,

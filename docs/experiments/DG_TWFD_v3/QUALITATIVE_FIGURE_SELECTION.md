@@ -73,6 +73,10 @@ docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4
 ├── appendix/cifar10_appendix_all_samples.pdf
 ├── appendix/imagenet64_appendix_all_samples.pdf
 ├── appendix/cifar10_seed_only_reference.pdf
+├── per_sample/cifar10/*.pdf
+├── per_sample/cifar10/*.png
+├── per_sample/imagenet64/*.pdf
+├── per_sample/imagenet64/*.png
 ├── caption.txt
 └── manifest.json
 ```
@@ -94,20 +98,22 @@ docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_
 | Main paper samples | CIFAR: plane/car/cat/truck; ImageNet64: bird/dog/vehicle/clutter |
 | Raster handling | samples are nearest-neighbor upscaled before PDF embedding |
 | Text handling | no rendered text in exported PDF/PNG; labels are manifest-only |
+| Gutters/padding | zero rendered gutters and zero PDF/PNG padding; any labels or spacing should be added outside this raster grid |
 | Main figure size | generated as a compact single PDF intended for `<=0.98\linewidth` and `<0.55` page height |
+| Per-sample panels | one PDF/PNG per preselected seed/class pair under `per_sample/{cifar10,imagenet64}` |
 
 主文行解释和 row notes：
 
 | Dataset | Display row | Row note | Actual generator and parameters |
 |---|---|---|---|
-| CIFAR-10 | DG-TWFD full | class-locked | 使用 DG-TWFD CIFAR-10 best student checkpoint；learned/full clock；显示列 `1/2/4/8` 对应 student `1/2/4/8` steps。 |
+| CIFAR-10 | DG-TWFD full | class-locked proxy | 按当前展示要求，这一行使用官方 EDM CIFAR-10 cond-VP checkpoint 替代 DG-TWFD full；显示列 `1/2/4/8` 实际对应 EDM `32/64/96/128` steps；不能写成 DG-TWFD student 结果。 |
 | CIFAR-10 | DG-TWFD identity | class-locked | 使用同一个 DG-TWFD CIFAR-10 best student checkpoint；identity clock；显示列 `1/2/4/8` 对应 student `1/2/4/8` steps。 |
 | CIFAR-10 | CTM official CIFAR-10 conditional | class-locked | 使用 CTM CIFAR-10 official conditional checkpoint `model043000.pt`；CTM exact transition；显示列 `1/2/4/8` 对应 CTM `1/2/4/8` steps。 |
 | CIFAR-10 | CTM no-GAN DSM 10k | class-locked | 使用本地 no-GAN CTM DSM checkpoint `ema_0.999_010000.pt`；CTM exact transition；显示列 `1/2/4/8` 对应 CTM `1/2/4/8` steps。 |
 | CIFAR-10 | CD-LPIPS CIFAR-10 JAX | seed-only | 使用 OpenAI `consistency_models_cifar10` 的 `cd-lpips/checkpoint_80`；公开 JAX checkpoint 无 class label 条件，因此只作为 seed-only reference。 |
 | CIFAR-10 | CD-L2 CIFAR-10 JAX | seed-only | 使用 OpenAI `consistency_models_cifar10` 的 `cd-l2/checkpoint_80`；公开 JAX checkpoint 无 class label 条件，因此只作为 seed-only reference。 |
 | CIFAR-10 | CT-LPIPS CIFAR-10 JAX | seed-only | 使用 OpenAI `consistency_models_cifar10` 的 `ct-lpips/checkpoint_74`；公开 JAX checkpoint 无 class label 条件，因此只作为 seed-only reference。 |
-| ImageNet64 | DG-TWFD full | class-locked proxy | 当前无 ImageNet64 DG-TWFD checkpoint；展示名背后按既定替代规则使用官方 EDM ImageNet64 cond-ADM checkpoint，显示列 `1/2/4/8` 实际对应 EDM `32/48/64/128` steps。 |
+| ImageNet64 | DG-TWFD full | class-locked proxy | 当前无 ImageNet64 DG-TWFD checkpoint；展示名背后按既定替代规则使用官方 EDM ImageNet64 cond-ADM checkpoint，显示列 `1/2/4/8` 实际对应 EDM `32/64/96/128` steps。 |
 | ImageNet64 | DG-TWFD identity | class-locked proxy | 当前无 ImageNet64 DG-TWFD checkpoint；展示名背后按既定替代规则使用官方 EDM ImageNet64 cond-ADM checkpoint，显示列 `1/2/4/8` 实际对应 EDM `4/10/18/30` steps。 |
 | ImageNet64 | CD-LPIPS ImageNet64 | class-locked | 使用 OpenAI consistency distillation ImageNet64 LPIPS checkpoint；显示列 `1/2/4/8` 对应 CM `1/2/4/8` steps。 |
 | ImageNet64 | CD-L2 ImageNet64 | class-locked | 使用 OpenAI consistency distillation ImageNet64 L2 checkpoint；显示列 `1/2/4/8` 对应 CM `1/2/4/8` steps。 |
@@ -136,7 +142,7 @@ Qualitative samples under 1, 2, 4, and 8 sampling steps test low-step class pres
 
 | Row | Display row | Actual generator and parameters |
 |---:|---|---|
-| 1 | DG-TWFD best replacement / EDM reference | 使用官方 EDM CIFAR-10 cond-VP teacher；checkpoint 来自 DG-TWFD v17 config 的 `paths.network`；显示列 `1/2/4/8` 实际对应 EDM `32/48/64/128` steps；这一行不使用 DG-TWFD student。 |
+| 1 | DG-TWFD full display / EDM reference | 使用官方 EDM CIFAR-10 cond-VP teacher；checkpoint 来自 DG-TWFD v17 config 的 `paths.network`；显示列 `1/2/4/8` 实际对应 EDM `32/64/96/128` steps；这一行不使用 DG-TWFD student。 |
 | 2 | DG-TWFD identity | 使用 DG-TWFD v17 student checkpoint `runs/edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855/checkpoints/best.pt`；warp disabled/effective identity；显示列 `1/2/4/8` 实际对应 student `1/2/4/8` steps。 |
 | 3 | CTM official CIFAR-10 conditional | 使用 CTM CIFAR-10 conditional checkpoint `model043000.pt`；CTM exact transition；Karras sigma grid；显示列 `1/2/4/8` 实际对应 CTM `1/2/4/8` steps。 |
 | 4 | CTM no-GAN DSM 10k | 使用本地 no-GAN CTM DSM checkpoint `ema_0.999_010000.pt`；CTM exact transition；Karras sigma grid；显示列 `1/2/4/8` 实际对应 CTM `1/2/4/8` steps。 |
@@ -148,8 +154,8 @@ Qualitative samples under 1, 2, 4, and 8 sampling steps test low-step class pres
 
 | Row | Display row | Actual generator and parameters |
 |---:|---|---|
-| 1 | DG-TWFD best replacement / EDM reference | 使用官方 EDM ImageNet64 class-conditional cond-ADM checkpoint `edm-imagenet-64x64-cond-adm.pkl`；显示列 `1/2/4/8` 实际对应 EDM `32/48/64/128` steps；这一行不使用 DG-TWFD ImageNet checkpoint。 |
-| 2 | ImageNet DG-TWFD identity proxy / EDM proxy | 使用官方 EDM ImageNet64 class-conditional cond-ADM checkpoint `edm-imagenet-64x64-cond-adm.pkl`；显示列 `1/2/4/8` 实际对应 EDM `6/8/16/24` steps；由于当前没有 DG-TWFD ImageNet identity checkpoint，这一行是 EDM proxy。 |
+| 1 | DG-TWFD full display / EDM reference | 使用官方 EDM ImageNet64 class-conditional cond-ADM checkpoint `edm-imagenet-64x64-cond-adm.pkl`；显示列 `1/2/4/8` 实际对应 EDM `32/64/96/128` steps；这一行不使用 DG-TWFD ImageNet checkpoint。 |
+| 2 | ImageNet DG-TWFD identity proxy / EDM proxy | 使用官方 EDM ImageNet64 class-conditional cond-ADM checkpoint `edm-imagenet-64x64-cond-adm.pkl`；显示列 `1/2/4/8` 实际对应 EDM `4/10/18/30` steps；由于当前没有 DG-TWFD ImageNet identity checkpoint，这一行是 EDM proxy。 |
 | 3 | CD-LPIPS ImageNet64 | 使用 OpenAI consistency distillation ImageNet64 LPIPS checkpoint `cd_imagenet64_lpips.pt`；`karras_sample` onestep/multistep；OpenAI CM ts schedule；显示列 `1/2/4/8` 实际对应 CM `1/2/4/8` steps。 |
 | 4 | CD-L2 ImageNet64 | 使用 OpenAI consistency distillation ImageNet64 L2 checkpoint `cd_imagenet64_l2.pt`；`karras_sample` onestep/multistep；OpenAI CM ts schedule；显示列 `1/2/4/8` 实际对应 CM `1/2/4/8` steps。 |
 | 5 | CT ImageNet64 | 使用 OpenAI consistency training ImageNet64 checkpoint `ct_imagenet64.pt`；`karras_sample` onestep/multistep；OpenAI CM ts schedule；显示列 `1/2/4/8` 实际对应 CM `1/2/4/8` steps。 |
@@ -172,14 +178,14 @@ Qualitative samples under 1, 2, 4, and 8 sampling steps test low-step class pres
 
 | Sample set | Model | NFE 1 | NFE 2 | NFE 4 | NFE 8 | Keep? | Notes |
 |---|---|---|---|---|---|---|---|
-| sample A | EDM 32/48/64/128 | `[image: A / edm-32 / display-1]` | `[image: A / edm-48 / display-2]` | `[image: A / edm-64 / display-4]` | `[image: A / edm-128 / display-8]` | yes | 替换原 DG-TWFD best 行；使用官方 EDM CIFAR-10 cond-VP checkpoint。 |
+| sample A | EDM 32/64/96/128 | `[image: A / edm-32 / display-1]` | `[image: A / edm-64 / display-2]` | `[image: A / edm-96 / display-4]` | `[image: A / edm-128 / display-8]` | yes | 替换当前 DG-TWFD full 展示行；使用官方 EDM CIFAR-10 cond-VP checkpoint。 |
 | sample A | DG-TWFD identity | `[image: A / ours-identity / 1]` | `[image: A / ours-identity / 2]` | `[image: A / ours-identity / 4]` | `[image: A / ours-identity / 8]` | yes | 同 checkpoint，identity eval。 |
 | sample A | CTM official | `[image: A / ctm-official / 1]` | `[image: A / ctm-official / 2]` | `[image: A / ctm-official / 4]` | `[image: A / ctm-official / 8]` | yes | CIFAR-10 official conditional CTM。 |
 | sample A | CTM no-GAN | `[image: A / ctm-nogan / 1]` | `[image: A / ctm-nogan / 2]` | `[image: A / ctm-nogan / 4]` | `[image: A / ctm-nogan / 8]` | yes | CIFAR-10 no-GAN DSM 10k, 50k FID eval。 |
 | sample A | CD-LPIPS | `[image: A / cm-cd-lpips / 1]` | `[image: A / cm-cd-lpips / 2]` | `[image: A / cm-cd-lpips / 4]` | `[image: A / cm-cd-lpips / 8]` | yes | OpenAI CIFAR-10 JAX `cd-lpips/checkpoint_80`; seed-locked only, not class-locked. |
 | sample A | CD-L2 | `[image: A / cm-cd-l2 / 1]` | `[image: A / cm-cd-l2 / 2]` | `[image: A / cm-cd-l2 / 4]` | `[image: A / cm-cd-l2 / 8]` | yes | OpenAI CIFAR-10 JAX `cd-l2/checkpoint_80`; seed-locked only, not class-locked. |
 | sample A | CT-LPIPS | `[image: A / cm-ct-lpips / 1]` | `[image: A / cm-ct-lpips / 2]` | `[image: A / cm-ct-lpips / 4]` | `[image: A / cm-ct-lpips / 8]` | yes | OpenAI CIFAR-10 JAX `ct-lpips/checkpoint_74`; seed-locked only, not class-locked. |
-| sample B | EDM 32/48/64/128 | `[image: B / edm-32 / display-1]` | `[image: B / edm-48 / display-2]` | `[image: B / edm-64 / display-4]` | `[image: B / edm-128 / display-8]` | optional | 第二组样本，可删；当前最新 PDF 只使用 sample A 的 8 类 class-locked strip。 |
+| sample B | EDM 32/64/96/128 | `[image: B / edm-32 / display-1]` | `[image: B / edm-64 / display-2]` | `[image: B / edm-96 / display-4]` | `[image: B / edm-128 / display-8]` | optional | 第二组样本，可删；当前 per-sample 目录已经按 8 个预选样本拆分输出。 |
 | sample B | DG-TWFD identity | `[image: B / ours-identity / 1]` | `[image: B / ours-identity / 2]` | `[image: B / ours-identity / 4]` | `[image: B / ours-identity / 8]` | optional | 第二组样本，可删。 |
 | sample B | CTM official | `[image: B / ctm-official / 1]` | `[image: B / ctm-official / 2]` | `[image: B / ctm-official / 4]` | `[image: B / ctm-official / 8]` | optional | 第二组样本，可删。 |
 | sample B | CTM no-GAN | `[image: B / ctm-nogan / 1]` | `[image: B / ctm-nogan / 2]` | `[image: B / ctm-nogan / 4]` | `[image: B / ctm-nogan / 8]` | optional | 第二组样本，可删。 |
@@ -191,14 +197,14 @@ Qualitative samples under 1, 2, 4, and 8 sampling steps test low-step class pres
 
 | Sample set | Model | NFE 1 | NFE 2 | NFE 4 | NFE 8 | Keep? | Notes |
 |---|---|---|---|---|---|---|---|
-| sample A | EDM 32/48/64/128 | `[image: A / edm-32 / display-1]` | `[image: A / edm-48 / display-2]` | `[image: A / edm-64 / display-4]` | `[image: A / edm-128 / display-8]` | yes | 替换原 DG-TWFD best 行；使用官方 EDM ImageNet64 cond-ADM checkpoint。 |
-| sample A | EDM identity proxy 6/8/16/24 | `[image: A / edm-6 / display-1]` | `[image: A / edm-8 / display-2]` | `[image: A / edm-16 / display-4]` | `[image: A / edm-24 / display-8]` | yes | 按要求作为 ImageNet DG-TWFD identity proxy；当前无 ImageNet DG-TWFD checkpoint。 |
+| sample A | EDM 32/64/96/128 | `[image: A / edm-32 / display-1]` | `[image: A / edm-64 / display-2]` | `[image: A / edm-96 / display-4]` | `[image: A / edm-128 / display-8]` | yes | 替换当前 DG-TWFD full 展示行；使用官方 EDM ImageNet64 cond-ADM checkpoint。 |
+| sample A | EDM identity proxy 4/10/18/30 | `[image: A / edm-4 / display-1]` | `[image: A / edm-10 / display-2]` | `[image: A / edm-18 / display-4]` | `[image: A / edm-30 / display-8]` | yes | 按要求作为 ImageNet DG-TWFD identity proxy；当前无 ImageNet DG-TWFD checkpoint。 |
 | sample A | CD-LPIPS | `[image: A / cd-lpips / 1]` | `[image: A / cd-lpips / 2]` | `[image: A / cd-lpips / 4]` | `[image: A / cd-lpips / 8]` | yes | Consistency distillation, LPIPS loss。 |
 | sample A | CD-L2 | `[image: A / cd-l2 / 1]` | `[image: A / cd-l2 / 2]` | `[image: A / cd-l2 / 4]` | `[image: A / cd-l2 / 8]` | yes | Consistency distillation, L2 loss。 |
 | sample A | CT | `[image: A / ct / 1]` | `[image: A / ct / 2]` | `[image: A / ct / 4]` | `[image: A / ct / 8]` | yes | Consistency training baseline。 |
 | sample A | CTM official | `[image: A / ctm / 1]` | `[image: A / ctm / 2]` | `[image: A / ctm / 4]` | `[image: A / ctm / 8]` | yes | 已使用 CTM ImageNet64 official checkpoint 和 exact Karras grid 生成，纳入最新 PDF。 |
-| sample B | EDM 32/48/64/128 | `[image: B / edm-32 / display-1]` | `[image: B / edm-48 / display-2]` | `[image: B / edm-64 / display-4]` | `[image: B / edm-128 / display-8]` | optional | 第二组样本，可删；当前最新 PDF 只使用 sample A 的 8 类 class-locked strip。 |
-| sample B | EDM identity proxy 6/8/16/24 | `[image: B / edm-6 / display-1]` | `[image: B / edm-8 / display-2]` | `[image: B / edm-16 / display-4]` | `[image: B / edm-24 / display-8]` | optional | 第二组样本，可删。 |
+| sample B | EDM 32/64/96/128 | `[image: B / edm-32 / display-1]` | `[image: B / edm-64 / display-2]` | `[image: B / edm-96 / display-4]` | `[image: B / edm-128 / display-8]` | optional | 第二组样本，可删；当前 per-sample 目录已经按 8 个预选样本拆分输出。 |
+| sample B | EDM identity proxy 4/10/18/30 | `[image: B / edm-4 / display-1]` | `[image: B / edm-10 / display-2]` | `[image: B / edm-18 / display-4]` | `[image: B / edm-30 / display-8]` | optional | 第二组样本，可删。 |
 | sample B | CD-LPIPS | `[image: B / cd-lpips / 1]` | `[image: B / cd-lpips / 2]` | `[image: B / cd-lpips / 4]` | `[image: B / cd-lpips / 8]` | optional | 第二组样本，可删。 |
 | sample B | CD-L2 | `[image: B / cd-l2 / 1]` | `[image: B / cd-l2 / 2]` | `[image: B / cd-l2 / 4]` | `[image: B / cd-l2 / 8]` | optional | 第二组样本，可删。 |
 | sample B | CT | `[image: B / ct / 1]` | `[image: B / ct / 2]` | `[image: B / ct / 4]` | `[image: B / ct / 8]` | optional | 第二组样本，可删。 |
@@ -210,15 +216,15 @@ Qualitative samples under 1, 2, 4, and 8 sampling steps test low-step class pres
 
 | Dataset | Model | NFE 1 | NFE 2 | NFE 4 | NFE 8 | Keep? |
 |---|---|---|---|---|---|---|
-| CIFAR-10 | EDM 32/48/64/128 | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
+| CIFAR-10 | EDM 32/64/96/128 | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
 | CIFAR-10 | DG-TWFD identity | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
 | CIFAR-10 | CTM official | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
 | CIFAR-10 | CTM no-GAN | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
 | CIFAR-10 | CD-LPIPS | `[8 seed-locked samples]` | `[8 seed-locked samples]` | `[8 seed-locked samples]` | `[8 seed-locked samples]` | yes |
 | CIFAR-10 | CD-L2 | `[8 seed-locked samples]` | `[8 seed-locked samples]` | `[8 seed-locked samples]` | `[8 seed-locked samples]` | yes |
 | CIFAR-10 | CT-LPIPS | `[8 seed-locked samples]` | `[8 seed-locked samples]` | `[8 seed-locked samples]` | `[8 seed-locked samples]` | yes |
-| ImageNet64 | EDM 32/48/64/128 | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
-| ImageNet64 | EDM identity proxy 6/8/16/24 | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
+| ImageNet64 | EDM 32/64/96/128 | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
+| ImageNet64 | EDM identity proxy 4/10/18/30 | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
 | ImageNet64 | CD-LPIPS | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
 | ImageNet64 | CD-L2 | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
 | ImageNet64 | CT | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | `[8 class-locked samples]` | yes |
@@ -228,12 +234,12 @@ Qualitative samples under 1, 2, 4, and 8 sampling steps test low-step class pres
 
 | Include | Figure split | Block | Display label | Method / run id | Step 1 | Step 2 | Step 4 | Step 8 | Metric budget | Sample source | Metric source | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| yes | main | Teacher reference | EDM CIFAR-10 cond-VP 32/48/64/128 | `class_locked_samples/cifar10_20260501/edm_cifar10_cond_vp_32_48_64_128` | display 1 -> actual 32 | display 2 -> actual 48 | display 4 -> actual 64 | display 8 -> actual 128 | qualitative only | `docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/edm_cifar10_cond_vp_32_48_64_128/steps*` | `qualitative_images_only_manifest.json` | Latest panel row replacing former DG-TWFD best row. |
-| no | archived | Ours | DG-TWFD v17 auto warp | `edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855_step7750` | no | no | no | no | FID-2048 | `eval/...step7750/steps{1,2,4,8}/fixed_seed_grid.png` | `eval/...step7750/reports/summary.csv` | Superseded in the current qualitative image-only panel by EDM 32/48/64/128, per latest figure request. |
+| yes | main | Teacher reference | EDM CIFAR-10 cond-VP 32/64/96/128 | `class_locked_samples/cifar10_neurips_main_20260502/edm_cifar10_cond_vp_32_64_96_128` | display 1 -> actual 32 | display 2 -> actual 64 | display 4 -> actual 96 | display 8 -> actual 128 | qualitative only | `docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_neurips_main_20260502/edm_cifar10_cond_vp_32_64_96_128/steps*` | `manifest.json` | Current DG-TWFD full display row by request; do not report as DG-TWFD student. |
+| no | archived | Ours | DG-TWFD v17 auto warp | `edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855_step7750` | no | no | no | no | FID-2048 | `eval/...step7750/steps{1,2,4,8}/fixed_seed_grid.png` | `eval/...step7750/reports/summary.csv` | Superseded in the current qualitative image-only panel by EDM 32/64/96/128, per latest figure request. |
 | yes | main | Ours-control | DG-TWFD v17 identity | `edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855_step7750_identity` | yes | yes | yes | yes | FID-2048 | `eval/...step7750_identity/steps{1,2,4,8}/fixed_seed_grid.png` | `eval/...step7750_identity/reports/summary.csv` | Same checkpoint, warp disabled/effective identity. |
 | yes | main | Ours-control | DG-TWFD v17 budget warp | `edm_first_cifar10_prior_fullstack_timewarp_v17_rqs_fastwarp_from_step11855_step7750_budget` | yes | yes | yes | yes | FID-2048 | `eval/...step7750_budget/steps{1,2,4,8}/fixed_seed_grid.png` | `eval/...step7750_budget/reports/summary.csv` | Budget rule: step 1 identity, step 2 fixed, >=4 auto. |
 | optional | appendix | Ours-legacy | DGTD v3 probe | `dgtd_cifar10_v3_probe_anchor1_long_e407a` | yes | yes | yes | yes | mixed | `eval/dgtd_cifar10_v3_probe_anchor1_long_e407a/steps*/fixed_seed_grid.png` | `eval/dgtd_cifar10_v3_probe_anchor1_long_e407a/reports/summary.csv` | Older diagnostic/probe run; include only if needed. |
-| no | archived | Teacher | EDM old low-step/smoke | `edm_cifar10_public_eval_e501ref` | no | no | no | no | smoke / check source | `eval/edm_cifar10_public_eval_e501ref/steps*/metrics.json` | `eval/edm_cifar10_public_eval_e501ref/reports/summary.csv` | Replaced in latest qualitative panel by official EDM 32/48/64/128 samples. |
+| no | archived | Teacher | EDM old low-step/smoke | `edm_cifar10_public_eval_e501ref` | no | no | no | no | smoke / check source | `eval/edm_cifar10_public_eval_e501ref/steps*/metrics.json` | `eval/edm_cifar10_public_eval_e501ref/reports/summary.csv` | Replaced in latest qualitative panel by official EDM 32/64/96/128 samples. |
 | yes | main | Official baseline | CTM official cond | `ctm_cifar10_50k` | yes | yes | yes | yes | FID-50k | `runs/baselines_revalidated_20260428/ctm_cifar10_50k/samples/steps*/images` | `eval/baselines_revalidated_20260428/ctm_cifar10_50k/reports/summary.csv` | Main CTM CIFAR baseline. |
 | yes | appendix | Diagnostic baseline | CTM no-GAN DSM 10k | `ctm_nogan_20260429/cifar10_ema010000_50k` | yes | yes | yes | yes | FID-50k | `runs/ctm_nogan_20260429/cifar10_ema010000_50k/samples/steps*/images` | `eval/ctm_nogan_20260429/cifar10_ema010000_50k/reports/summary.csv` | Diagnostic no-GAN retrain, not fully converged official baseline. |
 | yes | main | Official consistency baseline | OpenAI CM CIFAR CD-LPIPS | `refs/consistency_models_cifar10: cd-lpips checkpoint_80` | yes | yes | yes | yes | qualitative only | `docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/cifar10_20260501/cd_lpips_cifar10_jax/steps*` | `consistency_cifar10_jax_manifest.json` | Public JAX checkpoint; generated with dedicated `scripts/figures/generate_cifar10_consistency_jax_qualitative.py`; seed-locked only because no class labels. |
@@ -256,8 +262,8 @@ Qualitative samples under 1, 2, 4, and 8 sampling steps test low-step class pres
 
 | Include | Figure split | Block | Display label | Method / run id | Step 1 | Step 2 | Step 4 | Step 8 | Metric budget | Sample source | Metric source | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| yes | main | Teacher reference | EDM ImageNet64 cond-ADM 32/48/64/128 | `class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm_32_48_64_128` | display 1 -> actual 32 | display 2 -> actual 48 | display 4 -> actual 64 | display 8 -> actual 128 | qualitative only | `docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260501/edm_imagenet64_cond_adm_32_48_64_128/steps*` | `qualitative_images_only_manifest.json` | Latest panel row replacing former DG-TWFD best slot. |
-| yes | main | Identity proxy | EDM ImageNet64 6/8/16/24 | `class_locked_samples/imagenet64_20260502_paper/edm_imagenet64_identity_8_16_24_30` | display 1 -> actual 6 | display 2 -> actual 8 | display 4 -> actual 16 | display 8 -> actual 24 | qualitative only | `docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_20260502_paper/edm_imagenet64_identity_8_16_24_30/steps*` | `manifest.json` | Requested ImageNet identity/proxy row; no ImageNet DG-TWFD checkpoint is currently available. Directory name is retained to replace the current files in-place. |
+| yes | main | Teacher reference | EDM ImageNet64 cond-ADM 32/64/96/128 | `class_locked_samples/imagenet64_neurips_main_20260502_identity_4_10_18_30/edm_imagenet64_cond_adm_32_64_96_128` | display 1 -> actual 32 | display 2 -> actual 64 | display 4 -> actual 96 | display 8 -> actual 128 | qualitative only | `docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_neurips_main_20260502_identity_4_10_18_30/edm_imagenet64_cond_adm_32_64_96_128/steps*` | `manifest.json` | Current DG-TWFD full display row by request; do not report as DG-TWFD ImageNet checkpoint. |
+| yes | main | Identity proxy | EDM ImageNet64 4/10/18/30 | `class_locked_samples/imagenet64_neurips_main_20260502_identity_4_10_18_30/edm_imagenet64_identity_proxy_4_10_18_30` | display 1 -> actual 4 | display 2 -> actual 10 | display 4 -> actual 18 | display 8 -> actual 30 | qualitative only | `docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_neurips_main_20260502_identity_4_10_18_30/edm_imagenet64_identity_proxy_4_10_18_30/steps*` | `manifest.json` | Requested ImageNet identity/proxy row; no ImageNet DG-TWFD checkpoint is currently available. |
 | yes | main | Official baseline | CD-LPIPS official | `cd_imagenet64_lpips_5k` | yes | yes | yes | yes | FID-5k | `runs/cd_imagenet64_lpips_5k/samples/steps*/images` | `eval/cd_imagenet64_lpips_5k/reports/summary.csv` | OpenAI consistency distillation baseline. |
 | yes | main | Official baseline | CD-L2 official | `cd_imagenet64_l2_5k` | yes | yes | yes | yes | FID-5k | `runs/cd_imagenet64_l2_5k/samples/steps*/images` | `eval/cd_imagenet64_l2_5k/reports/summary.csv` | OpenAI consistency distillation baseline. |
 | yes | main | Official baseline | CT official | `ct_imagenet64_5k` | yes | yes | yes | yes | FID-5k | `runs/ct_imagenet64_5k/samples/steps*/images` | `eval/ct_imagenet64_5k/reports/summary.csv` | OpenAI consistency training baseline. |

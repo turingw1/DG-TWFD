@@ -15,6 +15,12 @@
     "4": 18,
     "8": 30
   },
+  "dg_twfd_full_proxy_actual_edm_steps": {
+    "1": 32,
+    "2": 64,
+    "4": 96,
+    "8": 128
+  },
   "cifar_samples": [
     {
       "class_id": 0,
@@ -155,7 +161,7 @@
   },
   "row_notes": {
     "cifar10_main": {
-      "DG-TWFD full": "class-locked",
+      "DG-TWFD full": "class-locked; displayed name uses EDM 32/64/96/128-step proxy by request",
       "DG-TWFD identity": "class-locked",
       "CTM official CIFAR-10 conditional": "class-locked",
       "CTM no-GAN DSM 10k": "class-locked",
@@ -164,7 +170,7 @@
       "CT-LPIPS CIFAR-10 JAX": "seed-only; released JAX checkpoint is not class-conditional"
     },
     "imagenet64_main": {
-      "DG-TWFD full": "class-locked; displayed name uses EDM 32/48/64/128-step proxy because no ImageNet64 DG-TWFD checkpoint is available",
+      "DG-TWFD full": "class-locked; displayed name uses EDM 32/64/96/128-step proxy because no ImageNet64 DG-TWFD checkpoint is available",
       "DG-TWFD identity": "class-locked; displayed name uses EDM 4/10/18/30-step identity proxy because no ImageNet64 DG-TWFD checkpoint is available",
       "CD-LPIPS ImageNet64": "class-locked",
       "CD-L2 ImageNet64": "class-locked",
@@ -176,7 +182,7 @@
     "cifar10_main": [
       {
         "display": "DG-TWFD full",
-        "sample_row": "dg_twfd_full_learned_clock",
+        "sample_row": "edm_cifar10_cond_vp_32_64_96_128",
         "source_root": "cifar10_neurips_main_20260502"
       },
       {
@@ -213,7 +219,7 @@
     "imagenet64_main": [
       {
         "display": "DG-TWFD full",
-        "sample_row": "edm_imagenet64_cond_adm_32_48_64_128",
+        "sample_row": "edm_imagenet64_cond_adm_32_64_96_128",
         "source_root": "imagenet64_neurips_main_20260502_identity_4_10_18_30"
       },
       {
@@ -263,7 +269,75 @@
     "cifar10_seed_only_reference": {
       "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/appendix/cifar10_seed_only_reference.pdf",
       "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/appendix/cifar10_seed_only_reference.png"
-    }
+    },
+    "cifar10_per_sample": [
+      {
+        "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/cifar10/cifar10_00_class0000_plane_seed1000.pdf",
+        "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/cifar10/cifar10_00_class0000_plane_seed1000.png"
+      },
+      {
+        "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/cifar10/cifar10_01_class0001_car_seed1001.pdf",
+        "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/cifar10/cifar10_01_class0001_car_seed1001.png"
+      },
+      {
+        "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/cifar10/cifar10_02_class0003_cat_seed1003.pdf",
+        "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/cifar10/cifar10_02_class0003_cat_seed1003.png"
+      },
+      {
+        "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/cifar10/cifar10_03_class0007_horse_seed1007.pdf",
+        "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/cifar10/cifar10_03_class0007_horse_seed1007.png"
+      },
+      {
+        "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/cifar10/cifar10_04_class0008_ship_seed1008.pdf",
+        "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/cifar10/cifar10_04_class0008_ship_seed1008.png"
+      },
+      {
+        "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/cifar10/cifar10_05_class0009_truck_seed1009.pdf",
+        "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/cifar10/cifar10_05_class0009_truck_seed1009.png"
+      },
+      {
+        "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/cifar10/cifar10_06_class0002_bird_seed1002.pdf",
+        "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/cifar10/cifar10_06_class0002_bird_seed1002.png"
+      },
+      {
+        "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/cifar10/cifar10_07_class0004_deer_seed1004.pdf",
+        "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/cifar10/cifar10_07_class0004_deer_seed1004.png"
+      }
+    ],
+    "imagenet64_per_sample": [
+      {
+        "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/imagenet64/imagenet64_00_class0022_bird_seed0031.pdf",
+        "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/imagenet64/imagenet64_00_class0022_bird_seed0031.png"
+      },
+      {
+        "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/imagenet64/imagenet64_01_class0207_dog_seed0032.pdf",
+        "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/imagenet64/imagenet64_01_class0207_dog_seed0032.png"
+      },
+      {
+        "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/imagenet64/imagenet64_02_class0281_cat_seed0033.pdf",
+        "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/imagenet64/imagenet64_02_class0281_cat_seed0033.png"
+      },
+      {
+        "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/imagenet64/imagenet64_03_class0407_vehicle_seed0034.pdf",
+        "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/imagenet64/imagenet64_03_class0407_vehicle_seed0034.png"
+      },
+      {
+        "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/imagenet64/imagenet64_04_class0817_car_seed0035.pdf",
+        "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/imagenet64/imagenet64_04_class0817_car_seed0035.png"
+      },
+      {
+        "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/imagenet64/imagenet64_05_class0701_clutter_seed0036.pdf",
+        "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/imagenet64/imagenet64_05_class0701_clutter_seed0036.png"
+      },
+      {
+        "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/imagenet64/imagenet64_06_class0444_object_seed0037.pdf",
+        "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/imagenet64/imagenet64_06_class0444_object_seed0037.png"
+      },
+      {
+        "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/imagenet64/imagenet64_07_class0008_bird2_seed0038.pdf",
+        "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260502_identity_4_10_18_30/per_sample/imagenet64/imagenet64_07_class0008_bird2_seed0038.png"
+      }
+    ]
   },
   "caption_suggestion": "Qualitative samples under 1, 2, 4, and 8 sampling steps test low-step class preservation and visual coherence. Rows use matched class labels and initial noise seeds for class-conditional methods; unconditional CIFAR-10 consistency checkpoints are marked as seed-only references."
 }
