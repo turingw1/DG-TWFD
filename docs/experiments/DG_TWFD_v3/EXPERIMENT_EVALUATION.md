@@ -134,6 +134,28 @@ pixel/perceptual matching，所以表现为保守 fine-tune，而不是能力跃
 当前判断：v21 的方向是对的，因为它第一次在很早步数就显著拉动 endpoint；
 但 loss 配比还没有完成，后续监督重点是 8/16 是否回收。
 
+## 机制图 v1 观察
+
+- 生成脚本：
+  `scripts/figures/build_timewarp_mechanism_figure.py`
+- 输出目录：
+  `docs/experiments/DG_TWFD_v3/figures/mechanism/timewarp_mechanism_20260502/`
+- 数据：v21 `step2500.pt` 的 EMA student、learned RQS warp、24 条 held-out
+  CIFAR-10 条件轨迹、32 段 dense teacher path、8-step composed student path。
+
+结论需要谨慎表述。A/B/C 图能支持 “teacher path 不变，learned clock 改变
+waypoint 分配，并在 finite semigroup-defect segments 上降低组合缺陷”：
+
+- identity mean semigroup defect: `7.82e-05`
+- DG-TWFD mean semigroup defect: `6.60e-05`
+- held-out trajectories improved: `87.5%`
+
+但同一 original-time dense grid 上用线性插值衡量的 path-state MSE 仍然更差
+（identity `1.06` vs DG `2.98`）。这说明当前 warp 的机制证据更适合写成
+composition-defect reduction，而不是直接宣称低步数学生轨迹全程更贴近 teacher
+state path。若主文要使用 “closer trajectory” 叙述，需要继续改进 student
+transition 本身，或改用真实可访问 waypoint/segment-level metric。
+
 ## 下一步监督规则
 
 1. 继续运行 v21，并每两小时检查 budget FID@1/2/4/8/16。
