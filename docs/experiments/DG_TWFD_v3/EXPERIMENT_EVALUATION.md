@@ -273,6 +273,14 @@ first window. Endpoint FID keeps drifting upward, though it remains clearly
 better than v17. Continue one more window, but treat FID@1 near `48` or a flat
 16-step curve as the stop/branch trigger.
 
+The third v19 supervision window shows diminishing but still positive
+high-budget recovery. Step6000 budget FID-2048 is
+`46.858 / 23.896 / 20.832 / 20.075 / 20.630`. FID@8 and FID@16 are still
+improving, but FID@4 has passed its best point and FID@1 is slowly drifting
+toward the old v17 range. Let the run reach its configured wall-clock limit,
+then select the best tradeoff checkpoint instead of continuing the same recipe
+indefinitely.
+
 ## Latest Decision Metrics
 
 FID uses 2048 generated samples for the active watcher.
