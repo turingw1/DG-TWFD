@@ -1,1075 +1,164 @@
-# DG-TWFD v3 Experiment Evaluation
+# DG-TWFD v3 实验评估报告
 
-This is the high-signal evaluation memo for DG-TWFD v3. It should be updated
-only when a result changes the experimental decision, reveals a blocker, or
-changes the next full-stack direction. It is not a step-by-step run ledger.
+本文档只记录会影响实验决策的结果、瓶颈和下一步设计。原始日志、图片、
+checkpoint 与完整 eval artifacts 保留在 `runs/`、`eval/`、`results/` 和
+`/temp/Zhengwei/projects/DG-TWFD/critical/`。
 
-## Update Policy
+## 当前目标
 
-- Update after milestone FID evaluations, corrective runtime actions, or
-  algorithmic conclusions.
-- Keep raw artifacts in `eval/`, `runs/`, `results/`, and the project-isolated
-  temp tree `/temp/Zhengwei/projects/DG-TWFD/critical`.
-- Record paths and decision-relevant metrics here, not large files.
+最终 CIFAR-10 目标曲线：
 
-## Current Active Track
+| NFE | 1 | 2 | 4 | 8 |
+|---:|---:|---:|---:|---:|
+| target FID | 3.20 | 2.84 | 2.62 | 2.50 |
 
-- Track: EDM-first CIFAR-10 v20 endpoint-balanced full-stack/timewarp
-  continuation.
+当前在线监督使用 FID-2048，主要用于方向判断；最终结论必须用更大样本数复验。
+
+## 当前活跃实验
+
 - Run tag:
-  `edm_first_cifar10_prior_fullstack_timewarp_v20_endpoint_balanced_from_v19_step7106`.
+  `edm_first_cifar10_prior_fullstack_timewarp_v21_ctm_aligned_from_v20_step3292`
 - Config:
-  `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_v20_endpoint_balanced.yaml`.
-- Initialization checkpoint:
-  `runs/edm_first_cifar10_prior_fullstack_timewarp_v19_endpoint_recovery_bs48_from_v18_step4684/checkpoints/step7106.pt`.
-- Important detail: v20 starts from the v19 final EMA student plus learned RQS
-  warp. It lowers the student and warp learning rates, strengthens direct
-  endpoint and real-data denoise anchors, and reduces bridge pressure. Its
-  acceptance test is to improve FID@1 from v19 final while not giving back the
-  recovered 8/16-step quality.
-- Live backup:
-  `/temp/Zhengwei/projects/DG-TWFD/critical/runs/edm_first_cifar10_prior_fullstack_timewarp_v20_endpoint_balanced_from_v19_step7106`.
-- Milestone backups:
-  `/temp/Zhengwei/projects/DG-TWFD/critical/eval/edm_first_cifar10_prior_fullstack_timewarp_v20_endpoint_balanced_from_v19_step7106_step*`.
-
-## v16 RQS Timewarp Rationale
-
-The v15 bottleneck is no longer basic full-stack stability. Its endpoint and
-high-budget quality are strong, but learned timewarp remains close to identity
-and its auto-vs-identity gains are inconsistent across budgets. The likely
-algorithmic limitation is that the current warp only learns bin masses in a
-piecewise-linear inverse CDF. Increasing bin count helps resolution, but still
-leaves no within-bin curvature and gives weak gradients for continuous EDM time
-regions.
-
-v16 implements `MonotoneRationalQuadraticSplineWarp` in `src/dgtd/warp.py`.
-This is motivated by monotone rational-quadratic splines from Neural Spline
-Flows, which preserve invertibility while adding smooth local shape control, and
-by recent diffusion-sampling work that frames schedule quality as continuous
-time reparameterization. The implementation keeps a positive interval mass for
-compatibility with the existing defect-density target, then adds positive knot
-derivatives so the density can bend inside intervals. The warp loss now matches
-both bin mass and center-point continuous density, with a small log-derivative
-smoothness penalty.
-
-Decision test for the RQS track:
-
-- First gate: train must remain stable from the v15 step11855 student without
-  loading old warp state.
-- Second gate: by early evaluations, auto warp should not regress the
-  high-budget `4/8/16` mean versus identity, and should show larger
-  `timewarp_delta` than the v15 near-identity warp.
-- Third gate: if FID@2 worsens while FID@4/8/16 improves, keep the run alive but
-  evaluate a budget-aware variant that constrains the 2-step schedule separately.
-
-The v16 probe validated the implementation but exposed an optimization lag. At
-step750, the learned target density had a meaningful defect signal
-(`q_target` peak about `1.36x` uniform), but the actual warp density was still
-only about `1.012x` uniform. Auto-vs-identity FID therefore stayed near
-identity and was worse at 2/4 steps:
-
-| checkpoint | auto FID@2 | identity FID@2 | auto FID@4 | identity FID@4 | auto FID@8 | identity FID@8 | auto FID@16 | identity FID@16 |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| v16 step250 | 29.670 | 29.645 | 22.761 | 22.765 | 20.208 | 20.208 | 20.273 | 20.275 |
-| v16 step500 | 29.716 | 29.652 | 22.766 | 22.758 | 20.207 | 20.205 | 20.279 | 20.279 |
-| v16 step750 | 29.724 | 29.620 | 22.745 | 22.741 | 20.199 | 20.199 | 20.265 | 20.269 |
-
-The corrective v17 change is not a new student objective. It adds
-`timewarp.inner_steps`, allowing several warp-only optimizer steps per defect
-statistics update. v17 also uses a stronger but still bounded warp update:
-`lr=4e-4`, `inner_steps=6`, `beta=0.70`, `ratio_cap=4.0`,
-`flatten_mix=0.10`, and a small log-derivative smoothness penalty. The goal is
-to make qphi actually track the already-visible defect target before judging
-whether RQS improves the schedule.
-
-The v17 step250 gate passed the important part of that test. The warp is no
-longer near identity (`qmax` reached `1.053` by step250), and auto warp now
-beats identity at the high-budget checkpoints:
-
-| checkpoint | auto FID@2 | identity FID@2 | auto FID@4 | identity FID@4 | auto FID@8 | identity FID@8 | auto FID@16 | identity FID@16 |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| v17 step250 | 28.897 | 28.683 | 22.708 | 22.796 | 20.348 | 20.379 | 20.017 | 20.031 |
-| v17 step500 | 29.134 | 28.607 | 22.571 | 22.731 | 20.300 | 20.367 | 19.962 | 20.003 |
-
-The 2-step budget still prefers identity, so the active policy remains budget
-clocking: identity for `1/2`, learned RQS warp for `4/8/16`. This gives the
-first concrete evidence that a more expressive continuous monotone warp is
-useful. By step500, the learned warp advantage grows to about `0.159 / 0.067 /
-0.040` FID at `4/8/16`, while the 2-step auto warp becomes worse. The next
-bottleneck is therefore budget-specific: the same warp bend that helps
-`4/8/16` currently over-corrects the midpoint used by `2` steps.
-
-The step4000/4500 exploration resolved the 2-step side of that bottleneck. A
-dedicated midpoint probe showed the current auto warp midpoint (`u≈0.473`) moves
-in the wrong direction for 2-step sampling. On the step4000 checkpoint, a
-2048-sample probe found:
-
-| fixed 2-step midpoint | FID@2 |
-|---:|---:|
-| 0.50 identity | 29.424 |
-| 0.58 | 25.438 |
-| 0.60 | 25.304 |
-| 0.62 | 25.643 |
-
-The active v17 config now uses a budget-conditioned policy:
-`eval.budget_fixed_u_grids[2] = [0, 0.60, 1]`, while keeping learned RQS warp
-for `4/8/16`. The first online validation at step4500 confirms this is the
-right direction:
-
-| policy / checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 |
-|---|---:|---:|---:|---:|---:|
-| step4500 auto warp | 49.300 | 29.979 | 21.497 | 20.049 | 19.804 |
-| step4500 identity | 49.300 | 28.567 | 22.577 | 20.252 | 19.866 |
-| step4500 calibrated budget | 49.300 | 24.511 | 21.497 | 20.049 | 19.804 |
-
-This is the first current-track policy that beats identity at every evaluated
-multi-step budget. The expert conclusion is that a single global monotone warp
-is the wrong abstraction for all budgets: RQS is useful, but low-step sampling
-needs its own calibrated node or a genuinely budget-conditioned warp head.
-
-The step7750 readout confirms that this is a stable adaptation, not a one-off
-probe artifact. Training is still healthy (`qmax≈1.35`, warp loss decreasing to
-about `0.0044-0.0046`), and the learned RQS warp consistently helps the
-high-budget clocks while the calibrated 2-step midpoint remains the best
-low-budget choice:
-
-| policy / checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 |
-|---|---:|---:|---:|---:|---:|
-| step7750 auto warp | 49.148 | 29.910 | 21.240 | 19.964 | 19.718 |
-| step7750 identity | 49.148 | 28.492 | 22.441 | 20.166 | 19.786 |
-| step7750 calibrated budget | 49.148 | 24.427 | 21.240 | 19.964 | 19.718 |
-
-The current algorithm is therefore adapting well to the new experiment under a
-budget-conditioned inference policy. Pure auto warp should not be reported as
-the final all-budget method because it remains misaligned at 2-step
-(`u≈0.473`, too early), but the combined policy is now clearly stronger than
-identity at every multi-step budget. The next algorithmic improvement should
-make this budget conditioning learnable or periodically recalibrated instead of
-hard-coding the 2-step midpoint at `u=0.60`.
-
-The project target has now been reset to a much stronger CIFAR-10 curve:
-`FID@1/2/4/8 = 3.20 / 2.84 / 2.62 / 2.50`. Against that target, v17 should be
-treated as a mechanism-validation run, not a near-final model. By step9750,
-budget-policy FID is `48.841 / 24.310 / 21.112 / 19.899 / 19.657`; this is a
-real improvement over the v15 handoff, but the single-step model is still about
-an order of magnitude too weak. The limiting factor is no longer schedule
-resolution. It is that the student has not learned a strong one-step
-noise-to-image generator.
-
-The next run, v18, therefore changes the optimization target rather than adding
-another warp tweak. It adds two pieces of training infrastructure:
-
-1. `student_ema` checkpointing and EMA evaluation, because EMA is a core
-   diffusion/consistency-model stabilization mechanism and current evaluations
-   have used raw online weights.
-2. A small real-data denoising anchor at mid/low EDM noise (`u=0.35-0.95`) so
-   endpoint prior distillation does not rely only on teacher-generated prior
-   samples and does not erode the pretrained data-manifold denoiser.
-
-The v18 experimental goal is direct: determine whether endpoint-focused
-training with EMA can resume from the best live v17 checkpoint and materially
-move FID@1, while preserving enough low/mid-noise denoising structure for later
-full-stack/timewarp training to reuse.
-
-Runtime correction: the first v18 launch used the old endpoint batch size
-`384`, but the added real-data denoise anchor introduces another student
-forward and pushed A100 80GB memory over the limit before the first checkpoint.
-The run was therefore corrected to `batch_size=192` and restarted under the
-same run tag. This keeps the algorithmic change intact while making the
-experiment executable.
-
-The early v18 signal is useful enough to continue. EMA evaluation through
-step1250 gives:
-
-| checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 |
-|---|---:|---:|---:|---:|---:|
-| v17 step10000 budget | 48.893 | 24.324 | 21.131 | 19.885 | 19.651 |
-| v18 step250 EMA | 48.759 | 28.496 | 22.417 | 19.952 | 20.288 |
-| v18 step500 EMA | 48.506 | 28.390 | 22.357 | 19.958 | 20.322 |
-| v18 step750 EMA | 48.314 | 28.236 | 22.288 | 19.967 | 20.349 |
-| v18 step1000 EMA | 48.061 | 28.032 | 22.205 | 19.976 | 20.371 |
-| v18 step1250 EMA | 47.752 | 27.801 | 22.101 | 19.967 | 20.400 |
-| v18 step1500 EMA | 47.489 | 27.580 | 21.994 | 19.959 | 20.424 |
-| v18 step1750 EMA | 47.218 | 27.358 | 21.912 | 19.955 | 20.473 |
-| v18 step2000 EMA | 46.928 | 27.120 | 21.821 | 19.965 | 20.531 |
-| v18 step2250 EMA | 46.647 | 26.947 | 21.720 | 19.984 | 20.580 |
-
-Interpretation: this branch is doing the job it was designed for. FID@1 and
-FID@2 improve monotonically in the first online evaluations, FID@4 also moves
-down, while FID@8 is flat and FID@16 slightly regresses because the run has no
-learned budget warp or multi-midpoint preservation. This is not yet a final
-DG-TWFD model, but it is not wasted compute: it is the current best path for
-improving the weak endpoint generator before returning to full-stack/timewarp
-training.
-
-The two-hour follow-up strengthens the same conclusion. From step250 to
-step2250, FID@1 improves by about `2.11`, FID@2 by about `1.55`, and FID@4 by
-about `0.70`; FID@8 is effectively flat and FID@16 regresses by about `0.29`.
-The useful training signal is therefore real but directional. Continue v18
-while FID@1/2/4 keep dropping, but do not spend the whole long run on endpoint
-alone if the 8/16-step regression keeps widening; the next decision checkpoint
-should either reintroduce full-stack/timewarp from the improved endpoint or add
-a stronger composition-preservation term.
-
-The next two-hour readout keeps the same decision. At step3500, v18 EMA reaches
-`45.429 / 26.102 / 21.318 / 20.103 / 20.911` at `1/2/4/8/16`. Relative to
-step2250, FID@1/2/4 improve by about `1.22 / 0.84 / 0.40`, while FID@8 worsens
-by about `0.12` and FID@16 by about `0.33`. This is still a productive
-endpoint run, but it is now visibly consuming multi-step composition quality.
-The practical rule is to keep the run alive while FID@1/2/4 improve at this
-rate, then branch a v19 full-stack/timewarp recovery from the best v18 endpoint
-checkpoint before the 8/16-step degradation becomes the dominant effect.
-
-V18 completed at the wall-clock limit with final EMA FID-2048
-`44.325 / 25.580 / 21.097 / 20.325 / 21.273` at `1/2/4/8/16`. The final result
-is decisive: endpoint-only EMA training bought about `4.5` FID at one step
-relative to the v17 budget run, and also slightly improved 4-step, but it
-damaged 8/16-step composition. V19 therefore starts from the v18 final
-`student_ema` weights, not the raw online student, and reintroduces the
-full-stack objective, RQS timewarp, calibrated 2-step budget policy,
-multi-midpoint preservation, and a smaller real-data denoise anchor. The v19
-goal is to keep the new `44.x` endpoint while recovering the lost high-budget
-quality.
-
-Implementation note: v19 adds `train.resume_student_key`, allowing the student
-to initialize from `student_ema`. The first v19 launch with batch `64` was
-healthy numerically but used about `78.5GB` on A100 80GB, leaving too little
-headroom for concurrent eval. It was stopped at step1 and relaunched as
-`edm_first_cifar10_prior_fullstack_timewarp_v19_endpoint_recovery_bs48_from_v18_step4684`
-with batch `48`, which runs at about `60-63GB` during train/eval overlap.
-
-Early v19 readout supports the design:
-
-| checkpoint | policy | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 |
-|---|---|---:|---:|---:|---:|---:|
-| v18 step4684 EMA | identity | 44.325 | 25.580 | 21.097 | 20.325 | 21.273 |
-| v19 step250 EMA | budget | 44.792 | 23.314 | 21.104 | 20.553 | 21.025 |
-| v19 step500 EMA | budget | 44.859 | 23.327 | 21.049 | 20.517 | 21.009 |
-| v19 step750 EMA | budget | 44.987 | 23.336 | 20.990 | 20.484 | 21.003 |
-
-This is the desired first-stage tradeoff. The v18 endpoint gain is mostly
-retained, calibrated 2-step immediately becomes the best result in this project
-track, and 4-step is already slightly better than v18 final. The remaining
-problem is high-budget recovery: 8-step is improving but still behind v18
-final, and 16-step remains far behind the v17/v15 high-budget path. Continue
-v19 and watch whether the RQS warp/preservation terms recover 8/16 without
-erasing the new endpoint.
-
-After the first two-hour supervision window, v19 step2500 budget FID-2048 is
-`46.020 / 23.528 / 20.814 / 20.316 / 20.900`. The recovery trend is real:
-4-step and 8-step are now better than v18 final, and 16-step has recovered
-about `0.37` FID from v18 final. The cost is also real: FID@1 has drifted from
-`44.325` at the v18 source to `46.020`, and 2-step is slowly worsening from
-the early calibrated minimum around `23.31`. Continue v19 because high-budget
-recovery is still active and endpoint remains better than v17, but the next
-decision gate should stop or branch if FID@1 approaches the old v17 level
-before 16-step reaches the v17/v15 high-budget region.
-
-The second v19 supervision window continues the same tradeoff rather than
-changing direction. Step4250 budget FID-2048 is
-`46.706 / 23.749 / 20.788 / 20.171 / 20.742`. The high-budget side still
-improves, but the slope is now concentrated at 8/16 and is slower than in the
-first window. Endpoint FID keeps drifting upward, though it remains clearly
-better than v17. Continue one more window, but treat FID@1 near `48` or a flat
-16-step curve as the stop/branch trigger.
-
-The third v19 supervision window shows diminishing but still positive
-high-budget recovery. Step6000 budget FID-2048 is
-`46.858 / 23.896 / 20.832 / 20.075 / 20.630`. FID@8 and FID@16 are still
-improving, but FID@4 has passed its best point and FID@1 is slowly drifting
-toward the old v17 range. Let the run reach its configured wall-clock limit,
-then select the best tradeoff checkpoint instead of continuing the same recipe
-indefinitely.
-
-V19 completed at step7106. Final budget FID-2048 is
-`46.795 / 23.945 / 20.821 / 20.041 / 20.578`. The best high-budget checkpoint
-is the final one by `4/8/16` mean (`20.480`), and step7000 is the nearly tied
-best balanced checkpoint by `2/4/8/16` mean (`21.346`). V19 succeeded at
-recovering 8/16 from the endpoint-only v18 branch and produced the strongest
-2-step result in the project track, but it did not preserve the full endpoint
-gain. V20 should therefore start from v19 final EMA and learned RQS warp, use a
-lower student LR and lower warp LR, strengthen direct endpoint and real-data
-denoise anchors, and reduce bridge pressure. Its acceptance test is simple:
-improve FID@1 from v19 final without giving back the recovered 8/16-step
-quality.
-
-V20 has passed the first online gate at step250. Budget-policy FID-2048 is
-`45.841 / 23.942 / 21.018 / 19.846 / 20.340` at `1/2/4/8/16`. Relative to v19
-final, FID@1 improves by about `0.95`, FID@8 by about `0.20`, and FID@16 by
-about `0.24`, while FID@2 is effectively tied. This is the desired initial
-signal: the endpoint-balanced continuation is not sacrificing the high-budget
-recovery that v19 bought. The remaining bottleneck is still the 2-step auto
-clock, not the model weights: auto warp gives FID@2 `28.965`, while the
-calibrated budget midpoint `u=0.60` gives `23.942`. Continue v20 under
-two-hour supervision; the next useful intervention should target learnable or
-periodically recalibrated low-budget clocking rather than another generic
-timewarp capacity increase.
-
-The first two-hour v20 supervision window confirms stability but also exposes a
-low-slope plateau. By step2000, budget-policy FID-2048 is
-`45.706 / 23.963 / 21.025 / 19.842 / 20.333`. The endpoint improved another
-`0.14` FID from step250, and 8/16-step quality was preserved or slightly
-improved, so the run is not harmful. However, FID@2 is flat and FID@4 is within
-small-sample noise of step250. The current objective is therefore acting like a
-conservative endpoint-balanced fine-tune, not a strong capability jump. Keep
-v20 alive for one more two-hour window because it is still moving in the right
-direction, but if the next window has the same slope, the next branch should
-increase useful endpoint learning pressure while explicitly protecting
-composition, and should replace the fixed 2-step midpoint with a learned or
-periodically recalibrated low-budget clock.
-
-## 2026-05-02 V20 Acceptance Audit And CTM Gap
-
-The v20 curve is healthy but not a SOTA path by itself. Through step2500,
-budget-policy FID-2048 moved only from
-`45.841 / 23.942 / 21.018 / 19.846 / 20.340` to
-`45.663 / 23.966 / 20.985 / 19.843 / 20.329`. The run is not wasting compute:
-endpoint and 4-step improve slightly while 8/16 are preserved. But the slope is
-too small for the project target `3.20 / 2.84 / 2.62 / 2.50`.
-
-The main limitation is architectural/objective-level, not the RQS warp
-resolution. In this code path, `student_transition(x_t, sigma_t, sigma_s)`
-uses the EDM denoiser once and applies a first-order Euler update; for
-`sigma_s=0`, one-step generation is simply the student denoiser output at
-`sigma_max`. That means the model is being asked to turn pure high-noise
-latents into images with an EDM denoiser interface that was not originally
-trained as a one-step generative transport map.
-
-CTM is different in the decisive places. It trains a two-time-conditioned
-trajectory map `G_theta(x_t, t, s)` with an explicit `s` embedding, a stop-grad
-target model, Heun teacher targets, LPIPS-style consistency loss, and real-data
-DSM with adaptive balancing. The no-GAN CTM result can improve much faster
-because every iteration includes a strong data-manifold denoising objective and
-because the network is parameterized for arbitrary `t -> s` transport. DG-TWFD
-v20 instead uses mostly prior-rollout pixel/perceptual matching plus a very
-small real-data denoise anchor (`0.035`) and a conservative LR (`1e-7`), so it
-behaves like a careful fine-tune around the existing EDM denoiser rather than a
-new one-step generator.
-
-The next real improvement should be a CTM-aligned v21 branch:
-
-1. Add explicit target-time conditioning or a small transition adapter/head so
-   the student can represent `G(x_t, t, s)` directly, instead of deriving every
-   transition from one denoiser output at `t`.
-2. Replace the weak data anchor with CTM-style DSM on real CIFAR-10 noise
-   levels, using adaptive balancing against the consistency loss.
-3. Use a stop-grad EMA target model for consistency targets, not only teacher
-   rollout pixels and direct-vs-bridge self agreement.
-4. Keep RQS timewarp for 4+ steps, but make the low-budget clock learned or
-   periodically recalibrated; the fixed `u=0.60` 2-step node remains a
-   diagnostic workaround, not an algorithmic endpoint.
-
-## Latest Decision Metrics
-
-FID uses 2048 generated samples for the active watcher.
-
-| checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 | decision signal |
-|---|---:|---:|---:|---:|---:|---|
-| e504a step250 baseline | 177.890 | 46.286 | 49.294 | 70.911 | 86.567 | threshold reference |
-| e504a step1250 restored | 135.003 | 44.315 | 52.436 | 81.607 | 96.386 | 1-step improved, multi-step regressed |
-| resume-from1250 step250 | 126.059 | 44.376 | 53.666 | 83.676 | 98.459 | 1-step still improving |
-| resume-from1250 step500 | 117.980 | 44.656 | 54.701 | 85.333 | 100.047 | 1-step improving, composition worsening |
-| resume-from1250 step1750 | 91.325 | 46.693 | 59.096 | 90.190 | 103.199 | endpoint nearly at target, multi-step still regressed |
-
-Primary endpoint target remains `FID@1 <= 88.945`, which is a 50% reduction
-from the e504a step250 baseline. The last endpoint-only checkpoint,
-resume-from1250 step1750, reached `91.325`, close to the endpoint target but
-with worsening multi-step FID. This is why the active track is now full-stack
-composition training rather than more endpoint-only continuation.
-
-## Full-Stack Timewarp Launch
-
-The v11a run started on 2026-04-28 from the endpoint checkpoint at step1750.
-It changes the objective from direct endpoint matching to a full-stack prior
-objective:
-
-- `sigma_max -> sigma_s` is supervised by a one-step teacher transition.
-- `sigma_max -> 0` keeps direct endpoint supervision.
-- `sigma_max -> sigma_s -> 0` is trained against the same high-quality teacher
-  rollout endpoint, so composed inference is no longer only a detached
-  diagnostic.
-- direct-vs-bridge raw defect is used as the timewarp density signal.
-
-Initial training signal is healthy enough to continue the long run:
-
-| follow-up step | loss | match | anchor | bridge | defect | timewarp qmax |
-|---:|---:|---:|---:|---:|---:|---:|
-| 1 | 0.164855 | 0.019213 | 0.026507 | 0.086160 | 0.073551 | 1.0000 |
-| 25 | 0.166869 | 0.068927 | 0.028375 | 0.067120 | 0.059379 | 1.0004 |
-| 50 | 0.157794 | 0.040373 | 0.025856 | 0.072934 | 0.066003 | 1.0008 |
-
-The main interpretation is not that step50 proves image quality yet. It shows
-the full-stack objective is numerically stable, preserves the direct endpoint
-scale, gives bridge/defect a non-trivial signal several orders of magnitude
-larger than the old normalized defect, and successfully starts updating the
-learned timewarp. The first decision-quality image metric should come from the
-step250 learned-warp vs identity-clock evaluation.
-
-The step250 evaluation completed and gives the first decision-quality signal:
-
-| checkpoint / clock | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 |
-|---|---:|---:|---:|---:|---:|
-| prior endpoint step1750 | 91.325 | 46.693 | 59.096 | 90.190 | 103.199 |
-| full-stack v11a step250 auto warp | 91.244 | 38.037 | 47.949 | 77.666 | 92.325 |
-| full-stack v11a step250 identity | 91.244 | 37.970 | 47.877 | 77.568 | 92.277 |
-
-The important result is that full-stack composition training improves the
-multi-step curve while preserving endpoint quality. The timewarp result is not
-yet a learned-warp win: `max_qphi_over_qbase` is only `1.004` at step250, so
-the learned grid is still effectively identity. This is the correct next
-optimization target. The run should continue so defect statistics can create a
-meaningfully non-uniform density; the evaluation watcher is already set to
-compare auto warp against identity again at step500.
-
-The 5-hour supervision window confirms that this was not a transient early
-effect:
-
-| eval step | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 | qmax near window |
-|---:|---:|---:|---:|---:|---:|---:|
-| 1000 | 94.337 | 34.858 | 36.965 | 58.766 | 72.993 | 1.020 |
-| 1750 | 90.969 | 36.391 | 32.514 | 46.440 | 56.961 | 1.035 |
-| 2500 | 87.346 | 38.694 | 32.064 | 39.203 | 46.004 | 1.052 |
-| 3250 | 85.789 | 38.741 | 31.897 | 34.647 | 39.106 | 1.070 |
-| 4000 | 84.491 | 37.870 | 31.609 | 31.562 | 34.770 | 1.086 |
-
-The run later continued to eval step6750 with `76.251 / 36.578 / 30.516 /
-26.536 / 28.459`. The current bottleneck has shifted: full-stack composition
-training is working, but learned timewarp is not uniformly better than identity.
-By step6750, auto warp improves FID@4/8/16 over identity by about
-`1.204/0.414/0.414`, but it worsens FID@2 by about `1.797`. The density is
-moving (`qmax` about `1.13` in the train log), yet it is still too weak and not
-step-budget aware enough. The next useful optimization should target the
-timewarp objective or evaluation schedule, not replace the full-stack student
-training.
-
-The 12-hour v11a run ended normally at train step8878 due `max_seconds`.
-The final evaluated checkpoint is step8750:
-
-| checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 |
-|---|---:|---:|---:|---:|---:|
-| v11a step8750 auto warp | 68.851 | 43.673 | 32.686 | 28.092 | 30.602 |
-| v11a best per column | 68.851 @8750 | 35.051 @1000 | 30.516 @6750 | 26.536 @6750 | 28.459 @6750 |
-
-The final endpoint is much stronger, but late training regresses the 2-step
-and the best multi-step checkpoints. The best all-around composition checkpoint
-is currently step6750, while step8750 is the endpoint-specialized checkpoint.
-The final auto-vs-identity deltas at step8750 are `0.000 / +3.210 / -2.417 /
--0.752 / -0.927`: learned warp is now clearly beneficial for 4/8/16, but
-harmful for 2. This is the strongest evidence so far that a single global
-timewarp density is the wrong abstraction for all step budgets.
-
-Follow-up check at 2026-04-28 14:54 +08:00 confirms that the v11a run and its
-step8750 auto/identity evaluations have finished, and the GPU is idle. This
-turns the active decision from supervision to checkpoint selection and next
-experiment design. The correct interpretation is:
-
-- v11a is a successful full-stack student experiment.
-- v11a is not a sufficient timewarp solution, because its single global density
-  creates a real 2-step regression while helping 4/8/16.
-- step6750 should be preserved as the current best composition checkpoint.
-- step8750 should be preserved as the endpoint-specialized checkpoint.
-- the next main experiment should not be a blind continuation from step8750;
-  it should branch from step6750 when optimizing few-step robustness.
-- the next timewarp experiment should become step-budget aware, either through
-  separate `q_phi_N` schedules or an explicit policy that uses identity/fixed
-  schedule for 2-step and learned warp for 4/8/16.
-
-## v12a Improvement Plan
-
-The next run is `edm_first_cifar10_prior_fullstack_timewarp_v12a_from_step6750`.
-It branches from v11a step6750, because that checkpoint is the best current
-composition checkpoint. The endpoint-specialized step8750 checkpoint is kept as
-an endpoint reference, but should not be the default initialization for
-few-step robustness.
-
-The v12a changes are intentionally narrow:
-
-- Evaluation gains a `budget` warp policy: use identity below
-  `budget_warp_min_steps=4`, and learned warp at 4/8/16. This directly tests
-  the observed fact that learned warp helps 4/8/16 but hurts 2-step.
-- Full-stack training can use `defect_grad_mode: bridge_to_direct`, so the
-  direct endpoint branch is not pulled around by a weaker composed branch.
-  Defect becomes a bridge consistency regularizer rather than a two-way tug.
-- The warp density signal can use `composition_gap`: direct-vs-bridge gap plus
-  teacher bridge error, instead of only raw direct/bridge disagreement. This
-  makes the learned density respond to where composition is actually worse than
-  the direct endpoint.
-- The new timewarp target is flattened with `flatten_mix=0.20` and lower
-  `beta=0.60`, preventing a single global density from over-specializing while
-  budget-aware eval handles the known 2-step conflict.
-- The launch config uses `batch_size=64` so the run can coexist with the
-  independent CTM baseline revalidation without killing or pausing that track.
-
-The success criterion for v12a is not only lower FID@1. The first useful
-outcome is a better policy curve than v11a step6750, especially preserving
-2-step identity behavior while improving or at least holding 4/8/16.
-
-The first v12a milestone at step250 is positive enough to keep running. It was
-evaluated with auto, identity, and budget policy at 2048 samples while the
-independent CTM baseline revalidation was also using the GPU.
-
-| v12a step250 mode | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 |
-|---|---:|---:|---:|---:|---:|
-| auto learned warp | 76.821 | 36.969 | 30.308 | 26.215 | 27.338 |
-| identity | 76.821 | 34.608 | 31.896 | 26.684 | 27.778 |
-| budget policy | 76.821 | 34.608 | 30.308 | 26.215 | 27.338 |
-
-This confirms the diagnosis from v11a: the learned warp is still harmful for
-2-step (`+2.360` FID vs identity), but useful at 4/8/16 (`-1.588/-0.469/-0.440`
-vs identity). The budget policy gives the intended curve by using identity for
-2-step and learned warp from 4-step onward. Compared with the v11a step6750
-auto checkpoint, v12a step250 is already slightly better at 4/8 and clearly
-better at 16, while endpoint is essentially preserved within small-sample FID
-noise. Training should continue; the next decision point is step500 and then
-whether the 4/8/16 gains keep improving without reintroducing 2-step damage.
-
-The step1000 milestone gives a stronger decision signal. It confirms that the
-budget policy is not just a step250 artifact; it is the right inference policy
-for the current single learned density.
-
-| v12a step1000 mode | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 |
-|---|---:|---:|---:|---:|---:|
-| auto learned warp | 74.370 | 39.810 | 30.392 | 26.037 | 27.831 |
-| identity | 74.370 | 35.778 | 32.850 | 26.685 | 28.546 |
-| budget policy | 74.370 | 35.778 | 30.392 | 26.037 | 27.831 |
-
-The learned warp advantage over identity has widened to
-`-2.458/-0.648/-0.715` FID at `4/8/16`, while the auto-warp penalty at 2-step
-has also widened to `+4.032`. This is now a clean separation: timewarp is useful
-for mid/high step budgets, but the low-budget path needs identity or a
-separate learned policy. The endpoint has improved from v12a step250 to
-step1000 (`76.821 -> 74.370`), but 2-step identity also drifted worse
-(`34.608 -> 35.778`). The next iteration should therefore add explicit
-low-step preservation pressure instead of increasing global warp strength.
-
-Supervision through step8250 shows that v12a has split into two useful but
-different checkpoints: late checkpoints are endpoint-specialized, while the
-best policy curve for few-step sampling happened much earlier.
-
-| v12a checkpoint | budget FID@1 | budget FID@2 | budget FID@4 | budget FID@8 | budget FID@16 | interpretation |
-|---:|---:|---:|---:|---:|---:|---|
-| 250 | 76.821 | 34.608 | 30.308 | 26.215 | 27.338 | best 2-step and 16-step |
-| 500 | 75.961 | 34.937 | 30.259 | 26.134 | 27.511 | best 4-step |
-| 1000 | 74.370 | 35.778 | 30.392 | 26.037 | 27.831 | early balanced policy |
-| 2500 | 71.157 | 38.293 | 31.816 | 26.645 | 29.126 | endpoint improves, multi-step drifts |
-| 5000 | 65.810 | 38.450 | 32.753 | 27.039 | 29.217 | drift plateau begins |
-| 8000 | 61.872 | 36.668 | 31.511 | 26.029 | 27.645 | best complete endpoint and 8-step |
-| 8250 | 61.686 | 36.659 | 31.483 | 25.961 | 27.542 | latest complete eval; 8-step improves |
-
-The learned warp itself is still becoming more distinct: by step8250 it helps
-identity by `-2.771/-0.562/-0.869` FID at `4/8/16`, but hurts 2-step by
-`+3.928`. The direction is stable: learned timewarp is genuinely useful for
-mid/high step budgets, while one global density remains wrong for the lowest
-step budget. For a SOTA sprint, the current v12a late checkpoint should be
-treated as an endpoint teacher/reference and a strong 8-step candidate, not as
-the best 2/4-step sampler. The next branch should either start from the early
-multi-step checkpoint family, or distill the late endpoint quality back into
-the early policy curve with explicit 2-step and 4-step preservation.
-
-The external baseline gap is still large. CTM 50k audit on CIFAR-10 reports
-`1.743/1.617/1.830/2.101` at `1/2/4/8`, so v12a is not yet a competitive final
-sampler. Its value for the SOTA sprint is diagnostic: it proves the project can
-learn a non-trivial timewarp advantage over identity at selected budgets, and
-it exposes exactly where the next architecture/objective must become
-budget-conditioned.
-
-## Training Signal Interpretation
-
-As of 2026-04-27 20:50 +08:00, the resumed run is live and has reached step725
-in the train log. The latest logged loss is `0.058607`, with match loss
-`0.030704`, perceptual loss `0.111610`, and normalized defect
-`1.234e-05`. The local minimum is still around step650 (`loss=0.054875`).
-This shows the direct endpoint objective is still optimizing, but there is no
-new milestone FID after step500 yet.
-
-The FID trend is more important than loss here. The loss improvement correlates
-with continued 1-step FID improvement, but it does not improve multi-step
-rollouts. FID@4, FID@8, and FID@16 continue to worsen as the endpoint map gets
-better. That is the key experimental fact.
-
-## Algorithm Diagnosis
-
-The current `prior_endpoint` objective is strongly biased toward direct
-`sigma_max -> 0` endpoint matching:
-
-- The teacher target is `x_u_ref`, generated by an 18-step EDM rollout from
-  pure prior noise to clean output.
-- The student direct output `x_u_direct` is trained against that endpoint with
-  match loss and perceptual loss.
-- In the prior-endpoint path, `x_s_ref` is currently set to `x_u_ref`; there is
-  no separate teacher target for the intermediate sigma point.
-- The bridge path computes `x_s` and `x_u_bridge` under `no_grad`, then uses a
-  small defect penalty between `x_u_direct` and `x_u_bridge.detach()`.
-- The observed normalized defect is around `1e-5`; with `defect_weight: 0.05`,
-  its effective contribution is tiny compared with match and perceptual loss.
-
-This explains the result pattern: the model becomes a better one-step endpoint
-projector, but repeated application of that projector is not trained to compose.
-The multi-step degradation is therefore not surprising and should not be
-treated as a tuning accident.
-
-## Module-Level Readout For Full Stack
-
-- Objective: endpoint matching is doing what it was asked to do, but the
-  current loss does not define a stable semigroup/composition constraint. This
-  is the most important algorithmic blocker before treating the model as a
-  few-step sampler.
-- Defect signal: `norm_defect` stays around `1e-5`, so the weighted defect term
-  is too small to carry schedule learning or bridge correction. It is useful as
-  an instrument, but not yet as a primary training force.
-- Timewarp: the config keeps `timewarp.enabled: false`; current results are an
-  identity-clock endpoint baseline. Learned timewarp should be launched only
-  after the defect source becomes meaningful or as a controlled diagnostic
-  against identity, not as the next main bet by itself.
-- Evaluation: FID@1 is improving, while FID@4/8/16 is worsening. The evaluator
-  is therefore correctly exposing the composition failure; future full-stack
-  experiments must keep `1/2/4/8/16` reporting and identity comparison.
-- Runtime: effective speed is about `17.5s/step` overall, with the latest
-  250-step window around `18.5s/step` during mixed server load. This makes
-  250-step milestone evals the right decision cadence.
-
-## Timewarp Implications
-
-Turning on timewarp alone is unlikely to solve the full problem unless the
-defect signal becomes more meaningful. Current timewarp support can warp the
-sampled intermediate `u_mid` in prior-endpoint mode and update `q_phi` from
-defect, but the defect is weak and indirect. If timewarp learns from this signal
-as-is, it may mostly chase noise or endpoint-projection artifacts rather than a
-true composition difficulty profile.
-
-For the full-stack timewarp experiment, the best direction is:
-
-1. Start from the best no-warp endpoint checkpoint only as initialization.
-2. Add true intermediate supervision, not just endpoint supervision:
-   train `sigma_max -> sigma_s` and `sigma_s -> 0` against teacher-derived
-   intermediate/endpoint targets.
-3. Make the defect term comparable and interpretable after intermediate targets
-   exist; then timewarp can use defect as a meaningful density signal.
-4. Always evaluate learned warp against identity clock at `1/2/4/8/16`; learned
-   warp is useful only if it improves composition, not just 1-step quality.
-5. Keep a step-budget-aware schedule/search baseline in the loop, because the
-   identity Karras grid is currently exposing the composition failure.
-
-User guidance on 2026-04-28 sets the next core goal: the full-stack experiment
-must preserve the endpoint improvement while using match and defect to train
-multi-step robustness. The desired behavior is that increasing the inference
-step budget improves quality instead of degrading it. Timewarp is not an
-optional add-on for this phase; one of the central goals is to demonstrate a
-real learned-timewarp advantage over the identity clock and over fixed
-schedules used during earlier evals.
-
-The implementation implication is:
-
-1. Keep direct endpoint supervision so FID@1 does not regress unnecessarily.
-2. Add real intermediate teacher targets so the student learns both
-   `sigma_max -> sigma_s` and `sigma_s -> 0` transitions.
-3. Make the bridge defect a trainable composition signal, not only a weak
-   detached diagnostic. Defect should expose where direct and composed paths
-   disagree and should drive both student robustness and timewarp density.
-4. Evaluate every milestone with identity and learned timewarp at
-   `1/2/4/8/16`; the success criterion is not just better FID@1, but a curve
-   where additional steps are neutral-to-beneficial.
-5. Treat the learned timewarp schedule as a first-class artifact: save its
-   density, entropy, max-density ratio, and per-bin defect statistics with each
-   checkpoint so its advantage can be explained rather than only observed.
-
-## Runtime And Supervision Notes
-
-The current v12a training is compute-bound rather than memory-bound. During the
-step1000 window the GPU reported about `39GB / 80GB` memory usage but `100%`
-GPU utilization and roughly `385W` power. At the 2026-04-29 00:41 +08:00
-supervision point it still reported about `28.8GB / 80GB` and `100%`
-utilization. The lower memory footprint comes from `batch_size=64`, CIFAR-10
-resolution, and coexistence with independent baseline/eval work; it is not
-evidence that the run is idle. The run is configured for `max_seconds=43200`,
-and every 250-step checkpoint is evaluated with auto, identity, and budget
-policies.
-
-User guidance on 2026-04-27 supersedes the earlier operational assumption:
-the baseline experiment and the main DG-TWFD experiment are independent tracks.
-The baseline is not to be killed, paused, or treated as a main-experiment
-confounder merely because main training/evaluation is active.
-
-The correct baseline policy is:
-
-1. Monitor baseline progress and resource status, but do not terminate baseline
-   processes during normal operation.
-2. Do not use main train/eval activity as a default guard condition for
-   baseline shutdown. `BASELINE_PAUSE_FOR_MAIN_TRAIN` and
-   `BASELINE_PAUSE_FOR_MAIN_EVAL` should default to `0`.
-3. Only intervene in baseline processes if the user explicitly asks, or if
-   there is a concrete hard failure such as OOM, disk exhaustion, or corrupt
-   output that threatens recoverability.
-4. Keep baseline outputs and supervision evidence backed up independently under
-   `/temp/Zhengwei/DG-TWFD-backups/experiment_evidence`.
-
-The baseline guard that was already running before this policy correction may
-still report an older pause flag in `STATUS.txt`. Do not kill that running
-baseline just to refresh local shell variables; let it continue, and rely on the
-corrected defaults for future launches.
-
-## Current Recommendations
-
-1. Treat v12a step10500 as the current best endpoint and budget-policy
-   checkpoint for 1/4/8/16-step evaluation.
-2. Preserve early v12a checkpoints as diagnostics for 2-step identity behavior,
-   but do not treat them as better global checkpoints after the final v12a
-   readout.
-3. Make the next branch explicitly low-step aware: add preservation pressure
-   for 2-step identity, keep 4-step from drifting, and consider a
-   budget-conditioned or per-step warp head instead of one global learned
-   density.
-4. Use v12a step10500 as the v13 initialization, but add a targeted midpoint
-   composition constraint rather than blindly extending the same objective.
-5. Preserve both v11a key checkpoints: step6750 for composition and step8750
-   for endpoint. v12a correctly branched from step6750.
-6. Keep v1.1 project backups active under
-   `/temp/Zhengwei/projects/DG-TWFD/critical`, and keep Codex session backups
-   under `/temp/Zhengwei/projects/DG-TWFD/codex`.
-
-## 2026-04-29 V12a Final Readout And V13 Plan
-
-The v12a run completed naturally at train step10650 after the configured
-12-hour wall-clock limit. The last fully evaluated checkpoint is step10500.
-This changes the earlier step8250 interpretation: late training did not merely
-improve the one-step endpoint. It also produced the best observed learned-warp
-quality at 4, 8, and 16 steps under the budget policy.
-
-Selected v12a FID-2048 checkpoints:
-
-| train step | budget FID@1 | budget FID@2 | budget FID@4 | budget FID@8 | budget FID@16 | auto-minus-identity @2/@4/@8/@16 |
-|---:|---:|---:|---:|---:|---:|---|
-| 250 | 76.821 | 34.608 | 30.308 | 26.215 | 27.338 | +2.360 / -1.588 / -0.469 / -0.440 |
-| 2500 | 71.157 | 38.293 | 31.816 | 26.645 | 29.126 | +5.600 / -3.308 / -0.724 / -0.956 |
-| 8250 | 61.686 | 36.659 | 31.483 | 25.961 | 27.541 | +3.927 / -2.771 / -0.562 / -0.869 |
-| 10500 | 59.246 | 34.881 | 29.997 | 24.914 | 26.055 | +3.391 / -2.351 / -0.486 / -0.779 |
-
-The strongest v12a checkpoint is therefore step10500 for endpoint quality and
-for learned-warp 4/8/16-step quality. The remaining failure mode is sharp and
-diagnostic: the learned global warp is consistently harmful at 2 steps, while
-the identity clock is still best for that budget. The current solution is the
-budget policy, which uses identity below 4 steps and learned warp at 4+ steps.
-That policy is not just an evaluation trick; it reflects a real incompatibility
-between a single global density and different inference budgets.
-
-NeurIPS-level bottleneck assessment:
-
-1. The objective now learns useful composition for moderate budgets, but it
-   under-constrains the exact midpoint composition used by 2-step identity
-   inference. This is the most actionable local bottleneck.
-2. The defect signal is informative for schedule density, not yet a sufficient
-   guarantee of all-budget robustness. A global `q_phi` can improve 4/8/16
-   while degrading 2-step because the loss samples a continuum of midpoints
-   and does not explicitly protect the coarse identity midpoint.
-3. The run is still far from CTM-level SOTA on absolute CIFAR-10 FID, so v12a
-   should be treated as a validated diagnostic/training scaffold rather than a
-   final sampler. The next gain must come from a better training constraint,
-   not only from longer continuation.
-4. Runtime is compute-bound. Extra objective terms must be justified by a clear
-   bottleneck. The next experiment adds only one fixed midpoint preservation
-   branch, targeted at the observed 2-step failure.
-
-V13 is launched from v12a step10500 with a fixed midpoint preservation loss at
-`u=0.5`. It keeps the v12 full-stack losses and learned timewarp, but adds
-explicit pressure that the composed path `sigma_max -> sigma(0.5) -> 0` remains
-close to the teacher endpoint, close to the teacher midpoint, and close to the
-direct student endpoint. The intended acceptance criteria are:
-
-1. Do not regress v12a step10500 budget FID@4/8/16 materially.
-2. Improve or at least stabilize identity/budget FID@2 relative to v12a
-   step10500.
-3. Keep the learned timewarp advantage at 4+ steps negative versus identity.
-4. If the extra fixed-midpoint branch slows progress without improving 2-step,
-   the next direction should be budget-conditioned timewarp or a per-budget
-   schedule head rather than more scalar reweighting.
-
-## 2026-04-29 V13 Seven-Hour Supervision
-
-The v13 midpoint-preservation run is a successful next iteration. It started
-from v12a step10500 and was supervised for seven hourly intervals. At the
-seventh-hour readout, the latest fully evaluated checkpoint is step4250.
-
-Budget-policy FID-2048 progression:
-
-| checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 |
-|---:|---:|---:|---:|---:|---:|
-| v12a step10500 | 59.246 | 34.881 | 29.997 | 24.914 | 26.055 |
-| v13 step750 | 60.328 | 34.884 | 28.808 | 25.844 | 27.343 |
-| v13 step1750 | 59.706 | 34.381 | 28.592 | 25.525 | 27.006 |
-| v13 step3000 | 58.936 | 33.977 | 28.270 | 25.174 | 26.481 |
-| v13 step3500 | 58.631 | 33.702 | 27.831 | 24.820 | 26.032 |
-| v13 step4250 | 58.396 | 33.407 | 27.450 | 24.521 | 25.739 |
-
-This is the first checkpoint family in the current sequence that improves over
-the v12a final checkpoint at every reported budget. The key result is not only
-the lower endpoint FID; it is that explicit midpoint preservation fixed the
-previous 2-step identity/budget weakness while preserving and strengthening the
-learned-timewarp advantage at 4/8/16 steps.
-
-At step4250, learned timewarp is still harmful at 2 steps and beneficial at
-4/8/16: auto-minus-identity is approximately `+2.76 / -1.84 / -0.48 / -0.69`
-for `2/4/8/16`. This validates the budget policy as a necessary inference-time
-adapter: identity remains the right low-step clock, while learned timewarp is
-the right 4+ step clock. The remaining SOTA-facing bottleneck is absolute FID,
-not the local schedule/composition failure that blocked v12a.
-
-Next iteration guidance:
-
-1. Let v13 continue to its time limit while the loss stays stable and the
-   budget curve keeps improving.
-2. Preserve v13 step3500 and step4250 as the first all-budget-improving
-   checkpoints relative to v12a.
-3. For the next code iteration, avoid increasing scalar loss complexity first.
-   The more promising move is budget-conditioned timewarp, because the data
-   repeatedly show that a single global warp cannot serve 2-step and 4+ step
-   inference equally well.
-4. Keep the `u=0.5` preservation branch in the default full-stack recipe until
-   a more explicit per-budget schedule module replaces it.
-
-## 2026-04-29 V13 Plateau Check At Step6000
-
-The post-seven-hour continuation has not entered a confirmed plateau. The
-latest evaluated checkpoint is v13 step6000, with budget-policy FID-2048:
-`57.283 / 32.574 / 26.468 / 23.748 / 24.660` for `1/2/4/8/16`. This is a
-large improvement over v13 step4250 and over v12a step10500.
-
-Recent budget mean over 4/8/16:
-
-| checkpoint | mean FID@4/8/16 |
-|---:|---:|
-| step4750 | 25.559 |
-| step5000 | 25.469 |
-| step5250 | 25.470 |
-| step5500 | 25.244 |
-| step5750 | 25.082 |
-| step6000 | 24.959 |
-
-The step5250 pause was a local fluctuation, not a dead zone: step5500,
-step5750, and step6000 resumed clear improvement. The correct action is to
-continue v13 to the configured time limit while the new plateau guard watches
-for insufficient 4-eval progress. If the guard reports less than `0.05` mean
-FID drop across the last four budget evaluations, the next move should be to
-preserve the best v13 checkpoint and branch into budget-conditioned timewarp
-rather than spend more time on scalar reweighting.
-
-## 2026-04-29 V13 Final Readout And V14 Guarded Continuation
-
-The v13 run completed normally at the configured wall-clock limit. The last
-training log entry is step7828, but the last fully saved and evaluated
-checkpoint is step7750. GPU was idle after completion, so the remaining v13
-eval/hourly watcher sessions were waiting on a step8000 checkpoint that would
-not appear.
-
-Final v13 budget-policy FID-2048:
-
-| checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 | mean FID@4/8/16 |
-|---:|---:|---:|---:|---:|---:|---:|
-| v12a step10500 | 59.246 | 34.881 | 29.997 | 24.914 | 26.055 | 26.989 |
-| v13 step6000 | 57.283 | 32.574 | 26.468 | 23.748 | 24.660 | 24.959 |
-| v13 step7000 | 56.600 | 32.076 | 26.139 | 23.359 | 24.192 | 24.563 |
-| v13 step7500 | 56.598 | 32.080 | 25.978 | 23.255 | 24.013 | 24.415 |
-| v13 step7750 | 56.569 | 32.050 | 26.009 | 23.229 | 23.920 | 24.386 |
-
-The plateau concern is valid but not confirmed. The final one-step interval is
-shallow, and FID@4 locally prefers step7500 by about `0.031`, but the aggregate
-`4/8/16` curve still improves from step7000 through step7750. The run should
-therefore be treated as a lower-slope continuation point, not as a dead end.
-
-Decision:
-
-1. Preserve v13 step7750 as the current best all-around checkpoint; preserve
-   step7500 as the best isolated FID@4 checkpoint.
-2. Do not keep sleeping on the completed v13 watcher stack; that only monitors
-   an idle GPU.
-3. Start v14 from v13 step7750 with a lower LR (`4e-7`), slightly stronger
-   bridge/defect/preserve pressure, the same budget inference policy, and a
-   final-checkpoint evaluation guard. This is less risky than a full
-   budget-conditioned timewarp rewrite while the curve is still descending.
-4. If v14 fails to beat the v13 step7750 `4/8/16` mean after four evaluated
-   checkpoints, the next algorithmic move should be budget-conditioned
-   timewarp/per-budget schedule heads, not further scalar loss tuning.
-
-The code now saves a final checkpoint when the wall-clock limit stops training
-between save intervals, and the eval watcher can evaluate that final checkpoint
-when the train tmux session exits. This directly addresses the v13 issue where
-the final logged step had no evaluable checkpoint.
-
-## 2026-04-29 V14 Two-Hour Supervision
-
-The v14 guarded continuation is not wasting compute. At the first two-hour
-supervision point, training is live around step2400 with GPU utilization at
-100%. The completed budget-policy evaluations through step2000 show that the
-lower-LR guarded continuation improves endpoint, 4-step, 8-step, and 16-step
-quality over v13 step7750, while 2-step remains the main regression to monitor.
-
-Budget-policy FID-2048:
-
-| checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 | mean FID@4/8/16 |
-|---:|---:|---:|---:|---:|---:|---:|
-| v13 step7750 | 56.569 | 32.050 | 26.009 | 23.229 | 23.920 | 24.386 |
-| v14 step250 | 54.536 | 32.688 | 26.370 | 22.262 | 23.803 | 24.145 |
-| v14 step1000 | 54.632 | 32.760 | 26.222 | 22.177 | 23.650 | 24.017 |
-| v14 step1500 | 54.110 | 32.437 | 25.909 | 22.048 | 23.424 | 23.793 |
-| v14 step2000 | 54.443 | 32.592 | 25.773 | 21.996 | 23.361 | 23.710 |
-
-Interpretation: v14 successfully extends the v13 gains and pulls the
-`4/8/16` mean down by about `0.676` FID from the previous best. The persistent
-2-step weakness confirms the earlier diagnosis that low-budget inference needs
-a budget-conditioned schedule or extra low-step preservation; however, because
-the high-budget curve is still descending and the 2-step regression is not
-exploding, the correct action is to continue the current run and reassess on a
-two-hour cadence.
-
-## 2026-04-29 V14 Four-Hour Supervision
-
-The second two-hour checkpoint strengthens the v14 decision. Training is live
-around step4200, GPU utilization remains near 100%, and completed budget
-evaluations through step4000 show continued improvement without a plateau.
-
-Recent v14 budget-policy FID-2048:
-
-| checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 | mean FID@4/8/16 |
-|---:|---:|---:|---:|---:|---:|---:|
-| v14 step2250 | 54.162 | 32.470 | 25.659 | 21.930 | 23.275 | 23.621 |
-| v14 step2750 | 53.886 | 32.336 | 25.532 | 21.823 | 23.176 | 23.510 |
-| v14 step3500 | 53.871 | 32.238 | 25.512 | 21.735 | 23.063 | 23.436 |
-| v14 step4000 | 53.618 | 32.115 | 25.446 | 21.656 | 22.975 | 23.359 |
-
-Relative to v13 step7750, v14 step4000 improves FID@1 by about `2.95`,
-FID@4 by `0.56`, FID@8 by `1.57`, and FID@16 by `0.95`. The 2-step budget
-metric is now only about `0.065` worse than v13, so the early low-step
-regression is mostly recovering. The current action remains continue; do not
-change the objective mid-run while the curve is still descending.
-
-## 2026-04-30 V14 Final Readout And V15 Plan
-
-The v14 guarded continuation completed normally at the 12-hour wall-clock
-limit. The final-checkpoint guard worked: training stopped after step10801,
-that non-interval checkpoint was saved, and the eval watcher evaluated it
-before exiting. GPU was idle after completion.
-
-Best v14 budget-policy FID-2048:
-
-| metric | best checkpoint | value |
-|---|---:|---:|
-| FID@1 | step10000 | 52.296 |
-| FID@2 | step10000 | 31.179 |
-| FID@4 | step10500 | 24.158 |
-| FID@8 | step10750 | 20.665 |
-| FID@16 | step10750 | 21.678 |
-| mean FID@4/8/16 | step10750 | 22.167 |
-| mean FID@2/4/8/16 | step10750 | 24.436 |
-
-The selected handoff checkpoint is v14 step10750, because it is the best
-overall multi-step checkpoint and nearly ties the final checkpoint. Compared
-with v13 step7750, it improves budget FID by about `4.14 / 0.81 / 1.85 /
-2.56 / 2.24` at `1/2/4/8/16`. Learned timewarp remains useful at 4+ steps:
-at step10750 it improves identity by about `0.98 / 0.27 / 0.25` FID at
-`4/8/16`, while budget policy correctly keeps identity for 2-step.
-
-The remaining bottleneck is no longer a collapse or dead zone. It is a slower
-low/mid-budget composition limit: late v14 still improves, but the final
-four-eval mean drop is below the plateau guard threshold. The next run should
-not simply continue the same scalar recipe. V15 branches from v14 step10750,
-lowers LR, and uses multi-midpoint preservation at `u=0.25/0.5/0.75`, aligning
-training pressure with the 4-step identity grid and the learned 4+ step warp
-grid. The acceptance criterion is to beat v14 step10750's `4/8/16` mean while
-not regressing FID@2 beyond the small-sample noise band.
-
-## 2026-04-30 Documentation Audit And V15 Supervision Repair
-
-The core documentation now covers every decision-relevant stage of the main
-experiment:
-
-1. e504a / resume-from1250 established the endpoint target and showed that a
-   pure one-step objective was insufficient for robust multi-step inference.
-2. v11 full-stack timewarp introduced the first combined endpoint, defect,
-   match, bridge, and timewarp training path.
-3. v12a added budget-aware inference selection and clarified that learned
-   timewarp is beneficial at 4+ steps while identity time remains safer at
-   2-step.
-4. v13 added midpoint preservation and turned the previous fragile curve into
-   a stable but lower-slope continuation.
-5. v14 guarded continuation confirmed that the method was still learning:
-   best budget FID-2048 reached `52.424 / 31.240 / 24.159 / 20.665 / 21.678`
-   at `1/2/4/8/16` from step10750.
-6. v15 branches from v14 step10750 and tests whether multi-midpoint
-   preservation at `u=0.25/0.5/0.75` better matches the low/mid-budget
-   composition bottleneck.
-
-Baseline status remains isolated in `BASELINE_STATUS.md` and
-`BASELINE_REPORT_CN.md`; it is not part of the main training process and should
-not be killed during DG-TWFD supervision.
-
-Operational correction: v15 training continued healthily, but the first
-eval/backup/2h watcher stack exited after the step750 budget evaluation. This
-was corrected by rerunning the v15 launcher, which reused the live training
-session and restarted `v15_fullstack_tw_eval_watch`, `v15_fullstack_tw_backup`,
-and `v15_fullstack_tw_2h`.
-
-Early v15 signal is positive enough to continue. At step750, budget FID-2048 is
-`51.139 / 30.423 / 22.619 / 20.851 / 21.306` at `1/2/4/8/16`, already beating
-the v14 step10750 handoff at `1/2/4/16` and nearly tying 8-step. The learned
-warp remains beneficial at 4+ steps, while budget policy keeps 2-step on the
-identity clock. The current risk is not wasted training compute; it is making
-sure the restarted eval watcher catches up from the live checkpoint stream.
-The project backup watcher was also changed to keep checkpoint backups bounded
-and to avoid syncing regenerable eval tensors by default; metrics, reports, and
-fixed-seed preview images remain backed up.
-
-## 2026-04-30 V15 Step10000 Positive Signal
-
-The restarted eval watcher has caught up to a decision-relevant checkpoint.
-V15 step10000 budget-policy FID-2048 is:
-
-| checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 | mean FID@4/8/16 |
-|---:|---:|---:|---:|---:|---:|---:|
-| v14 step10750 | 52.424 | 31.240 | 24.159 | 20.665 | 21.678 | 22.167 |
-| v15 step750 | 51.139 | 30.423 | 22.619 | 20.851 | 21.306 | 21.592 |
-| v15 step10000 | 49.361 | 29.519 | 21.479 | 20.008 | 20.355 | 20.614 |
-
-This is the strongest evidence so far that multi-midpoint preservation is
-solving the low/mid-budget composition bottleneck rather than merely extending
-v14. Relative to the v14 handoff, v15 step10000 improves FID by about
-`3.06 / 1.72 / 2.68 / 0.66 / 1.32` at `1/2/4/8/16`, and improves the
-`4/8/16` mean by about `1.55`.
-
-The timewarp-specific readout still supports the budget policy: learned warp
-improves identity by about `0.83 / 0.17 / 0.12` at `4/8/16`, while auto warp
-is still worse than identity at 2-step by about `1.56`. The correct inference
-path remains identity for 1/2-step and learned timewarp for 4+ steps.
-
-## 2026-05-01 V15 Final Readout
-
-V15 completed normally at the wall-clock limit. The final checkpoint guard
-saved and evaluated step11855, and the eval watcher completed auto, identity,
-and budget comparisons before exiting.
-
-Budget-policy FID-2048:
-
-| checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 | mean FID@4/8/16 | mean FID@2/4/8/16 |
-|---:|---:|---:|---:|---:|---:|---:|---:|
-| v14 step10750 | 52.424 | 31.240 | 24.159 | 20.665 | 21.678 | 22.167 | 24.436 |
-| v15 step10000 | 49.361 | 29.519 | 21.479 | 20.008 | 20.355 | 20.614 | 22.840 |
-| v15 step11500 | 49.226 | 29.474 | 21.394 | 19.924 | 20.288 | 20.535 | 22.770 |
-| v15 step11855 | 49.281 | 29.528 | 21.398 | 19.902 | 20.279 | 20.526 | 22.777 |
-
-Best selections:
-
-1. Use step11855 as the best high-budget checkpoint, because it has the best
-   `4/8/16` mean and best FID@8/FID@16.
-2. Keep step11500 as the best balanced checkpoint, because it has the best
-   `2/4/8/16` mean and the best FID@1/FID@2/FID@4.
-
-Interpretation: v15 is a real algorithmic improvement, not just a longer v14
-continuation. Relative to v14 step10750, the final high-budget checkpoint
-improves the `4/8/16` mean by about `1.64` FID and the balanced mean by about
-`1.66`. The late curve is now near a plateau: from step11500 to step11855,
-FID@8 and FID@16 still improve, but FID@1/FID@2/FID@4 regress slightly. The
-next compute should therefore not be another plain lower-LR continuation.
-
-The next reliable step is a stronger validation pass on the two preserved
-checkpoints, followed by a v16 design that explicitly addresses the remaining
-budget split: identity remains best for 2-step, learned timewarp remains best
-for 4+ steps, and the objective should learn this budget dependence rather than
-expecting a single scalar continuation to improve all budgets simultaneously.
+  `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_v21_ctm_aligned.yaml`
+- Source checkpoint:
+  `runs/edm_first_cifar10_prior_fullstack_timewarp_v20_endpoint_balanced_from_v19_step7106/checkpoints/step3292.pt`
+- 核心改动：
+  1. 在 EDM student 外加入 `TimeConditionedTransitionAdapter`，让 `student_transition`
+     显式依赖 `sigma_s`，从“denoiser + Euler”推进为可学习的 `t -> s` 转移。
+  2. 保留 pretrained EDM base 的低学习率，同时给 transition adapter 更高学习率。
+  3. 将 real-data DSM 从弱 anchor 提升为有效训练信号。
+  4. 增加 real-data transition loss，直接训练真实 CIFAR-10 噪声态到中间态/endpoint。
+  5. 保留 RQS timewarp 与 2-step `u=0.60` budget policy，用于组合采样对照。
+
+验收标准：v21 必须显著改善 v20 的 FID@1/FID@4，且后续训练要回收初期 8/16
+步退化；如果 8/16 长时间不回收，说明 CTM-style 数据信号过强而 composition
+保护不足，需要调低 data transition 或加强 preservation。
+
+## 关键结果表
+
+FID 为在线 FID-2048，使用 budget policy 时 2-step 固定 `u=0.60`，4+ step 使用
+learned RQS warp。
+
+| 阶段 | 关键 checkpoint | FID@1 | FID@2 | FID@4 | FID@8 | FID@16 | 决策含义 |
+|---|---|---:|---:|---:|---:|---:|---|
+| e504a baseline | step250 | 177.890 | 46.286 | 49.294 | 70.911 | 86.567 | endpoint 很弱，composition 也差 |
+| EDM-first endpoint | resume step1750 | 91.325 | 46.693 | 59.096 | 90.190 | 103.199 | endpoint 快速改善，但多步严重退化 |
+| v11 full-stack | step8750 / best comp | 68.851 | 35.051 | 30.516 | 26.536 | 28.459 | full-stack 有效，但 timewarp 不稳 |
+| v12a budget policy | step10500 | 59.246 | 34.881 | 29.997 | 24.914 | 26.055 | budget policy 明确：2-step 不宜用 learned warp |
+| v13 midpoint preserve | step7750 | 56.569 | 32.050 | 26.009 | 23.229 | 23.920 | midpoint preservation 修复低/中步组合 |
+| v14 guarded cont. | step10750 | 52.424 | 31.240 | 24.159 | 20.665 | 21.678 | 高步数大幅改善，2-step 仍慢 |
+| v15 multi-mid | step11855 | 49.281 | 29.528 | 21.398 | 19.902 | 20.279 | multi-midpoint 是真实算法增益 |
+| v17 RQS warp | step9750 | 48.841 | 24.310 | 21.112 | 19.899 | 19.657 | RQS 对 4+ step 有效；2-step 需 budget clock |
+| v18 endpoint EMA | step4684 | 44.325 | 25.580 | 21.097 | 20.325 | 21.273 | EMA/real-data anchor 强化 endpoint，但损伤 8/16 |
+| v19 recovery | step7106 | 46.795 | 23.945 | 20.821 | 20.041 | 20.578 | 回收 8/16 与最佳 2-step，但 endpoint 回退 |
+| v20 endpoint-balanced | step3000 | 45.614 | 23.977 | 20.958 | 19.845 | 20.334 | 稳定微调，斜率太小 |
+| v21 CTM-aligned | step250 | 44.830 | 24.020 | 20.799 | 20.241 | 20.602 | endpoint/4-step 立刻改善，8/16 初期受扰动 |
+| v21 CTM-aligned | step500 | 44.971 | 24.044 | 20.811 | 20.206 | 20.589 | 1/4 优于 v20，8/16 开始轻微回收 |
+
+## 实验演化脉络
+
+1. **e504a / resume-from1250**  
+   目标是先证明一阶 endpoint 可以被训练。结果显示 FID@1 从 177.890 降到
+   91.325，但多步组合快速恶化，说明单纯 endpoint matching 会破坏 semigroup
+   consistency。
+
+2. **v11-v12a full-stack/timewarp**  
+   引入 endpoint、match、defect、bridge 与 learned timewarp。主要收获不是
+   SOTA，而是确认了 budget-dependent clock：2-step 更适合 identity/fixed
+   midpoint，4+ step 才从 learned warp 获益。
+
+3. **v13-v15 midpoint preservation**  
+   中间点 preservation 是第一类稳定有效的算法改进。它把模型从 endpoint-only
+   拉回可组合的 trajectory family，v15 将 4/8/16 推到约 20-21 区间。
+
+4. **v16-v17 RQS timewarp**  
+   piecewise density warp 表达力不足，RQS 增加了连续单调曲率。结论是 RQS
+   对 4+ step 有稳定正增益，但无法解决 FID@1，也无法自动解决 2-step。
+
+5. **v18-v20 endpoint 与 recovery**  
+   EMA 和 real-data denoise anchor 能明显改善 FID@1，但 endpoint-only 会损伤
+   8/16。v19/v20 证明可以回收 composition，但保守微调的学习斜率太小。
+
+6. **v21 CTM-aligned**  
+   当前核心判断：DG-TWFD 与 CTM 的 loss 形态接近，都是 match +
+   semigroup/trajectory consistency；但此前模型参数化仍是 EDM denoiser +
+   Euler。v21 开始补上 CTM 的关键条件：显式 `s` 条件、真实数据 DSM、真实数据
+   transition。
+
+## 当前瓶颈诊断
+
+### 1. FID@1 的主瓶颈是参数化，不是 timewarp
+
+旧 `student_transition(x_t, sigma_t, sigma_s)` 本质是：
+
+1. student 只看 `x_t, sigma_t`，输出 denoised image；
+2. 代码用 Euler 公式把它外推到 `sigma_s`。
+
+当 `sigma_s=0` 时，单步生成几乎就是高噪声 EDM denoiser 的一次输出。EDM
+teacher 原本服务于多步 ODE/SDE，不是直接学习 one-step transport map。因此
+只改 warp、bin 数、RQS 曲率，都不能根本解决 FID@1。
+
+### 2. CTM no-GAN 快速到 FID<10 的原因
+
+CTM 的关键优势不是 GAN，而是训练范式：
+
+- 模型显式接收 `t` 和 `s`，学习 `G_theta(x_t, t, s)`；
+- 使用 stop-grad target model 形成稳定 consistency target；
+- 用 Heun teacher target 对齐 trajectory；
+- real-data DSM 是主训练信号，并用 adaptive balance 与 consistency loss 协调；
+- CIFAR 训练学习率和 batch 都明显更强。
+
+v20 之前 DG-TWFD 的 real-data anchor 权重只有 `0.035`，主要仍在做 prior rollout
+pixel/perceptual matching，所以表现为保守 fine-tune，而不是能力跃迁。
+
+### 3. v21 早期正负信号
+
+正信号：
+
+- step250 FID@1 从 v20 step3000 的 45.614 降到 44.830；
+- FID@4 从 20.958 降到 20.799；
+- 训练 loss 无爆炸，GPU 占用约 45-48GB，eval 可并行。
+
+风险：
+
+- 8/16 从 v20 的 19.845/20.334 退到 20.241/20.602；
+- step500 FID@1 比 step250 回弹到 44.971，说明 adapter/DSM 的早期更新
+  可能在 endpoint 与 composition 间拉扯；但 8/16 已从 step250 的
+  20.241/20.602 轻微回收到 20.206/20.589；
+- auto 2-step 继续错误，必须看 budget policy，不应报告 auto-2。
+
+当前判断：v21 的方向是对的，因为它第一次在很早步数就显著拉动 endpoint；
+但 loss 配比还没有完成，后续监督重点是 8/16 是否回收。
+
+## 下一步监督规则
+
+1. 继续运行 v21，并每两小时检查 budget FID@1/2/4/8/16。
+2. 如果 FID@1 持续下降且 8/16 回收，保持 v21。
+3. 如果 FID@1 下降但 8/16 不回收，开启 v21b：
+   - 降低 `data_transition_weight` 或 endpoint probability；
+   - 提高 preserve bridge / preserve perceptual；
+   - 或让 adapter 只在 low-NFE 训练阶段生效，high-NFE composition 主要更新 base。
+4. 如果 FID@1 停滞，下一步不是再加 timewarp，而是更接近 CTM：
+   - stop-grad EMA target model；
+   - adaptive DSM/consistency balance；
+   - 更强的 `s` 条件注入，而不是小 residual adapter。
+
+## Artifact 索引
+
+- v21 config:
+  `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_v21_ctm_aligned.yaml`
+- v21 launcher:
+  `experiments/edm_first/scripts/launch_prior_fullstack_timewarp_v21_ctm_aligned.sh`
+- v21 run:
+  `runs/edm_first_cifar10_prior_fullstack_timewarp_v21_ctm_aligned_from_v20_step3292`
+- v21 eval:
+  `eval/edm_first_cifar10_prior_fullstack_timewarp_v21_ctm_aligned_from_v20_step3292_step*`
+- temp project backup:
+  `/temp/Zhengwei/projects/DG-TWFD/`
+
+## 操作原则
+
+- baseline 和 DG-TWFD 主实验互不冲突，不杀 baseline。
+- 大 checkpoint 只保留关键节点；日志、eval reports、分析文档保留。
+- 每次关键代码/文档变更必须 git commit/push，并执行
+  `bash scripts/server/backup_codex_project_v11.sh DG-TWFD`。
