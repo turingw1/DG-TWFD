@@ -134,6 +134,51 @@ docs/experiments/DG_TWFD_v3/figures/qualitative/class_locked_samples/imagenet64_
 Qualitative samples under 1, 2, 4, and 8 sampling steps test low-step class preservation and visual coherence. Rows use matched class labels and initial noise seeds for class-conditional methods; unconditional CIFAR-10 consistency checkpoints are marked as seed-only references.
 ```
 
+## Diversity Holdout Panels 2026-05-03
+
+这版是在不改变任何生成采样逻辑的前提下新增的定性多样性图。它只复用已经生成好的样本 PNG 进行 image-only 拼接，用于补充主文 Fig. 3 之外的 class/seed pairs。拼图规则是先按 native sample pixels 组装 grid，再对整张 grid 做 nearest-neighbor 放大导出 PDF/PNG；不对单张样本逐个插值，也不在 bitmap/PDF 里写入模型名、类别名或步数标签。
+
+输出目录：
+
+```text
+docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/
+├── main_text/cifar10_diversity_main.pdf
+├── main_text/cifar10_diversity_main.png
+├── main_text/imagenet64_diversity_main.pdf
+├── main_text/imagenet64_diversity_main.png
+├── per_sample/cifar10/*.pdf
+├── per_sample/cifar10/*.png
+├── per_sample/imagenet64/*.pdf
+├── per_sample/imagenet64/*.png
+├── caption.txt
+└── manifest.json
+```
+
+选择规则：
+
+| Dataset | Excluded current Fig. 3 pairs | Diversity holdout pairs |
+|---|---|---|
+| CIFAR-10 | airplane / automobile / cat / truck | horse seed1007, ship seed1008, bird seed1002, deer seed1004 |
+| ImageNet64 | class 0022 / 0207 / 0407 / 0701 | class 0281 cat-like seed33, class 0817 sports car seed35, class 0444 object seed37, class 0008 bird-detail seed38 |
+
+导出标准：
+
+| Item | Value |
+|---|---|
+| Script | `scripts/figures/build_neurips_qualitative_diversity_panels.py` |
+| Sampling | no model sampling; assembly-only from existing sample PNGs |
+| Display steps | `1 / 2 / 4 / 8` |
+| CIFAR main export | native `512x224`, exported `3072x1344` |
+| ImageNet64 main export | native `1024x384`, exported `4096x1536` |
+| CIFAR per-sample export | native `128x224`, exported `1024x1792` |
+| ImageNet64 per-sample export | native `256x384`, exported `1024x1536` |
+| Text | no rendered text; labels must be added separately as vector text |
+| Row locking | recorded in `manifest.json`; CIFAR OpenAI JAX rows remain seed-only |
+
+Row order is identical to the current NeurIPS qualitative layout. CIFAR-10 rows are `DG-TWFD full` as EDM 32/64/96/128 proxy, `DG-TWFD identity`, CTM official, CTM no-GAN DSM 10k, CD-LPIPS JAX, CD-L2 JAX, CT-LPIPS JAX. ImageNet64 rows are `DG-TWFD full` as EDM 32/64/96/128 proxy, `DG-TWFD identity` as EDM 4/10/18/30 proxy, CD-LPIPS, CD-L2, CT, and CTM official.
+
+Important caveats remain unchanged: the CIFAR-10 JAX consistency checkpoints are unconditional seed-only references, and the ImageNet64 DG-TWFD rows are EDM proxies because no ImageNet64 DG-TWFD checkpoint is currently available.
+
 ## Previous Paper Panels Row Log
 
 这部分是当前 PDF 的严格行解释，不是候选模型列表。CIFAR-10 当前有 7 行；ImageNet64 当前有 6 行。每一行都用“展示行名（实际使用的生成模型和参数）”记录，避免把已生成图片和待定候选 baseline 混在一起。

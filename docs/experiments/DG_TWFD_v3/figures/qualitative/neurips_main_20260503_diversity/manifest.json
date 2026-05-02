@@ -1,0 +1,420 @@
+{
+  "purpose": "Additional diversity qualitative panels using holdout class/seed pairs.",
+  "image_only": true,
+  "rendered_text": false,
+  "sampling_logic_changed": false,
+  "native_assembly_before_export": true,
+  "display_steps": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "selection_rule": "Use the four preselected holdout pairs not used by the current Fig. 3 main panel. CIFAR excludes airplane/car/cat/truck; ImageNet64 excludes 0022/0207/0407/0701. The holdout set was chosen for semantic diversity and inspection value rather than after cherry-picking model outputs.",
+  "current_fig3_excluded": {
+    "cifar10": [
+      "airplane",
+      "automobile",
+      "cat",
+      "truck"
+    ],
+    "imagenet64_class_ids": [
+      22,
+      207,
+      407,
+      701
+    ]
+  },
+  "diversity_indices": {
+    "cifar10": [
+      3,
+      4,
+      6,
+      7
+    ],
+    "imagenet64": [
+      2,
+      4,
+      6,
+      7
+    ]
+  },
+  "samples": {
+    "cifar10": [
+      {
+        "class_id": 7,
+        "class_name": "horse",
+        "short_name": "horse",
+        "seed": 1007
+      },
+      {
+        "class_id": 8,
+        "class_name": "ship",
+        "short_name": "ship",
+        "seed": 1008
+      },
+      {
+        "class_id": 2,
+        "class_name": "bird",
+        "short_name": "bird",
+        "seed": 1002
+      },
+      {
+        "class_id": 4,
+        "class_name": "deer",
+        "short_name": "deer",
+        "seed": 1004
+      }
+    ],
+    "imagenet64": [
+      {
+        "class_id": 281,
+        "class_name": "cat-like",
+        "short_name": "cat",
+        "seed": 33
+      },
+      {
+        "class_id": 817,
+        "class_name": "sports car",
+        "short_name": "car",
+        "seed": 35
+      },
+      {
+        "class_id": 444,
+        "class_name": "object",
+        "short_name": "object",
+        "seed": 37
+      },
+      {
+        "class_id": 8,
+        "class_name": "bird detail",
+        "short_name": "bird2",
+        "seed": 38
+      }
+    ]
+  },
+  "rows": {
+    "cifar10": [
+      "DG-TWFD full",
+      "DG-TWFD identity",
+      "CTM official CIFAR-10 conditional",
+      "CTM no-GAN DSM 10k",
+      "CD-LPIPS CIFAR-10 JAX",
+      "CD-L2 CIFAR-10 JAX",
+      "CT-LPIPS CIFAR-10 JAX"
+    ],
+    "imagenet64": [
+      "DG-TWFD full",
+      "DG-TWFD identity",
+      "CD-LPIPS ImageNet64",
+      "CD-L2 ImageNet64",
+      "CT ImageNet64",
+      "CTM ImageNet64 official"
+    ]
+  },
+  "row_locking": {
+    "cifar10": {
+      "DG-TWFD full": "class-locked proxy",
+      "DG-TWFD identity": "class-locked",
+      "CTM official CIFAR-10 conditional": "class-locked",
+      "CTM no-GAN DSM 10k": "class-locked",
+      "CD-LPIPS CIFAR-10 JAX": "seed-only",
+      "CD-L2 CIFAR-10 JAX": "seed-only",
+      "CT-LPIPS CIFAR-10 JAX": "seed-only"
+    },
+    "imagenet64": {
+      "DG-TWFD full": "class-locked proxy",
+      "DG-TWFD identity": "class-locked proxy",
+      "CD-LPIPS ImageNet64": "class-locked",
+      "CD-L2 ImageNet64": "class-locked",
+      "CT ImageNet64": "class-locked",
+      "CTM ImageNet64 official": "class-locked"
+    }
+  },
+  "row_sources": {
+    "cifar10": [
+      {
+        "display": "DG-TWFD full",
+        "sample_row": "edm_cifar10_cond_vp_32_64_96_128",
+        "source_root": "cifar10_neurips_main_20260502"
+      },
+      {
+        "display": "DG-TWFD identity",
+        "sample_row": "dg_twfd_identity_same_checkpoint",
+        "source_root": "cifar10_neurips_main_20260502"
+      },
+      {
+        "display": "CTM official CIFAR-10 conditional",
+        "sample_row": "ctm_official_cond",
+        "source_root": "cifar10_neurips_main_20260502"
+      },
+      {
+        "display": "CTM no-GAN DSM 10k",
+        "sample_row": "ctm_nogan_dsm_10k",
+        "source_root": "cifar10_neurips_main_20260502"
+      },
+      {
+        "display": "CD-LPIPS CIFAR-10 JAX",
+        "sample_row": "cd_lpips_cifar10_jax",
+        "source_root": "cifar10_20260502_paper"
+      },
+      {
+        "display": "CD-L2 CIFAR-10 JAX",
+        "sample_row": "cd_l2_cifar10_jax",
+        "source_root": "cifar10_20260502_paper"
+      },
+      {
+        "display": "CT-LPIPS CIFAR-10 JAX",
+        "sample_row": "ct_lpips_cifar10_jax",
+        "source_root": "cifar10_20260502_paper"
+      }
+    ],
+    "imagenet64": [
+      {
+        "display": "DG-TWFD full",
+        "sample_row": "edm_imagenet64_cond_adm_32_64_96_128",
+        "source_root": "imagenet64_neurips_main_20260502_identity_4_10_18_30"
+      },
+      {
+        "display": "DG-TWFD identity",
+        "sample_row": "edm_imagenet64_identity_proxy_4_10_18_30",
+        "source_root": "imagenet64_neurips_main_20260502_identity_4_10_18_30"
+      },
+      {
+        "display": "CD-LPIPS ImageNet64",
+        "sample_row": "cd_lpips_imagenet64",
+        "source_root": "imagenet64_neurips_main_20260502_identity_4_10_18_30"
+      },
+      {
+        "display": "CD-L2 ImageNet64",
+        "sample_row": "cd_l2_imagenet64",
+        "source_root": "imagenet64_neurips_main_20260502_identity_4_10_18_30"
+      },
+      {
+        "display": "CT ImageNet64",
+        "sample_row": "ct_imagenet64",
+        "source_root": "imagenet64_neurips_main_20260502_identity_4_10_18_30"
+      },
+      {
+        "display": "CTM ImageNet64 official",
+        "sample_row": "ctm_imagenet64_official",
+        "source_root": "imagenet64_neurips_main_20260502_identity_4_10_18_30"
+      }
+    ]
+  },
+  "actual_proxy_steps": {
+    "dg_twfd_full_edm_proxy": {
+      "1": 32,
+      "2": 64,
+      "4": 96,
+      "8": 128
+    },
+    "imagenet64_identity_edm_proxy": {
+      "1": 4,
+      "2": 10,
+      "4": 18,
+      "8": 30
+    }
+  },
+  "caveats": [
+    "CIFAR-10 OpenAI JAX consistency checkpoints are unconditional and seed-only.",
+    "DG-TWFD full display rows use EDM 32/64/96/128-step proxy samples by request.",
+    "ImageNet64 DG-TWFD identity is also an EDM proxy because no ImageNet64 DG-TWFD checkpoint is available."
+  ],
+  "outputs": {
+    "main_text": {
+      "cifar10": {
+        "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/main_text/cifar10_diversity_main.pdf",
+        "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/main_text/cifar10_diversity_main.png",
+        "native_size": [
+          512,
+          224
+        ],
+        "export_size": [
+          3072,
+          1344
+        ],
+        "export_scale_after_native_assembly": 6
+      },
+      "imagenet64": {
+        "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/main_text/imagenet64_diversity_main.pdf",
+        "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/main_text/imagenet64_diversity_main.png",
+        "native_size": [
+          1024,
+          384
+        ],
+        "export_size": [
+          4096,
+          1536
+        ],
+        "export_scale_after_native_assembly": 4
+      }
+    },
+    "per_sample": {
+      "cifar10": [
+        {
+          "sample_index": 3,
+          "sample": {
+            "class_id": 7,
+            "class_name": "horse",
+            "short_name": "horse",
+            "seed": 1007
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/per_sample/cifar10/cifar10_03_class0007_horse_seed1007.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/per_sample/cifar10/cifar10_03_class0007_horse_seed1007.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample_index": 4,
+          "sample": {
+            "class_id": 8,
+            "class_name": "ship",
+            "short_name": "ship",
+            "seed": 1008
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/per_sample/cifar10/cifar10_04_class0008_ship_seed1008.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/per_sample/cifar10/cifar10_04_class0008_ship_seed1008.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample_index": 6,
+          "sample": {
+            "class_id": 2,
+            "class_name": "bird",
+            "short_name": "bird",
+            "seed": 1002
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/per_sample/cifar10/cifar10_06_class0002_bird_seed1002.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/per_sample/cifar10/cifar10_06_class0002_bird_seed1002.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        },
+        {
+          "sample_index": 7,
+          "sample": {
+            "class_id": 4,
+            "class_name": "deer",
+            "short_name": "deer",
+            "seed": 1004
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/per_sample/cifar10/cifar10_07_class0004_deer_seed1004.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/per_sample/cifar10/cifar10_07_class0004_deer_seed1004.png",
+          "native_size": [
+            128,
+            224
+          ],
+          "export_size": [
+            1024,
+            1792
+          ],
+          "export_scale_after_native_assembly": 8
+        }
+      ],
+      "imagenet64": [
+        {
+          "sample_index": 2,
+          "sample": {
+            "class_id": 281,
+            "class_name": "cat-like",
+            "short_name": "cat",
+            "seed": 33
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/per_sample/imagenet64/imagenet64_02_class0281_cat_seed0033.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/per_sample/imagenet64/imagenet64_02_class0281_cat_seed0033.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample_index": 4,
+          "sample": {
+            "class_id": 817,
+            "class_name": "sports car",
+            "short_name": "car",
+            "seed": 35
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/per_sample/imagenet64/imagenet64_04_class0817_car_seed0035.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/per_sample/imagenet64/imagenet64_04_class0817_car_seed0035.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample_index": 6,
+          "sample": {
+            "class_id": 444,
+            "class_name": "object",
+            "short_name": "object",
+            "seed": 37
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/per_sample/imagenet64/imagenet64_06_class0444_object_seed0037.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/per_sample/imagenet64/imagenet64_06_class0444_object_seed0037.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        },
+        {
+          "sample_index": 7,
+          "sample": {
+            "class_id": 8,
+            "class_name": "bird detail",
+            "short_name": "bird2",
+            "seed": 38
+          },
+          "pdf": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/per_sample/imagenet64/imagenet64_07_class0008_bird2_seed0038.pdf",
+          "png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_main_20260503_diversity/per_sample/imagenet64/imagenet64_07_class0008_bird2_seed0038.png",
+          "native_size": [
+            256,
+            384
+          ],
+          "export_size": [
+            1024,
+            1536
+          ],
+          "export_scale_after_native_assembly": 4
+        }
+      ]
+    }
+  }
+}

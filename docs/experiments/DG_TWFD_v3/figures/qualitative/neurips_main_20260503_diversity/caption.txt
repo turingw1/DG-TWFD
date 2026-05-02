@@ -1,0 +1,1 @@
+Additional qualitative holdout panels use class/seed pairs not shown in the main Fig. 3 panel. All bitmaps are image-only; labels should be typeset separately as vector text.\n
