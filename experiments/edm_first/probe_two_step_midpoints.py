@@ -73,7 +73,7 @@ def main() -> None:
         torch.set_float32_matmul_precision("high")
 
     teacher = load_edm_network(cfg["paths"]["network"], device=device, use_fp16=False)
-    student = clone_student_from_teacher(teacher).to(device)
+    student = clone_student_from_teacher(teacher, cfg=cfg).to(device)
     ckpt = torch.load(args.checkpoint, map_location=device)
     student.load_state_dict(ckpt["student"])
     student.eval().requires_grad_(False)

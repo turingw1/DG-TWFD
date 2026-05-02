@@ -1,0 +1,114 @@
+experiment:
+  name: cifar10_edm_map_prior_fullstack_timewarp_v21_ctm_aligned
+
+paths:
+  data_root: ${DATA_ROOT:-datasets}/cifar10
+  network: ${EDM_CIFAR10_NETWORK:-https://nvlabs-fi-cdn.nvidia.com/edm/pretrained/edm-cifar10-32x32-cond-vp.pkl}
+  fid_stats: ${DATA_ROOT:-datasets}/cifar10/.dgfm_cache/fid_stats_cifar10_test_32_torch_fidelity_inceptionv3_2048.npz
+
+runtime:
+  device: cuda
+  amp: false
+  seed: 59
+
+teacher:
+  use_fp16: false
+  rollout_steps: 18
+
+transition_adapter:
+  enabled: true
+  hidden_channels: 64
+  strength: 0.35
+  zero_init: true
+
+train:
+  objective: prior_fullstack
+  resume_optimizer: false
+  resume_step: false
+  resume_warp: true
+  ignore_incompatible_warp_resume: true
+  resume_student_key: student_ema
+  resume_ema: true
+  max_steps: 100000
+  max_seconds: 28800
+  batch_size: 32
+  num_workers: 0
+  lr: 3.0e-7
+  transition_adapter_lr: 3.0e-5
+  weight_decay: 0.0
+  transition_adapter_weight_decay: 0.0
+  log_every: 25
+  save_every: 250
+  endpoint_weight: 1.15
+  match_weight: 0.70
+  bridge_weight: 0.95
+  defect_weight: 0.22
+  defect_grad_mode: bridge_to_direct
+  perceptual_weight: 0.20
+  bridge_perceptual_weight: 0.40
+  perceptual_levels: 3
+  preserve_mid_u_values: [0.25, 0.5, 0.75]
+  preserve_bridge_weight: 0.50
+  preserve_match_weight: 0.10
+  preserve_defect_weight: 0.10
+  preserve_perceptual_weight: 0.035
+  data_denoise_weight: 0.35
+  data_denoise_adaptive: false
+  data_denoise_u_low: 0.20
+  data_denoise_u_high: 0.98
+  data_denoise_normalize: false
+  data_transition_weight: 0.85
+  data_transition_adaptive: false
+  data_transition_u_low: 0.02
+  data_transition_u_high: 0.92
+  data_transition_min_delta_u: 0.05
+  data_transition_endpoint_prob: 0.65
+  data_transition_normalize: true
+  data_adaptive_min_scale: 0.25
+  data_adaptive_max_scale: 4.0
+  ema_enabled: true
+  ema_decay: 0.995
+  ema_update_every: 10
+  ema_device: cpu
+  warp_defect_signal: composition_gap
+  warp_composition_gap_weight: 2.0
+  warp_bridge_error_weight: 0.25
+  prior_mid_u_low: 0.05
+  prior_mid_u_high: 0.95
+  sigma_data: 0.5
+  sigma_min: 0.002
+  sigma_max: 80.0
+  rho: 7.0
+
+timewarp:
+  enabled: true
+  type: rational_quadratic_spline
+  num_bins: 96
+  init: uniform
+  min_bin_mass: 1.0e-4
+  min_derivative: 1.0e-3
+  inverse_iters: 36
+  center_kl_weight: 0.60
+  derivative_smoothness_weight: 0.001
+  lr: 2.0e-4
+  inner_steps: 4
+  update_every: 10
+  ema_mu: 0.990
+  beta: 0.70
+  ratio_cap: 4.0
+  flatten_mix: 0.10
+  curvature_weight: 0.0
+  hf_weight: 0.0
+  budget_warp_min_steps: 4
+
+eval:
+  steps: [1, 2, 4, 8, 16]
+  use_ema: true
+  num_fid_samples: 4096
+  fid_batch_size: 32
+  sample_batch_size: 64
+  fixed_grid_size: 64
+  fixed_seed: 59
+  budget_warp_min_steps: 4
+  budget_fixed_u_grids:
+    2: [0.0, 0.60, 1.0]

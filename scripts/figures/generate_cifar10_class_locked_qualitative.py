@@ -227,7 +227,7 @@ def _sample_edm_teacher(
 def _load_dg_models(args: argparse.Namespace, device: torch.device):
     cfg = load_config(_resolve(args.config))
     teacher = load_edm_network(cfg["paths"]["network"], device=device, use_fp16=False)
-    student = clone_student_from_teacher(teacher).to(device)
+    student = clone_student_from_teacher(teacher, cfg=cfg).to(device)
     ckpt = torch.load(_resolve(args.dg_checkpoint), map_location=device)
     student.load_state_dict(ckpt["student"])
     student.eval().requires_grad_(False)

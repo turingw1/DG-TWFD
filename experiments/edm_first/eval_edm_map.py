@@ -135,7 +135,7 @@ def main() -> None:
 
     eval_cfg = cfg.get("eval", {})
     teacher = load_edm_network(cfg["paths"]["network"], device=device, use_fp16=False)
-    student = clone_student_from_teacher(teacher).to(device)
+    student = clone_student_from_teacher(teacher, cfg=cfg).to(device)
     ckpt = torch.load(args.checkpoint, map_location=device)
     use_ema = bool(args.use_ema or eval_cfg.get("use_ema", False))
     student_state_key = "student"

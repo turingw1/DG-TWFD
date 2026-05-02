@@ -75,6 +75,23 @@ def _update_ema_model(ema_model: torch.nn.Module, student: torch.nn.Module, deca
                 ema_value.copy_(source)
 
 
+def _adaptive_loss_weight(
+    *,
+    base_weight: float,
+    reference_loss: torch.Tensor,
+    aux_loss: torch.Tensor,
+    min_scale: float,
+    max_scale: float,
+) -> torch.Tensor:
+    if base_weight <= 0.0:
+        return aux_loss.new_tensor(0.0)
+    scale = (reference_loss.detach() / aux_loss.detach().clamp_min(1.0e-6)).clamp(
+        min=float(min_scale),
+        max=float(max_scale),
+    )
+    return aux_loss.new_tensor(float(base_weight)) * scale
+
+
 def _next_cifar_batch(data_iter, loader):
     try:
         return next(data_iter), data_iter
@@ -147,6 +164,16 @@ def main() -> None:
     data_denoise_u_low = float(train_cfg.get("data_denoise_u_low", 0.35))
     data_denoise_u_high = float(train_cfg.get("data_denoise_u_high", 0.95))
     data_denoise_normalize = bool(train_cfg.get("data_denoise_normalize", False))
+    data_denoise_adaptive = bool(train_cfg.get("data_denoise_adaptive", False))
+    data_transition_weight = float(train_cfg.get("data_transition_weight", 0.0))
+    data_transition_u_low = float(train_cfg.get("data_transition_u_low", 0.02))
+    data_transition_u_high = float(train_cfg.get("data_transition_u_high", 0.92))
+    data_transition_min_delta_u = float(train_cfg.get("data_transition_min_delta_u", 0.05))
+    data_transition_endpoint_prob = float(train_cfg.get("data_transition_endpoint_prob", 0.50))
+    data_transition_normalize = bool(train_cfg.get("data_transition_normalize", True))
+    data_transition_adaptive = bool(train_cfg.get("data_transition_adaptive", False))
+    data_adaptive_min_scale = float(train_cfg.get("data_adaptive_min_scale", 0.25))
+    data_adaptive_max_scale = float(train_cfg.get("data_adaptive_max_scale", 4.0))
     amp_enabled = bool(runtime_cfg.get("amp", True)) and device.type == "cuda"
     ema_enabled = bool(train_cfg.get("ema_enabled", False))
     ema_decay = float(train_cfg.get("ema_decay", 0.9995))
@@ -155,17 +182,42 @@ def main() -> None:
 
     teacher = load_edm_network(cfg["paths"]["network"], device=device, use_fp16=bool(teacher_cfg.get("use_fp16", True)))
     teacher.requires_grad_(False)
-    student = clone_student_from_teacher(teacher).to(device)
+    student = clone_student_from_teacher(teacher, cfg=cfg).to(device)
     student_ema = None
     if ema_enabled:
         ema_device = torch.device(ema_device_name)
         student_ema = copy.deepcopy(student).to(ema_device)
         student_ema.eval().requires_grad_(False)
-    optimizer = torch.optim.AdamW(
-        student.parameters(),
-        lr=float(train_cfg.get("lr", 1.0e-6)),
-        weight_decay=float(train_cfg.get("weight_decay", 0.0)),
-    )
+    base_lr = float(train_cfg.get("lr", 1.0e-6))
+    adapter_lr = train_cfg.get("transition_adapter_lr")
+    if adapter_lr is not None and hasattr(student, "base"):
+        base_params = []
+        adapter_params = []
+        for name, param in student.named_parameters():
+            if name.startswith("base."):
+                base_params.append(param)
+            else:
+                adapter_params.append(param)
+        optimizer = torch.optim.AdamW(
+            [
+                {
+                    "params": base_params,
+                    "lr": base_lr,
+                    "weight_decay": float(train_cfg.get("weight_decay", 0.0)),
+                },
+                {
+                    "params": adapter_params,
+                    "lr": float(adapter_lr),
+                    "weight_decay": float(train_cfg.get("transition_adapter_weight_decay", 0.0)),
+                },
+            ]
+        )
+    else:
+        optimizer = torch.optim.AdamW(
+            student.parameters(),
+            lr=base_lr,
+            weight_decay=float(train_cfg.get("weight_decay", 0.0)),
+        )
     scaler = torch.amp.GradScaler(device="cuda", enabled=amp_enabled)
     perceptual_metric = None
     if perceptual_weight > 0.0:
@@ -236,7 +288,7 @@ def main() -> None:
             start_step = int(ckpt.get("step", 0))
             best_loss = float(ckpt.get("best_loss", best_loss))
 
-    loader = build_cifar10_loader(cfg) if objective == "triplet" or data_denoise_weight > 0.0 else None
+    loader = build_cifar10_loader(cfg) if objective == "triplet" or data_denoise_weight > 0.0 or data_transition_weight > 0.0 else None
     data_iter = iter(loader) if loader is not None else None
     history_path = log_dir / "train.jsonl"
     start_time = time.time()
@@ -262,6 +314,9 @@ def main() -> None:
         preserve_defect_loss = torch.zeros((), device=device)
         preserve_perceptual_loss = torch.zeros((), device=device)
         data_denoise_loss = torch.zeros((), device=device)
+        data_transition_loss = torch.zeros((), device=device)
+        data_denoise_effective_weight = torch.zeros((), device=device)
+        data_transition_effective_weight = torch.zeros((), device=device)
         if objective in {"prior_endpoint", "prior_fullstack"}:
             labels = sample_labels(teacher, batch_size, device=device)
             sigma_t = sigma_from_u(torch.zeros(batch_size, device=device), sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
@@ -409,9 +464,10 @@ def main() -> None:
                     )
                     loss = match_weight * match_loss + defect_weight * defect_loss + perceptual_weight * perceptual_loss
 
-                if data_denoise_weight > 0.0:
+                consistency_loss_for_balance = loss.detach()
+                if data_denoise_weight > 0.0 or data_transition_weight > 0.0:
                     if data_iter is None or loader is None:
-                        raise RuntimeError("data_denoise_weight requires a CIFAR-10 loader")
+                        raise RuntimeError("real-data auxiliary losses require a CIFAR-10 loader")
                     (real_images, real_labels_int), data_iter = _next_cifar_batch(data_iter, loader)
                     real_images = real_images.to(device=device, non_blocking=True) * 2.0 - 1.0
                     real_labels = make_labels(
@@ -420,6 +476,7 @@ def main() -> None:
                         device=device,
                     )
                     real_batch = int(real_images.shape[0])
+                if data_denoise_weight > 0.0:
                     data_u = torch.empty(real_batch, device=device).uniform_(data_denoise_u_low, data_denoise_u_high)
                     data_sigma = sigma_from_u(data_u, sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
                     noisy_images = real_images + torch.randn_like(real_images) * data_sigma.view(-1, 1, 1, 1)
@@ -430,7 +487,57 @@ def main() -> None:
                         data_denoise_loss = _safe_mean_normalized(data_denoise_per_sample, data_denoise_denom)
                     else:
                         data_denoise_loss = data_denoise_per_sample.mean()
-                    loss = loss + data_denoise_weight * data_denoise_loss
+                    if data_denoise_adaptive:
+                        data_denoise_effective_weight = _adaptive_loss_weight(
+                            base_weight=data_denoise_weight,
+                            reference_loss=consistency_loss_for_balance,
+                            aux_loss=data_denoise_loss,
+                            min_scale=data_adaptive_min_scale,
+                            max_scale=data_adaptive_max_scale,
+                        )
+                    else:
+                        data_denoise_effective_weight = data_denoise_loss.new_tensor(data_denoise_weight)
+                    loss = loss + data_denoise_effective_weight * data_denoise_loss
+                if data_transition_weight > 0.0:
+                    trans_u_t = torch.empty(real_batch, device=device).uniform_(data_transition_u_low, data_transition_u_high)
+                    room = torch.clamp(1.0 - trans_u_t - data_transition_min_delta_u, min=0.0)
+                    trans_u_s = trans_u_t + data_transition_min_delta_u + room * torch.rand_like(trans_u_t)
+                    endpoint_mask = torch.rand(real_batch, device=device) < data_transition_endpoint_prob
+                    trans_u_s = torch.where(endpoint_mask, torch.ones_like(trans_u_s), trans_u_s.clamp(max=1.0))
+                    trans_sigma_t = sigma_from_u(trans_u_t, sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
+                    trans_sigma_s = sigma_from_u(trans_u_s, sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
+                    trans_sigma_s = torch.where(endpoint_mask, torch.zeros_like(trans_sigma_s), trans_sigma_s)
+                    trans_noisy = real_images + torch.randn_like(real_images) * trans_sigma_t.view(-1, 1, 1, 1)
+                    with torch.no_grad():
+                        trans_target = real_images.clone()
+                        non_endpoint = ~endpoint_mask
+                        if bool(non_endpoint.any()):
+                            non_labels = real_labels[non_endpoint] if real_labels is not None else None
+                            trans_target[non_endpoint] = teacher_transition(
+                                teacher,
+                                trans_noisy[non_endpoint],
+                                trans_sigma_t[non_endpoint],
+                                trans_sigma_s[non_endpoint],
+                                non_labels,
+                            )
+                    trans_estimate = student_transition(student, trans_noisy, trans_sigma_t, trans_sigma_s, real_labels)
+                    data_transition_per_sample = _flat_mse_per_sample(trans_estimate, trans_target)
+                    if data_transition_normalize:
+                        data_transition_denom = _flat_mse_per_sample(trans_noisy, trans_target).clamp_min(1.0e-6)
+                        data_transition_loss = _safe_mean_normalized(data_transition_per_sample, data_transition_denom)
+                    else:
+                        data_transition_loss = data_transition_per_sample.mean()
+                    if data_transition_adaptive:
+                        data_transition_effective_weight = _adaptive_loss_weight(
+                            base_weight=data_transition_weight,
+                            reference_loss=consistency_loss_for_balance,
+                            aux_loss=data_transition_loss,
+                            min_scale=data_adaptive_min_scale,
+                            max_scale=data_adaptive_max_scale,
+                        )
+                    else:
+                        data_transition_effective_weight = data_transition_loss.new_tensor(data_transition_weight)
+                    loss = loss + data_transition_effective_weight * data_transition_loss
         else:
             assert data_iter is not None and loader is not None
             try:
@@ -531,6 +638,11 @@ def main() -> None:
             "preserve_perceptual_loss": float(preserve_perceptual_loss.detach().float().item()),
             "data_denoise_loss": float(data_denoise_loss.detach().float().item()),
             "data_denoise_weight": data_denoise_weight,
+            "data_denoise_effective_weight": float(data_denoise_effective_weight.detach().float().item()),
+            "data_transition_loss": float(data_transition_loss.detach().float().item()),
+            "data_transition_weight": data_transition_weight,
+            "data_transition_effective_weight": float(data_transition_effective_weight.detach().float().item()),
+            "transition_adapter_enabled": bool(cfg.get("transition_adapter", {}).get("enabled", False)),
             "ema_enabled": ema_enabled,
             "ema_decay": ema_decay if ema_enabled else None,
             "preserve_mid_u_values": preserve_mid_u_values,

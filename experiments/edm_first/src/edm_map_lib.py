@@ -85,8 +85,118 @@ def load_edm_network(network: str | Path, *, device: torch.device, use_fp16: boo
     return net
 
 
-def clone_student_from_teacher(teacher: torch.nn.Module) -> torch.nn.Module:
+class TimeConditionedTransitionAdapter(torch.nn.Module):
+    """Small CTM-style transition head on top of a pretrained EDM denoiser.
+
+    The base network still exposes the original EDM denoising interface through
+    `forward(x, sigma_t, labels)`. The `transition` method adds an explicit
+    `sigma_s`-conditioned residual around the existing Euler update, so the
+    student can learn a direct `t -> s` map without discarding pretrained
+    denoising weights.
+    """
+
+    def __init__(
+        self,
+        base: torch.nn.Module,
+        *,
+        hidden_channels: int = 64,
+        strength: float = 0.25,
+        sigma_data: float = 0.5,
+        zero_init: bool = True,
+    ) -> None:
+        super().__init__()
+        self.base = base
+        self.hidden_channels = int(hidden_channels)
+        self.strength = float(strength)
+        self.sigma_data = float(sigma_data)
+        img_channels = int(getattr(base, "img_channels", 3))
+        self.cond = torch.nn.Sequential(
+            torch.nn.Linear(4, self.hidden_channels),
+            torch.nn.SiLU(),
+            torch.nn.Linear(self.hidden_channels, self.hidden_channels),
+        )
+        self.in_conv = torch.nn.Conv2d(img_channels * 4, self.hidden_channels, kernel_size=3, padding=1)
+        self.mid_conv = torch.nn.Conv2d(self.hidden_channels, self.hidden_channels, kernel_size=3, padding=1)
+        self.out_conv = torch.nn.Conv2d(self.hidden_channels, img_channels, kernel_size=3, padding=1)
+        if zero_init:
+            torch.nn.init.zeros_(self.out_conv.weight)
+            torch.nn.init.zeros_(self.out_conv.bias)
+
+        for name in ("img_channels", "img_resolution", "label_dim", "sigma_min", "sigma_max"):
+            if hasattr(base, name):
+                setattr(self, name, getattr(base, name))
+
+    @property
+    def use_fp16(self):
+        return getattr(self.base, "use_fp16", False)
+
+    @use_fp16.setter
+    def use_fp16(self, value) -> None:
+        if hasattr(self.base, "use_fp16"):
+            self.base.use_fp16 = value
+
+    def round_sigma(self, sigma, *args, **kwargs):
+        if hasattr(self.base, "round_sigma"):
+            return self.base.round_sigma(sigma, *args, **kwargs)
+        return sigma
+
+    def forward(self, x: torch.Tensor, sigma: torch.Tensor, labels: torch.Tensor | None = None) -> torch.Tensor:
+        return self.base(x, sigma, labels)
+
+    def load_state_dict(self, state_dict, strict: bool = True, assign: bool = False):
+        if state_dict and not any(str(key).startswith("base.") for key in state_dict.keys()):
+            mapped = {f"base.{key}": value for key, value in state_dict.items()}
+            return super().load_state_dict(mapped, strict=False, assign=assign)
+        return super().load_state_dict(state_dict, strict=strict, assign=assign)
+
+    def _time_features(self, sigma_t: torch.Tensor, sigma_s: torch.Tensor) -> torch.Tensor:
+        sigma_t = sigma_t.float().clamp_min(1.0e-6)
+        sigma_s_safe = sigma_s.float().clamp_min(1.0e-6)
+        log_t = torch.log(sigma_t)
+        log_s = torch.log(sigma_s_safe)
+        ratio = torch.log(sigma_t / sigma_s_safe)
+        progress = (sigma_t - sigma_s.float()).clamp_min(0.0) / sigma_t
+        return torch.stack([log_t / 5.0, log_s / 5.0, ratio / 5.0, progress], dim=1)
+
+    def transition(
+        self,
+        x_t: torch.Tensor,
+        sigma_t: torch.Tensor,
+        sigma_s: torch.Tensor,
+        labels: torch.Tensor | None,
+    ) -> torch.Tensor:
+        sigma_t = torch.as_tensor(sigma_t, device=x_t.device, dtype=x_t.dtype).view(-1)
+        sigma_s = torch.as_tensor(sigma_s, device=x_t.device, dtype=x_t.dtype).view(-1)
+        if sigma_t.numel() == 1:
+            sigma_t = sigma_t.expand(x_t.shape[0])
+        if sigma_s.numel() == 1:
+            sigma_s = sigma_s.expand(x_t.shape[0])
+        denoised = self.base(x_t, sigma_t, labels).to(x_t.dtype)
+        d_cur = (x_t - denoised) / append_dims(torch.clamp(sigma_t, min=1.0e-6), x_t.ndim)
+        euler = x_t + append_dims(sigma_s - sigma_t, x_t.ndim) * d_cur
+        x_scaled = x_t / append_dims((sigma_t.square() + self.sigma_data**2).sqrt(), x_t.ndim)
+        residual_input = torch.cat([x_scaled, denoised, euler, euler - denoised], dim=1)
+        cond = self.cond(self._time_features(sigma_t, sigma_s)).to(dtype=x_t.dtype).view(
+            x_t.shape[0], self.hidden_channels, 1, 1
+        )
+        hidden = F.silu(self.in_conv(residual_input) + cond)
+        hidden = F.silu(self.mid_conv(hidden))
+        residual = self.out_conv(hidden)
+        gate = ((sigma_t - sigma_s).clamp_min(0.0) / sigma_t.clamp_min(1.0e-6)).view(-1, 1, 1, 1).to(x_t.dtype)
+        return euler + self.strength * gate * residual
+
+
+def clone_student_from_teacher(teacher: torch.nn.Module, cfg: dict | None = None) -> torch.nn.Module:
     student = copy.deepcopy(teacher)
+    adapter_cfg = (cfg or {}).get("transition_adapter", {})
+    if bool(adapter_cfg.get("enabled", False)):
+        student = TimeConditionedTransitionAdapter(
+            student,
+            hidden_channels=int(adapter_cfg.get("hidden_channels", 64)),
+            strength=float(adapter_cfg.get("strength", 0.25)),
+            sigma_data=float((cfg or {}).get("train", {}).get("sigma_data", 0.5)),
+            zero_init=bool(adapter_cfg.get("zero_init", True)),
+        )
     student.train()
     student.requires_grad_(True)
     if hasattr(student, "use_fp16"):
@@ -175,6 +285,8 @@ def student_transition(
     sigma_s: torch.Tensor,
     labels: torch.Tensor | None,
 ) -> torch.Tensor:
+    if hasattr(student, "transition"):
+        return student.transition(x_t, sigma_t, sigma_s, labels)
     sigma_t = torch.as_tensor(sigma_t, device=x_t.device, dtype=x_t.dtype).view(-1)
     sigma_s = torch.as_tensor(sigma_s, device=x_t.device, dtype=x_t.dtype).view(-1)
     if sigma_t.numel() == 1:
