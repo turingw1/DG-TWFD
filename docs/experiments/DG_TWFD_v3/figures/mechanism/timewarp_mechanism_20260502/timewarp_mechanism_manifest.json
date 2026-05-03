@@ -427,7 +427,12 @@
       "A": {
         "density_mass_sum": 1.0,
         "corr_density_defect": 0.9847578892382254,
+        "corr_density_defect_robust": 0.9870356340342934,
         "corr_density_variation": -0.5355473387133471,
+        "defect_visualization": "5-95 percentile clipped robust-normalized curve with top-20% defect-bin shading",
+        "variation_visualization": "omitted from Panel A; retained only as manifest diagnostic",
+        "high_defect_quantile": 0.8,
+        "high_defect_threshold_raw": 0.8276486821313931,
         "dg_original_waypoints": [
           0.0,
           0.17351162433624268,

@@ -87,6 +87,20 @@ def _normalize(values: np.ndarray) -> np.ndarray:
     return out
 
 
+def _robust_normalize(values: np.ndarray, *, lo_q: float = 5.0, hi_q: float = 95.0) -> np.ndarray:
+    arr = np.asarray(values, dtype=np.float64)
+    finite = np.isfinite(arr)
+    if not bool(finite.any()):
+        return np.zeros_like(arr)
+    lo, hi = np.percentile(arr[finite], [lo_q, hi_q])
+    if float(hi - lo) < 1.0e-12:
+        out = _normalize(arr)
+    else:
+        out = np.clip((arr - lo) / (hi - lo), 0.0, 1.0)
+    out[~finite] = 0.0
+    return out
+
+
 def _finite_corr(a: np.ndarray, b: np.ndarray) -> float:
     x = np.asarray(a, dtype=np.float64)
     y = np.asarray(b, dtype=np.float64)
@@ -129,24 +143,29 @@ def _draw_panel_a(ax, data: dict[str, np.ndarray]) -> dict[str, Any]:
     density = np.asarray(data["density_mass"], dtype=np.float64)
     density = np.clip(density, 0.0, None)
     density = density / max(float(density.sum()), 1.0e-12)
-    defect = _normalize(data["defect_bins"])
+    defect_raw = np.asarray(data["defect_bins"], dtype=np.float64)
+    defect = _normalize(defect_raw)
+    defect_robust = _robust_normalize(defect_raw)
     variation = _normalize(data["variation_bins"])
     n_bins = density.shape[0]
     edges = np.linspace(0.0, 1.0, n_bins + 1)
+    centers = 0.5 * (edges[:-1] + edges[1:])
     q_edges = np.concatenate([[0.0], np.cumsum(density)])
     q_edges[-1] = 1.0
 
-    for idx, value in enumerate(defect):
-        ax.axvspan(
-            edges[idx],
-            edges[idx + 1],
-            ymin=0.11,
-            ymax=0.98,
-            color=COLORS["defect"],
-            alpha=0.035 + 0.23 * float(value),
-            lw=0.0,
-            zorder=0,
-        )
+    high_threshold = float(np.quantile(defect_raw[np.isfinite(defect_raw)], 0.80))
+    for idx, value in enumerate(defect_raw):
+        if float(value) >= high_threshold:
+            ax.axvspan(
+                edges[idx],
+                edges[idx + 1],
+                ymin=0.0,
+                ymax=1.0,
+                color=COLORS["defect"],
+                alpha=0.18,
+                lw=0.0,
+                zorder=0,
+            )
 
     ax.plot([0.0, 1.0], [0.0, 1.0], color="#4a4a4a", lw=1.0, ls=(0, (3, 2)), label="identity")
     ax.plot(edges, q_edges, color=COLORS["dg"], lw=2.0, label="DG-TWFD warp")
@@ -160,41 +179,54 @@ def _draw_panel_a(ax, data: dict[str, np.ndarray]) -> dict[str, Any]:
     for x_pos in identity_u:
         ax.plot([x_pos, x_pos], [1.015, 1.055], color="#777777", lw=0.55, clip_on=False, zorder=3)
 
-    rug_y0 = -0.105
-    active = np.flatnonzero(variation > 0.04)
-    for idx in active:
-        center = 0.5 * (edges[idx] + edges[idx + 1])
-        ax.plot(
-            [center, center],
-            [rug_y0, rug_y0 + 0.055 * float(variation[idx])],
-            color=COLORS["variation"],
-            lw=0.45,
-            alpha=0.72,
-            clip_on=False,
-            solid_capstyle="butt",
-        )
-
-    ax.text(0.02, 0.93, "empirical semigroup defect", transform=ax.transAxes, fontsize=5.6, color="#8a3d34")
-    ax.text(
-        0.02,
-        0.055,
-        "variation rug",
-        transform=ax.transAxes,
-        fontsize=5.2,
-        color=COLORS["variation"],
-        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.78, "pad": 0.8},
+    ax_defect = ax.twinx()
+    ax_defect.fill_between(centers, 0.0, defect_robust, color=COLORS["defect"], alpha=0.08, lw=0.0, zorder=1)
+    ax_defect.plot(centers, defect_robust, color="#a33a2e", lw=1.45, alpha=0.96, label="defect profile", zorder=2)
+    ax_defect.set_ylim(0.0, 1.04)
+    ax_defect.set_yticks([0.0, 0.5, 1.0])
+    ax_defect.tick_params(axis="y", labelsize=5.7, width=0.6, length=2.0, colors="#8a3d34")
+    ax_defect.spines["right"].set_color("#8a3d34")
+    ax_defect.spines["right"].set_linewidth(0.65)
+    ax_defect.spines["top"].set_visible(False)
+    ax_defect.spines["left"].set_visible(False)
+    peak_idx = int(np.argmax(defect_robust))
+    ax_defect.annotate(
+        "top-defect bins",
+        xy=(float(centers[peak_idx]), min(float(defect_robust[peak_idx]), 0.98)),
+        xytext=(0.54, 0.83),
+        textcoords=ax_defect.transAxes,
+        fontsize=5.3,
+        color="#8a3d34",
+        arrowprops={"arrowstyle": "->", "lw": 0.55, "color": "#8a3d34", "shrinkA": 1.0, "shrinkB": 1.0},
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.78, "pad": 0.7},
+        zorder=7,
     )
 
     ax.set_xlim(0.0, 1.0)
-    ax.set_ylim(-0.12, 1.08)
+    ax.set_ylim(-0.05, 1.08)
     ax.set_xlabel("original progress $p=1-t$", fontsize=7.0)
     ax.set_ylabel("warped progress $q=1-g(t)$", fontsize=7.0)
     _format_panel(ax, "A. Defect-guided time allocation")
-    ax.legend(loc="lower right", bbox_to_anchor=(1.0, 0.13), fontsize=5.6, frameon=False, handlelength=2.1)
+    handles, labels = ax.get_legend_handles_labels()
+    defect_handles, defect_labels = ax_defect.get_legend_handles_labels()
+    ax.legend(
+        handles + defect_handles,
+        labels + defect_labels,
+        loc="lower right",
+        bbox_to_anchor=(1.0, 0.10),
+        fontsize=5.35,
+        frameon=False,
+        handlelength=2.1,
+    )
     return {
         "density_mass_sum": float(density.sum()),
         "corr_density_defect": _finite_corr(density, defect),
+        "corr_density_defect_robust": _finite_corr(density, defect_robust),
         "corr_density_variation": _finite_corr(density, variation),
+        "defect_visualization": "5-95 percentile clipped robust-normalized curve with top-20% defect-bin shading",
+        "variation_visualization": "omitted from Panel A; retained only as manifest diagnostic",
+        "high_defect_quantile": 0.80,
+        "high_defect_threshold_raw": high_threshold,
         "dg_original_waypoints": dg_u.tolist(),
     }
 
@@ -397,7 +429,7 @@ def _draw_panel_c(ax_top, ax_bar, data: dict[str, np.ndarray], *, seed: int, boo
 
 def _save_caption(output_dir: Path) -> None:
     caption = r"""\textbf{Real-trajectory mechanism of defect-guided time warping.}
-The learned clock allocates larger warped-time mass to original-time regions with high empirical semigroup defect, so uniform warped-time sampling induces non-uniform original-time waypoints while leaving the teacher path unchanged.
+The learned clock allocates larger warped-time mass to original-time regions with high empirical semigroup defect; in Panel A, the red curve shows the robust-normalized defect profile and the shaded bands mark the top-defect bins.
 On a held-out CIFAR-10 trajectory, DG-TWFD redistributes the 8-step waypoint traversal toward a high-defect segment; across 24 held-out trajectories, it reduces paired recursive semigroup defect by 15.6\% under the same step budget.
 """
     (output_dir / "caption.tex").write_text(caption, encoding="utf-8")
