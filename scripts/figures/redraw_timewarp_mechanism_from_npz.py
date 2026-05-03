@@ -139,7 +139,7 @@ def _format_panel(ax, title: str) -> None:
         spine.set_color("#333333")
 
 
-def _draw_panel_a(ax, data: dict[str, np.ndarray]) -> dict[str, Any]:
+def _draw_panel_a(ax_density, ax_clock, data: dict[str, np.ndarray]) -> dict[str, Any]:
     density = np.asarray(data["density_mass"], dtype=np.float64)
     density = np.clip(density, 0.0, None)
     density = density / max(float(density.sum()), 1.0e-12)
@@ -152,81 +152,92 @@ def _draw_panel_a(ax, data: dict[str, np.ndarray]) -> dict[str, Any]:
     centers = 0.5 * (edges[:-1] + edges[1:])
     q_edges = np.concatenate([[0.0], np.cumsum(density)])
     q_edges[-1] = 1.0
+    uniform_density = 1.0 / float(n_bins)
+    density_ratio = density / uniform_density
+    density_display = density_ratio / max(float(density_ratio.max()), 1.0e-12)
 
     high_threshold = float(np.quantile(defect_raw[np.isfinite(defect_raw)], 0.80))
     for idx, value in enumerate(defect_raw):
         if float(value) >= high_threshold:
-            ax.axvspan(
+            ax_density.axvspan(
                 edges[idx],
                 edges[idx + 1],
                 ymin=0.0,
                 ymax=1.0,
                 color=COLORS["defect"],
-                alpha=0.18,
+                alpha=0.15,
                 lw=0.0,
                 zorder=0,
             )
 
-    ax.plot([0.0, 1.0], [0.0, 1.0], color="#4a4a4a", lw=1.0, ls=(0, (3, 2)), label="identity")
-    ax.plot(edges, q_edges, color=COLORS["dg"], lw=2.0, label="DG-TWFD warp")
+    ax_density.fill_between(
+        centers,
+        0.0,
+        density_display,
+        step="mid",
+        color=COLORS["dg"],
+        alpha=0.16,
+        lw=0.0,
+        zorder=1,
+    )
+    ax_density.step(
+        centers,
+        density_display,
+        where="mid",
+        color=COLORS["dg"],
+        lw=1.35,
+        alpha=0.98,
+        label="warp density $dq/dp$",
+        zorder=3,
+    )
+    ax_density.fill_between(centers, 0.0, defect_robust, color=COLORS["defect"], alpha=0.08, lw=0.0, zorder=2)
+    ax_density.plot(
+        centers,
+        defect_robust,
+        color="#a33a2e",
+        lw=1.35,
+        alpha=0.96,
+        label="defect profile",
+        zorder=4,
+    )
+    ax_density.set_xlim(0.0, 1.0)
+    ax_density.set_ylim(0.0, 1.07)
+    ax_density.tick_params(labelbottom=False)
+    ax_density.set_ylabel("normalized\nlocal signal", fontsize=6.2)
+    _format_panel(ax_density, "A. Defect-guided time allocation")
+    ax_density.legend(loc="upper right", fontsize=5.15, frameon=False, handlelength=2.2)
+
+    ax_clock.plot([0.0, 1.0], [0.0, 1.0], color="#4a4a4a", lw=0.95, ls=(0, (3, 2)), label="identity")
+    ax_clock.plot(edges, q_edges, color=COLORS["dg"], lw=1.9, label="DG-TWFD warp")
 
     r_nodes = np.linspace(0.0, 1.0, len(data["dg_u"]))
     dg_u = np.asarray(data["dg_u"], dtype=np.float64)
     identity_u = np.asarray(data["identity_u"], dtype=np.float64)
-    ax.scatter(dg_u, r_nodes, s=17, color=COLORS["dg"], edgecolors="white", linewidths=0.45, zorder=4)
+    ax_clock.scatter(dg_u, r_nodes, s=15, color=COLORS["dg"], edgecolors="white", linewidths=0.45, zorder=4)
     for x_pos in dg_u:
-        ax.plot([x_pos, x_pos], [-0.055, 0.0], color=COLORS["dg"], lw=0.8, clip_on=False, zorder=3)
+        ax_clock.plot([x_pos, x_pos], [-0.055, 0.0], color=COLORS["dg"], lw=0.75, clip_on=False, zorder=3)
     for x_pos in identity_u:
-        ax.plot([x_pos, x_pos], [1.015, 1.055], color="#777777", lw=0.55, clip_on=False, zorder=3)
+        ax_clock.plot([x_pos, x_pos], [1.015, 1.055], color="#777777", lw=0.5, clip_on=False, zorder=3)
 
-    ax_defect = ax.twinx()
-    ax_defect.fill_between(centers, 0.0, defect_robust, color=COLORS["defect"], alpha=0.08, lw=0.0, zorder=1)
-    ax_defect.plot(centers, defect_robust, color="#a33a2e", lw=1.45, alpha=0.96, label="defect profile", zorder=2)
-    ax_defect.set_ylim(0.0, 1.04)
-    ax_defect.set_yticks([0.0, 0.5, 1.0])
-    ax_defect.tick_params(axis="y", labelsize=5.7, width=0.6, length=2.0, colors="#8a3d34")
-    ax_defect.spines["right"].set_color("#8a3d34")
-    ax_defect.spines["right"].set_linewidth(0.65)
-    ax_defect.spines["top"].set_visible(False)
-    ax_defect.spines["left"].set_visible(False)
-    peak_idx = int(np.argmax(defect_robust))
-    ax_defect.annotate(
-        "top-defect bins",
-        xy=(float(centers[peak_idx]), min(float(defect_robust[peak_idx]), 0.98)),
-        xytext=(0.54, 0.83),
-        textcoords=ax_defect.transAxes,
-        fontsize=5.3,
-        color="#8a3d34",
-        arrowprops={"arrowstyle": "->", "lw": 0.55, "color": "#8a3d34", "shrinkA": 1.0, "shrinkB": 1.0},
-        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.78, "pad": 0.7},
-        zorder=7,
-    )
-
-    ax.set_xlim(0.0, 1.0)
-    ax.set_ylim(-0.05, 1.08)
-    ax.set_xlabel("original progress $p=1-t$", fontsize=7.0)
-    ax.set_ylabel("warped progress $q=1-g(t)$", fontsize=7.0)
-    _format_panel(ax, "A. Defect-guided time allocation")
-    handles, labels = ax.get_legend_handles_labels()
-    defect_handles, defect_labels = ax_defect.get_legend_handles_labels()
-    ax.legend(
-        handles + defect_handles,
-        labels + defect_labels,
-        loc="lower right",
-        bbox_to_anchor=(1.0, 0.10),
-        fontsize=5.35,
-        frameon=False,
-        handlelength=2.1,
-    )
+    ax_clock.set_xlim(0.0, 1.0)
+    ax_clock.set_ylim(-0.05, 1.08)
+    ax_clock.set_xlabel("original progress $p=1-t$", fontsize=7.0)
+    ax_clock.set_ylabel("warped progress $q$", fontsize=6.2)
+    _format_panel(ax_clock, "")
+    ax_clock.legend(loc="lower right", bbox_to_anchor=(1.0, 0.06), fontsize=5.2, frameon=False, handlelength=2.1)
     return {
         "density_mass_sum": float(density.sum()),
         "corr_density_defect": _finite_corr(density, defect),
         "corr_density_defect_robust": _finite_corr(density, defect_robust),
         "corr_density_variation": _finite_corr(density, variation),
         "defect_visualization": "5-95 percentile clipped robust-normalized curve with top-20% defect-bin shading",
+        "warp_density_visualization": "local warp density dq/dp normalized by its maximum and shown against the defect profile",
         "variation_visualization": "omitted from Panel A; retained only as manifest diagnostic",
         "high_defect_quantile": 0.80,
         "high_defect_threshold_raw": high_threshold,
+        "top20_defect_mass_share": float(density[defect_raw >= high_threshold].sum()),
+        "top20_uniform_mass_share": float(np.mean(defect_raw >= high_threshold)),
+        "top20_density_rest_ratio": float(density[defect_raw >= high_threshold].mean() / density[defect_raw < high_threshold].mean()),
         "dg_original_waypoints": dg_u.tolist(),
     }
 
@@ -429,7 +440,7 @@ def _draw_panel_c(ax_top, ax_bar, data: dict[str, np.ndarray], *, seed: int, boo
 
 def _save_caption(output_dir: Path) -> None:
     caption = r"""\textbf{Real-trajectory mechanism of defect-guided time warping.}
-The learned clock allocates larger warped-time mass to original-time regions with high empirical semigroup defect; in Panel A, the red curve shows the robust-normalized defect profile and the shaded bands mark the top-defect bins.
+The learned clock allocates larger warped-time mass to original-time regions with high empirical semigroup defect; in Panel A, the upper subpanel compares local warp density $dq/dp$ with the robust-normalized defect profile, while the lower subpanel shows the induced cumulative clock.
 On a held-out CIFAR-10 trajectory, DG-TWFD redistributes the 8-step waypoint traversal toward a high-defect segment; across 24 held-out trajectories, it reduces paired recursive semigroup defect by 15.6\% under the same step budget.
 """
     (output_dir / "caption.tex").write_text(caption, encoding="utf-8")
@@ -482,25 +493,33 @@ def main() -> None:
         }
     )
 
-    fig = plt.figure(figsize=(7.15, 2.78))
+    fig = plt.figure(figsize=(7.15, 2.82))
     outer = gridspec.GridSpec(
         1,
         3,
         figure=fig,
-        width_ratios=[1.03, 1.03, 1.08],
-        wspace=0.42,
+        width_ratios=[1.07, 1.02, 1.08],
+        wspace=0.43,
         left=0.055,
         right=0.992,
         top=0.91,
-        bottom=0.20,
+        bottom=0.19,
     )
-    ax_a = fig.add_subplot(outer[0, 0])
+    a_grid = gridspec.GridSpecFromSubplotSpec(
+        2,
+        1,
+        subplot_spec=outer[0, 0],
+        height_ratios=[1.0, 1.18],
+        hspace=0.08,
+    )
+    ax_a_density = fig.add_subplot(a_grid[0, 0])
+    ax_a_clock = fig.add_subplot(a_grid[1, 0], sharex=ax_a_density)
     ax_b = fig.add_subplot(outer[0, 1])
     c_grid = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[0, 2], height_ratios=[3.0, 1.02], hspace=0.06)
     ax_c = fig.add_subplot(c_grid[0, 0])
     ax_c_bar = fig.add_subplot(c_grid[1, 0], sharex=ax_c)
 
-    panel_a = _draw_panel_a(ax_a, data)
+    panel_a = _draw_panel_a(ax_a_density, ax_a_clock, data)
     panel_b = _draw_panel_b(ax_b, data)
     panel_c = _draw_panel_c(ax_c, ax_c_bar, data, seed=args.seed, bootstrap_samples=args.bootstrap_samples)
 
@@ -512,7 +531,7 @@ def main() -> None:
 
     _save_caption(output_dir)
     redraw = {
-        "version": "v3_neurips_mechanism_redraw",
+        "version": "v4_neurips_mechanism_redraw",
         "script": str(Path(__file__).resolve().relative_to(ROOT)),
         "claim": SUPPORTED_CLAIM,
         "unsupported_claims": UNSUPPORTED_CLAIMS,

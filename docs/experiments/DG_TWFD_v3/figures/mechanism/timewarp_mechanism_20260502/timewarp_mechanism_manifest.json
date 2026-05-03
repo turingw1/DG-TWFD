@@ -414,7 +414,7 @@
     "Panel C uses finite semigroup-defect segments only; the final sigma=0 endpoint segment can be numerically singular for this adapter diagnostic."
   ],
   "redraw": {
-    "version": "v3_neurips_mechanism_redraw",
+    "version": "v4_neurips_mechanism_redraw",
     "script": "scripts/figures/redraw_timewarp_mechanism_from_npz.py",
     "claim": "DG-TWFD keeps the teacher path fixed and redistributes warped-time waypoints toward original-time regions with high empirical semigroup defect, reducing paired recursive semigroup defect under the same 8-step budget.",
     "unsupported_claims": [
@@ -430,9 +430,13 @@
         "corr_density_defect_robust": 0.9870356340342934,
         "corr_density_variation": -0.5355473387133471,
         "defect_visualization": "5-95 percentile clipped robust-normalized curve with top-20% defect-bin shading",
+        "warp_density_visualization": "local warp density dq/dp normalized by its maximum and shown against the defect profile",
         "variation_visualization": "omitted from Panel A; retained only as manifest diagnostic",
         "high_defect_quantile": 0.8,
         "high_defect_threshold_raw": 0.8276486821313931,
+        "top20_defect_mass_share": 0.2645269591343556,
+        "top20_uniform_mass_share": 0.20833333333333334,
+        "top20_density_rest_ratio": 1.366742747670857,
         "dg_original_waypoints": [
           0.0,
           0.17351162433624268,
