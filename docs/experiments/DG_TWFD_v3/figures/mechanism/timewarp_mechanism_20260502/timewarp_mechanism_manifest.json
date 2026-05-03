@@ -414,7 +414,7 @@
     "Panel C uses finite semigroup-defect segments only; the final sigma=0 endpoint segment can be numerically singular for this adapter diagnostic."
   ],
   "redraw": {
-    "version": "v4_neurips_mechanism_redraw",
+    "version": "v5_neurips_mechanism_redraw",
     "script": "scripts/figures/redraw_timewarp_mechanism_from_npz.py",
     "claim": "DG-TWFD keeps the teacher path fixed and redistributes warped-time waypoints toward original-time regions with high empirical semigroup defect, reducing paired recursive semigroup defect under the same 8-step budget.",
     "unsupported_claims": [

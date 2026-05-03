@@ -205,7 +205,6 @@ def _draw_panel_a(ax_density, ax_clock, data: dict[str, np.ndarray]) -> dict[str
     ax_density.tick_params(labelbottom=False)
     ax_density.set_ylabel("normalized\nlocal signal", fontsize=6.2)
     _format_panel(ax_density, "A. Defect-guided time allocation")
-    ax_density.legend(loc="upper right", fontsize=5.15, frameon=False, handlelength=2.2)
 
     ax_clock.plot([0.0, 1.0], [0.0, 1.0], color="#4a4a4a", lw=0.95, ls=(0, (3, 2)), label="identity")
     ax_clock.plot(edges, q_edges, color=COLORS["dg"], lw=1.9, label="DG-TWFD warp")
@@ -440,7 +439,8 @@ def _draw_panel_c(ax_top, ax_bar, data: dict[str, np.ndarray], *, seed: int, boo
 
 def _save_caption(output_dir: Path) -> None:
     caption = r"""\textbf{Real-trajectory mechanism of defect-guided time warping.}
-The learned clock allocates larger warped-time mass to original-time regions with high empirical semigroup defect; in Panel A, the upper subpanel compares local warp density $dq/dp$ with the robust-normalized defect profile, while the lower subpanel shows the induced cumulative clock.
+The learned clock allocates larger warped-time mass to original-time regions with high empirical semigroup defect; in Panel A, the upper subpanel overlays local warp density $dq/dp$ in blue with the robust-normalized defect profile in red, with shaded bands marking top-defect bins.
+The lower subpanel shows the induced cumulative clock.
 On a held-out CIFAR-10 trajectory, DG-TWFD redistributes the 8-step waypoint traversal toward a high-defect segment; across 24 held-out trajectories, it reduces paired recursive semigroup defect by 15.6\% under the same step budget.
 """
     (output_dir / "caption.tex").write_text(caption, encoding="utf-8")
@@ -531,7 +531,7 @@ def main() -> None:
 
     _save_caption(output_dir)
     redraw = {
-        "version": "v4_neurips_mechanism_redraw",
+        "version": "v5_neurips_mechanism_redraw",
         "script": str(Path(__file__).resolve().relative_to(ROOT)),
         "claim": SUPPORTED_CLAIM,
         "unsupported_claims": UNSUPPORTED_CLAIMS,
