@@ -14,14 +14,14 @@ checkpoint 与完整 eval artifacts 保留在 `runs/`、`eval/`、`results/` 和
 
 当前在线监督使用 FID-2048，主要用于方向判断；最终结论必须用更大样本数复验。
 
-## 当前活跃实验
+## 当前最新实验状态
 
 - Run tag:
-  `edm_first_cifar10_prior_fullstack_timewarp_v21_ctm_aligned_from_v20_step3292`
+  `edm_first_cifar10_prior_fullstack_timewarp_v21b_ctm_gated_from_v21_step250`
 - Config:
-  `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_v21_ctm_aligned.yaml`
+  `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_v21b_ctm_gated.yaml`
 - Source checkpoint:
-  `runs/edm_first_cifar10_prior_fullstack_timewarp_v20_endpoint_balanced_from_v19_step7106/checkpoints/step3292.pt`
+  `runs/edm_first_cifar10_prior_fullstack_timewarp_v21_ctm_aligned_from_v20_step3292/checkpoints/step250.pt`
 - 核心改动：
   1. 在 EDM student 外加入 `TimeConditionedTransitionAdapter`，让 `student_transition`
      显式依赖 `sigma_s`，从“denoiser + Euler”推进为可学习的 `t -> s` 转移。
@@ -30,9 +30,9 @@ checkpoint 与完整 eval artifacts 保留在 `runs/`、`eval/`、`results/` 和
   4. 增加 real-data transition loss，直接训练真实 CIFAR-10 噪声态到中间态/endpoint。
   5. 保留 RQS timewarp 与 2-step `u=0.60` budget policy，用于组合采样对照。
 
-验收标准：v21 必须显著改善 v20 的 FID@1/FID@4，且后续训练要回收初期 8/16
-步退化；如果 8/16 长时间不回收，说明 CTM-style 数据信号过强而 composition
-保护不足，需要调低 data transition 或加强 preservation。
+运行状态：v21b 因 `train.max_seconds=28800` 到达 8 小时时间预算后自然完成，
+最后 checkpoint 为 `step7630.pt`。训练没有数值爆炸，但 FID 曲线给出负面验收：
+单步只有极弱改善，多步 composition 从 step250 后持续退化。
 
 ## 关键结果表
 
@@ -57,6 +57,8 @@ learned RQS warp。
 | v21 CTM-aligned | step750 | 45.100 | 24.061 | 20.835 | 20.183 | 20.568 | 8/16 继续回收，但 endpoint 连续回弹 |
 | v21 CTM-aligned | step8111 | 44.987 | 26.967 | 25.259 | 24.296 | 26.736 | endpoint 小幅保留，composition 明确失败 |
 | v21b CTM-gated | step250 | 44.843 | 24.034 | 20.831 | 20.225 | 20.596 | 保守 CTM 复现早期增益，等待 step500/750 验证是否抗退化 |
+| v21b CTM-gated | step1000 | 44.988 | 24.130 | 20.956 | 20.179 | 20.499 | 8/16 短暂最健康，1/2/4 已开始回弹 |
+| v21b CTM-gated | step7500 | 44.600 | 27.012 | 26.152 | 23.099 | 23.767 | 单步微降但 composition 长跑失败 |
 
 ## 实验演化脉络
 
@@ -146,6 +148,47 @@ pixel/perceptual matching，所以表现为保守 fine-tune，而不是能力跃
 当前权重过强，不能直接长跑。v21b 从 v21 step250 继续，保留早期 endpoint/4-step
 收益，同时降低 adapter/data-transition 强度并提高 preservation。
 
+### 4. v21b 完整验收
+
+v21b 是对 v21 的保守修正：`transition_adapter_lr=8e-6`，
+`data_transition_weight=0.25`，`data_transition_endpoint_prob=0.35`，并提高
+preserve bridge/defect/perceptual。训练按 8 小时时间预算自然结束于 step7630。
+
+最佳 budget FID-2048 分步并不来自同一 checkpoint：
+
+| metric | best checkpoint | best FID |
+|---|---:|---:|
+| FID@1 | step7500 | 44.600 |
+| FID@2 | step250 | 24.034 |
+| FID@4 | step250 | 20.831 |
+| FID@8 | step1000 | 20.179 |
+| FID@16 | step2000 | 20.427 |
+
+这组结果说明 v21b 不是 “慢热”。如果方法有效，至少应在 4/8/16 上维持或下降；
+实际是从 step250 开始持续退化：
+
+- budget mean FID@4/8/16: step250 `20.551` -> step7500 `24.339`；
+- FID@2: `24.034` -> `27.012`；
+- FID@1: `44.843` -> `44.600`，8 小时只降低 `0.242`。
+
+训练 loss 也支持这个判断：前 40 条与后 40 条记录的平均 `loss`、`anchor_loss`、
+`bridge_loss`、`defect_loss` 基本不降，`data_denoise_loss` 也没有系统性改善。
+这说明当前 residual adapter + 加权 loss 主要在已学到的 transition family 上做
+小幅扰动，不是在学习 CTM 那种强 one-step transport 能力。
+
+### 5. 达到目标曲线的可行性估计
+
+目标 FID@1/2/4/8 为 `3.20/2.84/2.62/2.50`。按 v21b 的实际斜率估计，当前
+方法直接长跑不可行：
+
+- FID@1 从 step250 到 step7500 只改善 `0.242`，仍差目标约 `41.4`；
+- FID@2/4/8 与目标的差距约 `21.2/18.2/17.7`，且方向是变差；
+- 即便线性外推 FID@1 的微弱改善，也需要不现实的训练步数，而且多步会继续被破坏。
+
+因此当前结论是：**v21b 不能作为继续长跑冲 SOTA 的主线**。它证明保守 gating 可以
+减轻 v21 的灾难性 16-step 崩坏，但不能产生能力跃迁。下一版必须改训练范式，而不是
+再调小权重或继续堆 timewarp。
+
 ## 机制图 v1 观察
 
 - 生成脚本：
@@ -170,26 +213,17 @@ transition 本身，或改用真实可访问 waypoint/segment-level metric。
 
 ## 下一步监督规则
 
-1. 继续运行 v21，并每两小时检查 budget FID@1/2/4/8/16。
-2. 如果 FID@1 持续下降且 8/16 回收，保持 v21。
-3. 如果 FID@1 下降但 8/16 不回收，开启 v21b：
-   - 降低 `data_transition_weight` 或 endpoint probability；
-   - 提高 preserve bridge / preserve perceptual；
-   - 或让 adapter 只在 low-NFE 训练阶段生效，high-NFE composition 主要更新 base。
-4. 如果 FID@1 停滞，下一步不是再加 timewarp，而是更接近 CTM：
-   - stop-grad EMA target model；
-   - adaptive DSM/consistency balance；
-   - 更强的 `s` 条件注入，而不是小 residual adapter。
-5. v21b 已准备：
-   - config:
-     `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_v21b_ctm_gated.yaml`
-   - launcher:
-     `experiments/edm_first/scripts/launch_prior_fullstack_timewarp_v21b_ctm_gated.sh`
-   - source:
-     `runs/edm_first_cifar10_prior_fullstack_timewarp_v21_ctm_aligned_from_v20_step3292/checkpoints/step250.pt`
-   - 关键改动：`transition_adapter_lr 3e-5 -> 8e-6`，
-     `data_transition_weight 0.85 -> 0.25`，`data_transition_endpoint_prob 0.65 -> 0.35`，
-     提高 preserve bridge/defect/perceptual，并降低 warp 学习率。
+1. 停止把 v21/v21b 作为长跑主线；保留关键 checkpoint 和完整 eval reports。
+2. 下一版不再只调权重，应接近 CTM 的训练骨架：
+   - 引入 stop-grad EMA target model，consistency target 不从同一个在线 student
+     反向传播；
+   - 用 teacher Heun/EDM dense rollout 形成稳定 `x_t -> x_s` target，而不是只靠
+     residual adapter 修正 Euler；
+   - 将 real-data DSM 与 consistency 做 adaptive balance，避免 endpoint 与
+     composition 互相拉扯；
+   - 强化 `s` 条件注入位置，让主网络真正学习 `G(x_t,t,s)`，而不是外层小 adapter。
+3. timewarp 仍作为低步数 traversal 的优势模块保留，但只能在 student transition
+   本身有足够生成能力后发挥作用；现阶段不应把时间投入到单独微调 warp。
 
 ## Artifact 索引
 
