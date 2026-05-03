@@ -179,6 +179,21 @@ def main() -> None:
     ema_decay = float(train_cfg.get("ema_decay", 0.9995))
     ema_update_every = max(1, int(train_cfg.get("ema_update_every", 1)))
     ema_device_name = str(train_cfg.get("ema_device", "cpu"))
+    target_ema_enabled = bool(train_cfg.get("target_ema_enabled", False))
+    target_ema_decay = float(train_cfg.get("target_ema_decay", 0.999))
+    target_ema_update_every = max(1, int(train_cfg.get("target_ema_update_every", 1)))
+    target_ema_device_name = str(train_cfg.get("target_ema_device", str(device)))
+    ctm_target_enabled = bool(train_cfg.get("ctm_target_enabled", False))
+    ctm_target_weight = float(train_cfg.get("ctm_target_weight", 0.0))
+    ctm_target_bridge_weight = float(train_cfg.get("ctm_target_bridge_weight", 0.5))
+    ctm_target_adaptive = bool(train_cfg.get("ctm_target_adaptive", False))
+    ctm_target_adaptive_min_scale = float(train_cfg.get("ctm_target_adaptive_min_scale", data_adaptive_min_scale))
+    ctm_target_adaptive_max_scale = float(train_cfg.get("ctm_target_adaptive_max_scale", data_adaptive_max_scale))
+    ctm_target_loss_norm = str(train_cfg.get("ctm_target_loss_norm", "endpoint")).lower()
+    ctm_target_perceptual_weight = float(train_cfg.get("ctm_target_perceptual_weight", 0.0))
+    ctm_target_source = str(train_cfg.get("ctm_target_source", "teacher_dt_target")).lower()
+    ctm_teacher_dt_u = float(train_cfg.get("ctm_teacher_dt_u", data_transition_min_delta_u))
+    data_transition_target_mode = str(train_cfg.get("data_transition_target_mode", "teacher")).lower()
 
     teacher = load_edm_network(cfg["paths"]["network"], device=device, use_fp16=bool(teacher_cfg.get("use_fp16", True)))
     teacher.requires_grad_(False)
@@ -188,6 +203,11 @@ def main() -> None:
         ema_device = torch.device(ema_device_name)
         student_ema = copy.deepcopy(student).to(ema_device)
         student_ema.eval().requires_grad_(False)
+    target_model = None
+    if target_ema_enabled or ctm_target_enabled or data_transition_target_mode in {"ctm", "ctm_stopgrad", "target", "target_model"}:
+        target_device = torch.device(target_ema_device_name)
+        target_model = copy.deepcopy(student).to(target_device)
+        target_model.eval().requires_grad_(False)
     base_lr = float(train_cfg.get("lr", 1.0e-6))
     adapter_lr = train_cfg.get("transition_adapter_lr")
     if adapter_lr is not None and hasattr(student, "base"):
@@ -252,6 +272,11 @@ def main() -> None:
                 student_ema.load_state_dict(ema_state)
             else:
                 student_ema.load_state_dict(student.state_dict())
+        if target_model is not None:
+            target_state = ckpt.get("target_model") or ckpt.get("ctm_target_model")
+            if target_state is None:
+                target_state = ckpt.get("student_ema") if ckpt.get("student_ema") is not None else ckpt[resume_student_key]
+            target_model.load_state_dict(target_state)
         resume_optimizer = bool(train_cfg.get("resume_optimizer", True))
         resume_step = bool(train_cfg.get("resume_step", resume_optimizer))
         resume_warp = bool(train_cfg.get("resume_warp", True))
@@ -317,6 +342,12 @@ def main() -> None:
         data_transition_loss = torch.zeros((), device=device)
         data_denoise_effective_weight = torch.zeros((), device=device)
         data_transition_effective_weight = torch.zeros((), device=device)
+        ctm_target_loss = torch.zeros((), device=device)
+        ctm_target_direct_loss = torch.zeros((), device=device)
+        ctm_target_bridge_loss = torch.zeros((), device=device)
+        ctm_target_perceptual_loss = torch.zeros((), device=device)
+        ctm_target_effective_weight = torch.zeros((), device=device)
+        ctm_target_mid_loss = torch.zeros((), device=device)
         if objective in {"prior_endpoint", "prior_fullstack"}:
             labels = sample_labels(teacher, batch_size, device=device)
             sigma_t = sigma_from_u(torch.zeros(batch_size, device=device), sigma_min=sigma_min, sigma_max=sigma_max, rho=rho, net=teacher)
@@ -392,6 +423,103 @@ def main() -> None:
                         + defect_weight * defect_loss
                         + perceptual_weight * perceptual_loss
                     )
+                    if ctm_target_enabled and ctm_target_weight > 0.0:
+                        if target_model is None:
+                            raise RuntimeError("ctm_target_enabled requires target_model")
+                        with torch.no_grad():
+                            target_labels = labels.to(target_ema_device_name) if labels is not None and target_ema_device_name != str(device) else labels
+                            x_t_target = x_t.detach().to(target_ema_device_name)
+                            sigma_t_target = sigma_t.detach().to(target_ema_device_name)
+                            sigma_s_target = sigma_s.detach().to(target_ema_device_name)
+                            sigma_u_target = sigma_u.detach().to(target_ema_device_name)
+                            if ctm_target_source in {"target", "target_model", "target_model_sg"}:
+                                x_s_target_seed = student_transition(
+                                    target_model,
+                                    x_t_target,
+                                    sigma_t_target,
+                                    sigma_s_target,
+                                    target_labels,
+                                )
+                            elif ctm_target_source in {"teacher_dt_target", "ctm", "ctm_stopgrad"}:
+                                u_dt_target = torch.minimum(
+                                    u_mid.detach(),
+                                    torch.full_like(u_mid.detach(), max(ctm_teacher_dt_u, 1.0e-6)),
+                                )
+                                sigma_dt_target = sigma_from_u(
+                                    u_dt_target,
+                                    sigma_min=sigma_min,
+                                    sigma_max=sigma_max,
+                                    rho=rho,
+                                    net=teacher,
+                                )
+                                x_dt_target = teacher_transition(
+                                    teacher,
+                                    x_t,
+                                    sigma_t,
+                                    sigma_dt_target,
+                                    labels,
+                                ).to(target_ema_device_name)
+                                x_s_target_seed = student_transition(
+                                    target_model,
+                                    x_dt_target,
+                                    sigma_dt_target.to(target_ema_device_name),
+                                    sigma_s_target,
+                                    target_labels,
+                                )
+                            else:
+                                x_s_target_seed = teacher_transition(
+                                    teacher,
+                                    x_t,
+                                    sigma_t,
+                                    sigma_s,
+                                    labels,
+                                ).to(target_ema_device_name)
+                            x_u_ctm_target = student_transition(
+                                target_model,
+                                x_s_target_seed,
+                                sigma_s_target,
+                                sigma_u_target,
+                                target_labels,
+                            ).to(device=device, dtype=x_u_direct.dtype)
+                        ctm_target_mid_weight = float(train_cfg.get("ctm_target_mid_weight", 0.0))
+                        if ctm_target_mid_weight > 0.0:
+                            x_s_target_for_loss = x_s_target_seed.to(device=device, dtype=x_s.dtype)
+                            ctm_target_mid_per_sample = _flat_mse_per_sample(x_s, x_s_target_for_loss)
+                            ctm_target_mid_loss = _safe_mean_normalized(ctm_target_mid_per_sample, match_denom.detach())
+                        ctm_target_direct_per_sample = _flat_mse_per_sample(x_u_direct, x_u_ctm_target)
+                        ctm_target_bridge_per_sample = _flat_mse_per_sample(x_u_bridge, x_u_ctm_target)
+                        if ctm_target_loss_norm in {"endpoint", "trajectory", "edm"}:
+                            ctm_target_denom = endpoint_denom.detach()
+                        elif ctm_target_loss_norm in {"target_delta", "target"}:
+                            ctm_target_denom = _flat_mse_per_sample(x_u_ctm_target.detach(), x_t.detach())
+                        elif ctm_target_loss_norm in {"none", "raw", "mse"}:
+                            ctm_target_denom = torch.ones_like(ctm_target_direct_per_sample)
+                        else:
+                            raise RuntimeError(f"unknown ctm_target_loss_norm: {ctm_target_loss_norm}")
+                        ctm_target_direct_loss = _safe_mean_normalized(ctm_target_direct_per_sample, ctm_target_denom)
+                        ctm_target_bridge_loss = _safe_mean_normalized(ctm_target_bridge_per_sample, ctm_target_denom)
+                        ctm_target_loss = (
+                            ctm_target_mid_weight * ctm_target_mid_loss
+                            + ctm_target_direct_loss
+                            + ctm_target_bridge_weight * ctm_target_bridge_loss
+                        )
+                        if ctm_target_perceptual_weight > 0.0 and perceptual_metric is not None:
+                            ctm_target_perceptual_loss = perceptual_metric(
+                                x_u_direct.float(),
+                                x_u_ctm_target.float(),
+                            )
+                            ctm_target_loss = ctm_target_loss + ctm_target_perceptual_weight * ctm_target_perceptual_loss
+                        if ctm_target_adaptive:
+                            ctm_target_effective_weight = _adaptive_loss_weight(
+                                base_weight=ctm_target_weight,
+                                reference_loss=loss.detach(),
+                                aux_loss=ctm_target_loss,
+                                min_scale=ctm_target_adaptive_min_scale,
+                                max_scale=ctm_target_adaptive_max_scale,
+                            )
+                        else:
+                            ctm_target_effective_weight = ctm_target_loss.new_tensor(ctm_target_weight)
+                        loss = loss + ctm_target_effective_weight * ctm_target_loss
                     if preserve_mid_u_values and (
                         preserve_bridge_weight > 0.0
                         or preserve_match_weight > 0.0
@@ -509,17 +637,53 @@ def main() -> None:
                     trans_sigma_s = torch.where(endpoint_mask, torch.zeros_like(trans_sigma_s), trans_sigma_s)
                     trans_noisy = real_images + torch.randn_like(real_images) * trans_sigma_t.view(-1, 1, 1, 1)
                     with torch.no_grad():
-                        trans_target = real_images.clone()
-                        non_endpoint = ~endpoint_mask
-                        if bool(non_endpoint.any()):
-                            non_labels = real_labels[non_endpoint] if real_labels is not None else None
-                            trans_target[non_endpoint] = teacher_transition(
-                                teacher,
-                                trans_noisy[non_endpoint],
-                                trans_sigma_t[non_endpoint],
-                                trans_sigma_s[non_endpoint],
-                                non_labels,
+                        if data_transition_target_mode in {"ctm", "ctm_stopgrad", "target", "target_model"}:
+                            if target_model is None:
+                                raise RuntimeError("CTM data transition target requires target_model")
+                            dt_room = torch.clamp(trans_u_s - trans_u_t, min=0.0)
+                            trans_u_dt = trans_u_t + torch.minimum(
+                                dt_room,
+                                torch.full_like(dt_room, max(ctm_teacher_dt_u, 1.0e-6)),
                             )
+                            trans_sigma_dt = sigma_from_u(
+                                trans_u_dt,
+                                sigma_min=sigma_min,
+                                sigma_max=sigma_max,
+                                rho=rho,
+                                net=teacher,
+                            )
+                            trans_sigma_dt = torch.where(trans_u_dt >= 1.0, torch.zeros_like(trans_sigma_dt), trans_sigma_dt)
+                            trans_dt = teacher_transition(
+                                teacher,
+                                trans_noisy,
+                                trans_sigma_t,
+                                trans_sigma_dt,
+                                real_labels,
+                            )
+                            target_labels = (
+                                real_labels.to(target_ema_device_name)
+                                if real_labels is not None and target_ema_device_name != str(device)
+                                else real_labels
+                            )
+                            trans_target = student_transition(
+                                target_model,
+                                trans_dt.to(target_ema_device_name),
+                                trans_sigma_dt.to(target_ema_device_name),
+                                trans_sigma_s.to(target_ema_device_name),
+                                target_labels,
+                            ).to(device=device, dtype=trans_noisy.dtype)
+                        else:
+                            trans_target = real_images.clone()
+                            non_endpoint = ~endpoint_mask
+                            if bool(non_endpoint.any()):
+                                non_labels = real_labels[non_endpoint] if real_labels is not None else None
+                                trans_target[non_endpoint] = teacher_transition(
+                                    teacher,
+                                    trans_noisy[non_endpoint],
+                                    trans_sigma_t[non_endpoint],
+                                    trans_sigma_s[non_endpoint],
+                                    non_labels,
+                                )
                     trans_estimate = student_transition(student, trans_noisy, trans_sigma_t, trans_sigma_s, real_labels)
                     data_transition_per_sample = _flat_mse_per_sample(trans_estimate, trans_target)
                     if data_transition_normalize:
@@ -581,6 +745,8 @@ def main() -> None:
         scaler.update()
         if student_ema is not None and step % ema_update_every == 0:
             _update_ema_model(student_ema, student, ema_decay)
+        if target_model is not None and target_ema_enabled and step % target_ema_update_every == 0:
+            _update_ema_model(target_model, student, target_ema_decay)
 
         denom = endpoint_denom.detach().float() if "endpoint_denom" in locals() else _flat_mse_per_sample(x_u_ref, x_t).clamp_min(1.0e-6).detach().float()
         raw_defect_per_sample = defect_raw.detach().float()
@@ -642,9 +808,22 @@ def main() -> None:
             "data_transition_loss": float(data_transition_loss.detach().float().item()),
             "data_transition_weight": data_transition_weight,
             "data_transition_effective_weight": float(data_transition_effective_weight.detach().float().item()),
+            "data_transition_target_mode": data_transition_target_mode,
+            "ctm_target_enabled": bool(ctm_target_enabled),
+            "ctm_target_source": ctm_target_source,
+            "ctm_target_loss": float(ctm_target_loss.detach().float().item()),
+            "ctm_target_mid_loss": float(ctm_target_mid_loss.detach().float().item()),
+            "ctm_target_direct_loss": float(ctm_target_direct_loss.detach().float().item()),
+            "ctm_target_bridge_loss": float(ctm_target_bridge_loss.detach().float().item()),
+            "ctm_target_perceptual_loss": float(ctm_target_perceptual_loss.detach().float().item()),
+            "ctm_target_loss_norm": ctm_target_loss_norm,
+            "ctm_target_weight": ctm_target_weight,
+            "ctm_target_effective_weight": float(ctm_target_effective_weight.detach().float().item()),
             "transition_adapter_enabled": bool(cfg.get("transition_adapter", {}).get("enabled", False)),
             "ema_enabled": ema_enabled,
             "ema_decay": ema_decay if ema_enabled else None,
+            "target_ema_enabled": bool(target_ema_enabled),
+            "target_ema_decay": target_ema_decay if target_ema_enabled else None,
             "preserve_mid_u_values": preserve_mid_u_values,
             "defect_grad_mode": defect_grad_mode,
             "perceptual_loss": float(perceptual_loss.detach().float().item()) if "perceptual_loss" in locals() else 0.0,
@@ -679,6 +858,7 @@ def main() -> None:
                 "step": step,
                 "student": student.state_dict(),
                 "student_ema": _copy_state_to_cpu(student_ema) if student_ema is not None else None,
+                "target_model": _copy_state_to_cpu(target_model) if target_model is not None else None,
                 "optimizer": optimizer.state_dict(),
                 "warp": warp.state_dict() if warp is not None else None,
                 "warp_optimizer": warp_optimizer.state_dict() if warp_optimizer is not None else None,
@@ -706,6 +886,7 @@ def main() -> None:
             "step": step,
             "student": student.state_dict(),
             "student_ema": _copy_state_to_cpu(student_ema) if student_ema is not None else None,
+            "target_model": _copy_state_to_cpu(target_model) if target_model is not None else None,
             "optimizer": optimizer.state_dict(),
             "warp": warp.state_dict() if warp is not None else None,
             "warp_optimizer": warp_optimizer.state_dict() if warp_optimizer is not None else None,

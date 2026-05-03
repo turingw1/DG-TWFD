@@ -227,6 +227,45 @@ transition 本身，或改用真实可访问 waypoint/segment-level metric。
 
 ## Artifact 索引
 
+## v22 CTM Target 迭代记录（2026-05-03）
+
+v22 的目标是把 CTM no-GAN 的关键训练骨架接回本项目：online student 不直接用自身
+作为 target，而是使用 `target_model` EMA，先由 teacher 做小步推进，再由 target EMA
+完成后续 traversal，形成 stop-grad consistency target。
+
+代码改动：
+
+- `experiments/edm_first/train_edm_map.py`
+  - 新增 `target_model` EMA checkpoint/resume/update；
+  - prior fullstack 新增 CTM target direct/bridge/mid consistency；
+  - real-data transition 新增 `data_transition_target_mode: ctm_stopgrad`；
+  - CTM target loss 支持 endpoint-scale normalization，避免未归一化 MSE 量级爆炸。
+- `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_v22_ctm_target.yaml`
+  - 当前主跑配置为 `v22c_ctm_strong_endpoint`；
+  - 从 v18 endpoint checkpoint 启动，保单步 endpoint，同时加强 real-data denoise 与 CTM consistency。
+- `experiments/edm_first/scripts/watch_eval_budget_checkpoints.sh`
+  - budget-only checkpoint watcher，避免原 compare watcher 在 identity/budget 后处理阶段退出导致后续评估断档。
+
+早期实验证据：
+
+| run | source | step | FID@1 | FID@2 budget | FID@4 | FID@8 | FID@16 | 判断 |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| v21b | v21 step250 | 250 | 44.843 | 24.034 | 20.831 | 20.225 | 20.596 | 旧基线 |
+| v22b | v21b step250 | 500 | 46.916 | 23.242 | 20.957 | 19.603 | 20.496 | 多步改善，单步退化 |
+| v22c | v18 step4684 | 250 | 44.830 | 22.576 | 21.312 | 20.132 | 21.074 | 单步恢复，2-step 最好 |
+| v22c | v18 step4684 | 500 | 44.760 | 22.565 | 21.291 | 20.123 | 21.049 | 仍稳定，继续观察 |
+
+判断：
+
+- v22b 证明 CTM target 对多步组合有帮助，尤其 8-step，但没有救回单步。
+- v22c 从更好的 endpoint 源点出发后，2-step budget 明显刷新本项目线内最好早期结果
+  （`23.24 -> 22.56`），且单步接近 v18 endpoint 水平。
+- 4/8/16 暂未同步改善，说明强 CTM/real-data loss 当前主要改善固定 2-step traversal，
+  尚未形成整体 SOTA 级生成能力。
+- 后续若 v22c 在 750/1000 step 不能把 4/8 拉下，应做 v22d 折中：
+  保留 v22c 的 v18 source + real-data endpoint 设置，降低 CTM target 强度并恢复 v22b
+  的多步友好配比。
+
 - v21 config:
   `experiments/edm_first/configs/cifar10_edm_map_prior_fullstack_timewarp_v21_ctm_aligned.yaml`
 - v21 launcher:
