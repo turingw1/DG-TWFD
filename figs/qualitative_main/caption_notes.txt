@@ -1,0 +1,3 @@
+CIFAR-10 class-conditional comparison for truck, seed 3018. Rows fix the inference budget and columns fix the method. CIFAR-10 JAX consistency-model baselines are seed-only references because the released checkpoints are not class-conditional.
+
+ImageNet64 class-locked comparison for class 0407, seed 3109. Rows fix the inference budget and columns fix the method. DG-TWFD preserves the target vehicle class more consistently under low-step inference.

@@ -1,0 +1,53 @@
+{
+  "description": "Compact main-text qualitative panels transposed from existing per-sample grids.",
+  "sampling": "No new sampling; cells are exact crops from existing image-only per-sample grids.",
+  "outputs": [
+    {
+      "name": "cifar10_truck_seed3018",
+      "source_png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/cifar10/cifar10_018_class0009_truck_seed3018.png",
+      "pdf": "figs/qualitative_main/cifar10_truck_seed3018_step_rows.pdf",
+      "png_preview_600dpi": "figs/qualitative_main/cifar10_truck_seed3018_step_rows.png",
+      "row_order": [
+        "1-step",
+        "2-step",
+        "4-step",
+        "8-step"
+      ],
+      "column_order": [
+        "DG-TWFD",
+        "Identity",
+        "CTM",
+        "CTM no-GAN",
+        "CD-LPIPS",
+        "CD-L2",
+        "CT-LPIPS"
+      ],
+      "cell_crop_px": 256,
+      "layout": "transposed step rows; DG-TWFD column highlighted with a thin dark border",
+      "caption_note": "CIFAR-10 class-conditional comparison for truck, seed 3018. Rows fix the inference budget and columns fix the method. CIFAR-10 JAX consistency-model baselines are seed-only references because the released checkpoints are not class-conditional."
+    },
+    {
+      "name": "imagenet64_class0407_seed3109",
+      "source_png": "docs/experiments/DG_TWFD_v3/figures/qualitative/neurips_sample_bank_20260503/per_sample/imagenet64/imagenet64_009_class0407_id0407_seed3109.png",
+      "pdf": "figs/qualitative_main/imagenet64_class0407_seed3109_step_rows.pdf",
+      "png_preview_600dpi": "figs/qualitative_main/imagenet64_class0407_seed3109_step_rows.png",
+      "row_order": [
+        "1-step",
+        "2-step",
+        "4-step",
+        "8-step"
+      ],
+      "column_order": [
+        "DG-TWFD",
+        "Identity",
+        "CD-LPIPS",
+        "CD-L2",
+        "CT",
+        "CTM"
+      ],
+      "cell_crop_px": 256,
+      "layout": "transposed step rows; DG-TWFD column highlighted with a thin dark border",
+      "caption_note": "ImageNet64 class-locked comparison for class 0407, seed 3109. Rows fix the inference budget and columns fix the method. DG-TWFD preserves the target vehicle class more consistently under low-step inference."
+    }
+  ]
+}
