@@ -414,9 +414,14 @@
     "Panel C uses finite semigroup-defect segments only; the final sigma=0 endpoint segment can be numerically singular for this adapter diagnostic."
   ],
   "redraw": {
-    "version": "v2_neurips_mechanism_redraw",
+    "version": "v3_neurips_mechanism_redraw",
     "script": "scripts/figures/redraw_timewarp_mechanism_from_npz.py",
-    "claim": "time allocation and paired semigroup-defect reduction; no pointwise teacher-path closeness claim",
+    "claim": "DG-TWFD keeps the teacher path fixed and redistributes warped-time waypoints toward original-time regions with high empirical semigroup defect, reducing paired recursive semigroup defect under the same 8-step budget.",
+    "unsupported_claims": [
+      "Pointwise teacher-path closeness improvement is not supported.",
+      "Pointwise path-error improvement is not supported.",
+      "Empirical semigroup defect and variation should not be treated as one shared heatmap."
+    ],
     "data_source": "docs/experiments/DG_TWFD_v3/figures/mechanism/timewarp_mechanism_20260502/timewarp_mechanism_data.npz",
     "panels": {
       "A": {
@@ -505,7 +510,13 @@
       "common_path_dg_mean_error": 2.9839441776275635,
       "node_identity_mean_error": 0.04515929892659187,
       "node_dg_mean_error": 0.04982158914208412,
-      "interpretation": "These pointwise path metrics do not support claiming DG is closer to the teacher path."
+      "interpretation": "These pointwise path metrics support only a cautionary interpretation, not a path-closeness improvement claim."
     }
-  }
+  },
+  "supported_claim": "DG-TWFD keeps the teacher path fixed and redistributes warped-time waypoints toward original-time regions with high empirical semigroup defect, reducing paired recursive semigroup defect under the same 8-step budget.",
+  "unsupported_claims": [
+    "Pointwise teacher-path closeness improvement is not supported.",
+    "Pointwise path-error improvement is not supported.",
+    "Empirical semigroup defect and variation should not be treated as one shared heatmap."
+  ]
 }

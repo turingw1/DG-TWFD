@@ -50,6 +50,18 @@ COLORS = {
     "black": "#333333",
 }
 
+SUPPORTED_CLAIM = (
+    "DG-TWFD keeps the teacher path fixed and redistributes warped-time "
+    "waypoints toward original-time regions with high empirical semigroup "
+    "defect, reducing paired recursive semigroup defect under the same "
+    "8-step budget."
+)
+UNSUPPORTED_CLAIMS = [
+    "Pointwise teacher-path closeness improvement is not supported.",
+    "Pointwise path-error improvement is not supported.",
+    "Empirical semigroup defect and variation should not be treated as one shared heatmap.",
+]
+
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -162,24 +174,13 @@ def _draw_panel_a(ax, data: dict[str, np.ndarray]) -> dict[str, Any]:
             solid_capstyle="butt",
         )
 
-    ax.text(
-        0.975,
-        0.12,
-        "uniform warped grid\n-> nonuniform original waypoints",
-        transform=ax.transAxes,
-        fontsize=5.45,
-        ha="right",
-        va="bottom",
-        color=COLORS["dg"],
-        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.78, "pad": 1.0},
-    )
-    ax.text(0.02, 0.93, "red: empirical defect", transform=ax.transAxes, fontsize=5.7, color="#8a3d34")
+    ax.text(0.02, 0.93, "empirical semigroup defect", transform=ax.transAxes, fontsize=5.6, color="#8a3d34")
     ax.text(
         0.02,
-        0.065,
-        "purple rug: variation",
+        0.055,
+        "variation rug",
         transform=ax.transAxes,
-        fontsize=5.6,
+        fontsize=5.2,
         color=COLORS["variation"],
         bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.78, "pad": 0.8},
     )
@@ -189,7 +190,7 @@ def _draw_panel_a(ax, data: dict[str, np.ndarray]) -> dict[str, Any]:
     ax.set_xlabel("original progress $p=1-t$", fontsize=7.0)
     ax.set_ylabel("warped progress $q=1-g(t)$", fontsize=7.0)
     _format_panel(ax, "A. Defect-guided time allocation")
-    ax.legend(loc="lower right", fontsize=5.7, frameon=False, handlelength=2.1)
+    ax.legend(loc="lower right", bbox_to_anchor=(1.0, 0.13), fontsize=5.6, frameon=False, handlelength=2.1)
     return {
         "density_mass_sum": float(density.sum()),
         "corr_density_defect": _finite_corr(density, defect),
@@ -263,7 +264,7 @@ def _draw_panel_b(ax, data: dict[str, np.ndarray]) -> dict[str, Any]:
         mew=0.35,
         alpha=0.92,
         zorder=4,
-        label="identity waypoints",
+        label="identity wp.",
     )
     ax.plot(
         dg_nodes[:, 0],
@@ -276,7 +277,7 @@ def _draw_panel_b(ax, data: dict[str, np.ndarray]) -> dict[str, Any]:
         mew=0.38,
         alpha=0.96,
         zorder=5,
-        label="DG-TWFD waypoints",
+        label="DG-TWFD wp.",
     )
     _draw_direction_arrow(ax, identity_nodes, 2, COLORS["identity"])
     _draw_direction_arrow(ax, dg_nodes, 5, COLORS["dg"])
@@ -308,8 +309,8 @@ def _draw_panel_b(ax, data: dict[str, np.ndarray]) -> dict[str, Any]:
     _format_panel(ax, "B. Same path, redistributed waypoints")
     handles = [
         Line2D([0], [0], color=COLORS["teacher"], lw=1.5, label="teacher path"),
-        Line2D([0], [0], color=COLORS["identity"], lw=1.1, marker="o", ms=3.0, label="identity"),
-        Line2D([0], [0], color=COLORS["dg"], lw=1.2, marker="o", ms=3.0, label="DG-TWFD"),
+        Line2D([0], [0], color=COLORS["identity"], lw=1.1, marker="o", ms=3.0, label="identity wp."),
+        Line2D([0], [0], color=COLORS["dg"], lw=1.2, marker="o", ms=3.0, label="DG-TWFD wp."),
         Line2D([0], [0], color=COLORS["defect"], lw=3.0, alpha=0.5, label="high defect"),
     ]
     ax.legend(handles=handles, loc="best", fontsize=5.5, frameon=False, handlelength=1.8)
@@ -334,7 +335,7 @@ def _draw_panel_c(ax_top, ax_bar, data: dict[str, np.ndarray], *, seed: int, boo
     ax_top.plot(segment_x, dg_mean, color=COLORS["dg"], lw=1.85, marker="o", ms=3.0, label="DG-TWFD")
     ax_top.fill_between(segment_x, dg_lo, dg_hi, color=COLORS["dg"], alpha=0.15, lw=0)
     ax_top.set_xlim(0.75, identity.shape[1] + 0.25)
-    ax_top.set_xticklabels([])
+    ax_top.tick_params(labelbottom=False)
     ax_top.set_ylabel("defect MSE ($10^{-4}$)", fontsize=7.0)
     ax_top.yaxis.set_major_formatter(FuncFormatter(lambda value, _pos: f"{value * 1.0e4:.1f}"))
     _format_panel(ax_top, "C. Paired semigroup defect")
@@ -360,10 +361,21 @@ def _draw_panel_c(ax_top, ax_bar, data: dict[str, np.ndarray], *, seed: int, boo
     ax_bar.axhline(0.0, color="#555555", lw=0.65)
     ax_bar.bar(segment_x, paired_mean, width=0.62, color=colors, alpha=0.78, edgecolor="none")
     ax_bar.set_xlim(0.75, identity.shape[1] + 0.25)
+    ax_bar.set_xticks(segment_x)
     ax_bar.set_xlabel("segment index $k$", fontsize=7.0)
     ax_bar.set_ylabel("id-DG\n($10^{-5}$)", fontsize=6.2)
     ax_bar.tick_params(axis="both", labelsize=6.1, width=0.65, length=2.2)
     ax_bar.yaxis.set_major_formatter(FuncFormatter(lambda value, _pos: f"{value * 1.0e5:.0f}"))
+    ax_bar.text(
+        0.985,
+        0.87,
+        "positive = DG lower",
+        transform=ax_bar.transAxes,
+        fontsize=5.2,
+        ha="right",
+        va="top",
+        color=COLORS["black"],
+    )
     for spine in ax_bar.spines.values():
         spine.set_linewidth(0.7)
         spine.set_color("#333333")
@@ -385,9 +397,8 @@ def _draw_panel_c(ax_top, ax_bar, data: dict[str, np.ndarray], *, seed: int, boo
 
 def _save_caption(output_dir: Path) -> None:
     caption = r"""\textbf{Real-trajectory mechanism of defect-guided time warping.}
-The learned clock allocates larger warped-time mass to original-time regions with high empirical semigroup defect, so uniform warped-time sampling induces non-uniform original-time waypoints.
-On a held-out CIFAR-10 trajectory, the teacher path is unchanged while the low-step waypoint traversal is redistributed toward the high-defect segment.
-Across held-out trajectories, DG-TWFD reduces paired semigroup defect under the same step budget.
+The learned clock allocates larger warped-time mass to original-time regions with high empirical semigroup defect, so uniform warped-time sampling induces non-uniform original-time waypoints while leaving the teacher path unchanged.
+On a held-out CIFAR-10 trajectory, DG-TWFD redistributes the 8-step waypoint traversal toward a high-defect segment; across 24 held-out trajectories, it reduces paired recursive semigroup defect by 15.6\% under the same step budget.
 """
     (output_dir / "caption.tex").write_text(caption, encoding="utf-8")
 
@@ -406,6 +417,8 @@ def _write_manifest(output_dir: Path, manifest: dict[str, Any], redraw: dict[str
         "data": str((output_dir / "timewarp_mechanism_data.npz").relative_to(ROOT)),
         "caption": str((output_dir / "caption.tex").relative_to(ROOT)),
     }
+    manifest["supported_claim"] = SUPPORTED_CLAIM
+    manifest["unsupported_claims"] = UNSUPPORTED_CLAIMS
     manifest["redraw"] = redraw
     (output_dir / "timewarp_mechanism_manifest.json").write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
@@ -467,9 +480,10 @@ def main() -> None:
 
     _save_caption(output_dir)
     redraw = {
-        "version": "v2_neurips_mechanism_redraw",
+        "version": "v3_neurips_mechanism_redraw",
         "script": str(Path(__file__).resolve().relative_to(ROOT)),
-        "claim": "time allocation and paired semigroup-defect reduction; no pointwise teacher-path closeness claim",
+        "claim": SUPPORTED_CLAIM,
+        "unsupported_claims": UNSUPPORTED_CLAIMS,
         "data_source": str(data_path.relative_to(ROOT)),
         "panels": {
             "A": panel_a,
@@ -481,7 +495,7 @@ def main() -> None:
             "common_path_dg_mean_error": manifest.get("aggregate", {}).get("common_path_dg_mean_error"),
             "node_identity_mean_error": manifest.get("aggregate", {}).get("node_identity_mean_error"),
             "node_dg_mean_error": manifest.get("aggregate", {}).get("node_dg_mean_error"),
-            "interpretation": "These pointwise path metrics do not support claiming DG is closer to the teacher path.",
+            "interpretation": "These pointwise path metrics support only a cautionary interpretation, not a path-closeness improvement claim.",
         },
     }
     _write_manifest(output_dir, manifest, redraw)
